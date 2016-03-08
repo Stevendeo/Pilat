@@ -1,0 +1,482 @@
+open Cil_types
+open Cil_datatype 
+
+exception Not_solvable
+
+let dkey_stmt = Mat_option.register_category "matast:block_analyzer" 
+let dkey_lowerizer = Mat_option.register_category "matast:lowerizer" 
+let dkey_all_monom = Mat_option.register_category "matast:lowerizer:all_monom" 
+let dkey_loop_mat = Mat_option.register_category "matast:loop_mat"
+
+
+module Ring = 
+struct 
+  type t = float
+  let zero = 0.
+  let unit = 1.
+  let add = (+.)
+  let mul = ( *. )
+  let sub = (-.)
+  let equal = (=)
+  let print fmt i = 
+    Format.fprintf fmt "%.3f" i 
+end
+
+module F_poly = 
+  
+struct 
+  include Poly.Make(Ring)(Cil_datatype.Varinfo)
+  let to_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * Lacaml_D.mat = 
+      let base_monom = 
+	if Monom.Map.is_empty base
+	then 
+	  let poly_base = 
+	    Monom.Set.add monom_var (get_monomials p) in 
+	  let i = ref 0 in 
+	  Monom.Set.fold
+	    (fun m map ->
+	      i := !i + 1;
+	      Monom.Map.add m !i map
+	    )
+	    poly_base
+	    Monom.Map.empty
+	else base
+	    
+      in
+      
+      let mat = Lacaml_D.Mat.identity (Monom.Map.cardinal base_monom) in
+		
+      let ext_poly = 
+	if has_monomial p monom_var 
+	then p
+	else (add (mono_poly Ring.zero monom_var) p)
+      (* p + 0*v, so the next iteration sets to zero the unit of the identity *)
+	    
+      in
+	
+      
+      let row = Monom.Map.find monom_var base_monom in 
+
+      let () = 
+	Monom.Set.iter
+	  (fun m -> 
+	      let col_monom = Monom.Map.find m base_monom in
+	      let coef = coef p m in
+	      mat.{row,col_monom}<-coef
+	  )
+	  (get_monomials ext_poly)
+      in
+      base_monom,mat 
+end
+let all_possible_monomials e_deg_hashtbl =
+  let module M_set = F_poly.Monom.Set in
+  let max_deg = Mat_option.Degree.get () in
+
+  let effective_deg_of_monom monom = 
+
+    let v_list = F_poly.to_var monom in 
+    List.fold_left
+      (fun acc_deg v -> 
+	let eff_deg = try Varinfo.Hashtbl.find e_deg_hashtbl v with Not_found -> 1
+	in
+	acc_deg + eff_deg * (F_poly.deg_of_var monom v))
+      0
+      v_list
+  in
+
+  let elevate_monom_if_possible monom v = 
+    let d_v = Varinfo.Hashtbl.find e_deg_hashtbl v in
+    let eff_monom_deg = effective_deg_of_monom monom in
+    if d_v + eff_monom_deg > max_deg
+    then None
+    else Some (F_poly.mono_mul monom (F_poly.mono_minimal [v,1]))
+  in
+  
+  let rec compute_all computed_possible_monomials = 
+    Mat_option.debug ~dkey:dkey_all_monom ~level:6 "New iter";
+    M_set.iter
+      (fun m -> Mat_option.debug ~dkey:dkey_all_monom ~level:6 "M: %a" F_poly.Monom.pretty m)
+      computed_possible_monomials
+    ;
+    M_set.fold
+      (fun monom acc_monoms -> 
+	if M_set.mem monom acc_monoms then acc_monoms
+	else 
+	  let new_monoms = 
+	    Varinfo.Hashtbl.fold
+	      (fun v _ acc -> 
+		match elevate_monom_if_possible monom v with
+		  None -> acc
+		| Some m -> M_set.add m acc )
+	      
+	      e_deg_hashtbl
+	      M_set.empty
+	  in
+	  if M_set.is_empty new_monoms 
+	  then 
+	    acc_monoms 
+	  else 
+	    M_set.union (M_set.union acc_monoms new_monoms) (compute_all new_monoms)
+      )
+      computed_possible_monomials
+      M_set.empty
+  in
+  Mat_option.debug ~dkey:dkey_all_monom ~level:4 "Base of monomials : ";
+  let basis =
+    (Varinfo.Hashtbl.fold 
+       (fun v _ acc -> 
+	 Mat_option.debug ~dkey:dkey_all_monom ~level:4 "%a" Varinfo.pretty v;
+	 M_set.add (F_poly.mono_minimal [v,1]) acc) 
+       e_deg_hashtbl
+       M_set.empty)
+  in 
+  let () = M_set.iter 
+    (fun m -> Mat_option.debug ~dkey:dkey_all_monom ~level:4  "B : %a" F_poly.Monom.pretty m) 
+    basis in
+  (* delete fun m -> and m for a nice printing bug *)
+  let res = compute_all basis
+  in
+  Mat_option.debug ~dkey:dkey_all_monom ~level:4 "All monomials :";
+  M_set.iter
+    (fun m -> Mat_option.debug ~dkey:dkey_all_monom ~level:4  "%a" F_poly.Monom.pretty m) res; 
+  
+  M_set.add (F_poly.mono_minimal []) (M_set.union res basis)
+ 
+  
+let add_monomial_modifications (p_list:(varinfo * F_poly.t) list) : (F_poly.Monom.t * F_poly.t) list * F_poly.Monom.Set.t = 
+  let module M_set = F_poly.Monom.Set in
+  let module M_map = F_poly.Monom.Map in
+  let l_size = List.length p_list in
+  let var_monom_tbl = Varinfo.Hashtbl.create l_size
+  in
+  
+  let effective_degree = Varinfo.Hashtbl.create l_size in
+
+  let () = List.iter (* Registration of the monom used in the transformation of each var *)
+    (fun (v,p) -> 
+
+      let useful_monoms = 
+	M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.unit) |> F_poly.deg) > 1)
+	  (F_poly.get_monomials p)
+      in
+      let old_bind = 
+	try 
+	  Varinfo.Hashtbl.find 
+	    var_monom_tbl 
+	    v 
+	with 
+	  Not_found -> M_set.empty
+      in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms))
+    p_list 
+  in
+  
+  Varinfo.Hashtbl.iter
+    (fun v _ -> Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
+      "Table contains variable %a with id %i" Varinfo.pretty v v.vid)
+    var_monom_tbl;
+
+  let compute_effective_degree v = 
+    let rec __compute_degree seen_vars v =
+
+      Mat_option.debug ~dkey:dkey_lowerizer ~level:2 
+	"Vars seen so far :";
+      Varinfo.Set.iter 
+	(Mat_option.debug ~dkey:dkey_lowerizer ~level:2 "%a" Varinfo.pretty) 
+	seen_vars;
+
+      if Varinfo.Hashtbl.mem effective_degree v
+      then Varinfo.Hashtbl.find effective_degree v
+      else if Varinfo.Set.mem v seen_vars 
+      then raise Not_solvable
+      else 
+	begin 
+	  let monoms = try Varinfo.Hashtbl.find var_monom_tbl v with Not_found -> M_set.empty in
+	  Mat_option.debug ~dkey:dkey_lowerizer ~level:3
+	    "Monoms :\n";
+	  M_set.iter
+	    (Mat_option.debug ~dkey:dkey_lowerizer ~level:3 "%a" F_poly.Monom.pretty) monoms;
+	  let deg = 
+	    M_set.fold
+	      (fun m acc -> 
+		
+		let deg = 
+		  List.fold_left
+		    (fun acc_deg v2 -> 
+		      acc_deg 
+		      + 
+			(__compute_degree 
+			   (Varinfo.Set.add v seen_vars) 
+			   v2)
+		      *
+			(F_poly.deg_of_var m v2))
+		    0
+		    (F_poly.to_var m)
+		in
+		max acc deg
+	      )
+	      monoms 
+	      1
+	  in
+	  let () = Varinfo.Hashtbl.replace effective_degree v deg
+	  in deg
+	end
+    in
+    __compute_degree Varinfo.Set.empty v
+  in
+
+  let min_degree = Varinfo.Hashtbl.fold
+    (fun v _ acc -> 
+      max acc (compute_effective_degree v)
+    ) var_monom_tbl 0
+  in
+  
+  if (Mat_option.Degree.get ()) < min_degree
+  then Mat_option.abort "The effective degree of the loop is %i, this is the minimal degree for finding invariants. Change the invariant degree to %i." min_degree min_degree;
+    
+ 
+  
+  let () = Varinfo.Hashtbl.iter 
+    (fun v i -> 
+      Mat_option.debug ~dkey:dkey_lowerizer ~level:5
+	"Varinfo %a of id %i has degree %i"
+	Varinfo.pretty v v.vid i 
+    ) effective_degree
+  in
+ 
+  let s = all_possible_monomials effective_degree in 
+  
+  M_set.iter
+    (fun m -> Mat_option.debug ~dkey:dkey_lowerizer ~level:6
+      "%a" F_poly.Monom.pretty m)
+    s; 
+  
+  let modification_map = 
+    M_set.fold
+      (fun monom map -> 
+	List.fold_left
+	  (fun acc v -> 
+	    let old_bind = 
+	      try Varinfo.Map.find v acc with Not_found -> M_set.empty
+	    in
+	    Varinfo.Map.add v (M_set.add monom old_bind) acc
+	  )
+	  map
+	  (F_poly.to_var monom)
+      )
+      s
+      Varinfo.Map.empty
+  in
+  (List.fold_right
+    (fun (v,poly) acc  -> 
+      let monoms_modified = Varinfo.Map.find v modification_map
+      in 
+      
+      M_set.fold
+	(fun monom acc2 -> 
+	  let semi_poly = F_poly.mono_poly 1. monom
+	  in
+	  let compo = (F_poly.compo semi_poly v poly) in
+	  Mat_option.debug ~dkey:dkey_lowerizer ~level:3
+	    "%a = %a"
+	    F_poly.Monom.pretty monom
+	    F_poly.print compo;
+	  (monom,compo)::acc2
+	)
+	monoms_modified
+	acc
+    )
+    p_list
+    []),s
+   
+(** 2. CIL2Poly  *)
+
+exception Loop_break 
+
+let poly_hashtbl = Stmt.Hashtbl.create 12
+
+let rec exp_to_poly exp =
+  let float_of_const c = 
+    match c with
+      CInt64 (i,_,_) -> Integer.to_float i
+    | CChr c -> Integer.to_float (Cil.charConstToInt c)
+    | CReal (f,_,_) -> f
+    | _ -> assert false
+  in
+  match exp.enode with 
+    Const c -> 
+      F_poly.const (float_of_const c)
+  | Lval (Var v,_) ->
+    F_poly.monomial 1. [v,1]
+  | Lval _ -> assert false
+  | SizeOf _ | SizeOfE _ | SizeOfStr _ | AlignOf _ | AlignOfE _ -> assert false
+  | UnOp (Neg,e,_) -> 
+    F_poly.sub F_poly.zero (exp_to_poly e)
+  | UnOp _ -> assert false
+  | BinOp (binop,e1,e2,_) -> 
+    begin
+      match binop with
+	PlusA | PlusPI | IndexPI -> F_poly.add (exp_to_poly e1) (exp_to_poly e2)
+      | MinusA | MinusPI | MinusPP -> F_poly.sub (exp_to_poly e1) (exp_to_poly e2)
+      | Mult -> F_poly.mul (exp_to_poly e1) (exp_to_poly e2)
+      | Div -> 
+	begin 
+	match e2.enode with
+	  Const c -> F_poly.mul (exp_to_poly e1) (F_poly.const (1./.(float_of_const c)))
+	| _ -> assert false
+      end	    
+      | _ -> assert false
+    end
+  | CastE (_,e) -> exp_to_poly e
+  | _ -> assert false
+
+let instr_to_poly_assign = function
+  | Set (l,e,_) -> begin
+    match fst l with 
+      Var v -> Some (v,(exp_to_poly e))
+    | _ -> assert false end
+  | Skip _ -> None
+  | _ -> assert false
+
+let register_poly = Stmt.Hashtbl.replace poly_hashtbl   
+
+let stmt_to_poly_assign s = 
+  begin
+  try Stmt.Hashtbl.find poly_hashtbl s with 
+    Not_found -> 
+      match s.skind with
+	Instr i -> 
+	  let () = Mat_option.debug ~dkey:dkey_stmt
+	    "Instruction"
+	  in
+	  begin
+	    match instr_to_poly_assign i with 
+	      Some p -> register_poly s (Some p); Some p 
+	    | None -> register_poly s None; None
+	  end
+      | Loop _ -> assert false
+      | Break _ -> raise Loop_break
+      | _ -> None
+  end
+
+let block_to_poly_lists block = 
+  let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
+  in
+  let rec dfs stmt = 
+    Mat_option.debug ~dkey:dkey_stmt ~level:2
+      "Stmt %a studied" 
+      Stmt.pretty stmt
+    ;
+    if Stmt.equal stmt head
+    then 
+    begin  
+      Mat_option.debug ~dkey:dkey_stmt ~level:3
+	"Stmt already seen : loop." 
+      ;
+      [[]] 
+    end
+    else 
+      begin
+	Mat_option.debug ~dkey:dkey_stmt ~level:3
+	  "Stmt never seen" 
+	;
+	try
+	  
+
+	  let poly_opt = stmt_to_poly_assign stmt in
+
+	  let future_lists = 
+	    List.fold_left
+	      (fun acc succ -> (dfs succ) @ acc)
+	      []
+	      stmt.succs
+	  in
+	  Mat_option.debug ~dkey:dkey_stmt ~level:3
+	    "List of paths : %i" (List.length future_lists) ;
+	  match poly_opt with 
+	    None -> 
+	      Mat_option.debug ~dkey:dkey_stmt ~level:3
+		"No polynom generated from this stmt"
+	      ;
+	      future_lists
+	  | Some p ->
+	    Mat_option.debug ~dkey:dkey_stmt 
+	      "Polynom generated : %a"
+	      F_poly.print (snd p);
+	    let (++) elt l = List.map (fun li -> elt :: li) l
+	    in
+	    p ++ future_lists
+
+	with
+	  Loop_break -> []
+      end 
+  in
+  
+  let res = dfs (List.hd head.succs)
+  in
+  Mat_option.debug ~dkey:dkey_stmt ~level:5
+    "How many paths ? %i" (List.length res); res
+
+(** 3. Matrix from poly *)
+ 
+let loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  = 
+
+  let poly_affect_list (* We add here the variables used in the loop, but not modified *) = 
+    
+      let rec allvars poly_list = 
+	match poly_list with
+	  [] -> Varinfo.Set.empty
+	| (_,poly)::tl -> 
+	  let vars_in_poly = 
+	    F_poly.Monom.Set.fold
+	      (fun monom acc -> 
+		Varinfo.Set.union acc (Varinfo.Set.of_list (F_poly.to_var monom))  
+	      )
+	      (F_poly.get_monomials poly)
+	      Varinfo.Set.empty
+	  in
+	  Varinfo.Set.union (allvars tl) vars_in_poly
+      in 
+      let all_vars = allvars poly_affect_list in
+       
+      Varinfo.Set.fold
+	(fun v acc -> (v, (F_poly.monomial 1. [v,1])) :: acc)
+	all_vars
+	poly_affect_list in
+
+  let all_modifs,all_monoms = add_monomial_modifications poly_affect_list in
+  let i = ref 0 in 
+  let base = 
+    F_poly.Monom.Set.fold
+      (fun m map -> 
+	i := !i + 1;
+	F_poly.Monom.Map.add m !i map
+      )
+      all_monoms
+      F_poly.Monom.Map.empty
+  in
+  base,
+  List.fold_left
+    (fun acc (v,poly_affect) -> 
+      let new_matrix = 
+      (snd
+	   (F_poly.to_mat 
+	   ~base 
+	   v 
+	   poly_affect)
+      ) in 
+      
+      Mat_option.debug ~dkey:dkey_loop_mat ~level:2
+	"New matrix for %a = %a :"
+        F_poly.Monom.pretty v
+	F_poly.print poly_affect;
+
+      Mat_option.debug ~dkey:dkey_loop_mat ~level:2 "%a * %a"
+	Lacaml_D.pp_mat new_matrix
+	Lacaml_D.pp_mat acc;
+      
+      Lacaml_D.gemm 
+	new_matrix
+	acc 
+    )
+    (Lacaml_D.Mat.identity !i)
+    all_modifs
