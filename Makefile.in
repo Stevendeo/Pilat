@@ -1,0 +1,24 @@
+FRAMAC_SHARE 	:= $(shell frama-c.byte -print-path)
+FRAMAC_LIBDIR 	:= $(shell frama-c.byte -print-libpath)
+
+PLUGIN_DIR ?=.
+
+PLUGIN_NAME	:= Pilat
+
+PLUGIN_CMO 	:= mat_option\
+		poly\
+		matrix_utilities\
+		matrix_ast\
+		main
+
+PLUGIN_HAS_MLI := yes
+
+PLUGIN_OFLAGS 		:= -I $(dir @LACAML@)
+
+PLUGIN_BFLAGS 		:= -I $(dir @LACAML@)
+PLUGIN_EXTRA_OPT 	:=  @LACAML@ @LACAML_TOP@
+
+PLUGIN_NO_TEST		:=yes
+PLUGIN_DISTRIBUTED	:=yes
+
+include $(FRAMAC_SHARE)/Makefile.dynamic

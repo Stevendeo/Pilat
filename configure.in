@@ -1,0 +1,45 @@
+m4_define([plugin_file],Makefile.in)
+
+m4_define([FRAMAC_SHARE_ENV],
+          [m4_normalize(m4_esyscmd([echo $FRAMAC_SHARE]))])
+
+m4_define([FRAMAC_SHARE],
+	  [m4_ifval(FRAMAC_SHARE_ENV,[FRAMAC_SHARE_ENV],
+                                     [m4_esyscmd(frama-c -print-path)])])
+
+m4_ifndef([FRAMAC_M4_MACROS],
+         [m4_include(FRAMAC_SHARE/configure.ac)])
+
+check_plugin(pilat,PLUGIN_RELATIVE_PATH(plugin_file),[support for PILAT plug-in],yes,yes)
+
+# LACAML #
+########
+
+if test "$ENABLE_PILAT" != "no"; then
+
+configure_library([LACAML],
+		  [$(ocamlc -where)/../lacaml/lacaml.cmxa],
+		  [lacaml not installed],
+		  yes
+		)
+
+configure_library([LACAML_CMA],
+		  [$(ocamlc -where)/../lacaml/lacaml.cma],
+		  [lacaml not installed],
+		  yes
+		)
+
+configure_library([LACAML_TOP],
+		  [$(ocamlc -where)/../lacaml/lacaml_top.cmxa],
+		  [lacaml_top not installed],
+		  yes
+		)
+
+plugin_require_external(pilat,lacaml_top)
+plugin_require_external(pilat,lacaml)
+
+fi
+
+check_plugin_dependencies
+
+write_plugin_config(Makefile)
