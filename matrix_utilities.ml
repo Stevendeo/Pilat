@@ -168,7 +168,7 @@ let invariant_computation mat =
   let mat_dim = Lacaml_D.Mat.dim1 mat in
   List.fold_left
     (fun acc ev -> 
-      let new_mat = Lacaml_D.Mat.transpose (copy_mat mat) in 
+      let new_mat = Lacaml_D.Mat.transpose_copy (copy_mat mat) in 
       let alpha = (-1.) *. ev in 
       let id = (Lacaml_D.Mat.identity mat_dim) in
       let () = (Lacaml_D.Mat.axpy id new_mat ~alpha);

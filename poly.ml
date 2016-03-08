@@ -5,12 +5,12 @@ module type RING =
     type t
          (* type of elements o the ring *)
     val zero : t
-    val unit : t
+    val one : t
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
     val equal : t -> t -> bool
-    val print : Format.formatter -> t -> unit
+    val pp_print : Format.formatter -> t -> unit
   end
    
 (* la structure d'anneau sur des valeurs de type t *)
@@ -30,7 +30,7 @@ module type POLYNOMIAL =
 
 
     val zero : t
-    val unit : t
+    val one : t
         (* unit for the polynomial product.
            It is superfluous, since it is a special case of monomial;
            however this makes polynomials match the interface of rings *)
@@ -56,7 +56,7 @@ module type POLYNOMIAL =
 
     val equal : t -> t -> bool
 
-    val print : Format.formatter -> t -> unit
+    val pp_print : Format.formatter -> t -> unit
 
     (** Composition of two polynoms *)
     val compo : t -> v -> t -> t
@@ -157,7 +157,7 @@ struct
   let const (c:A.t) = mono_poly c V.Map.empty
 
     (* a pacticular case *)
-    let (unit:t) = const A.unit
+    let (one:t) = const A.one
 
 
     let simple_op (op: A.t -> A.t -> A.t) : t -> t -> t = 
@@ -214,12 +214,12 @@ struct
     let print_monom = Monom.pretty
 	
 
-    let print fmt (p:t) =
+    let pp_print fmt (p:t) =
       if p = zero then Format.fprintf fmt "0" else
 
         P.iter
 	  (fun monom coef -> 
-	    Format.fprintf fmt " + %a" A.print coef;
+	    Format.fprintf fmt " + %a" A.pp_print coef;
 	    (print_monom fmt monom)
 	  )
           p
@@ -228,7 +228,7 @@ struct
     (* Computation of (p1 o p2) *)
 
     let rec pow (p:t) = function
-      | 0 -> unit
+      | 0 -> one
       | 1 -> p
       | k -> 
       

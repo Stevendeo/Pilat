@@ -3,12 +3,12 @@ module type RING =
   sig
     type t
     val zero : t
-    val unit : t
+    val one : t
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
     val equal : t -> t -> bool
-    val print : Format.formatter -> t -> unit
+    val pp_print : Format.formatter -> t -> unit
   end
       
 
@@ -31,7 +31,7 @@ module type POLYNOMIAL =
 
 
     val zero : t
-    val unit : t
+    val one : t
         (* unit for the polynomial product.
            It is superfluous, since it is a special case of monomial;
            however this makes polynomials match the interface of rings *)
@@ -57,7 +57,7 @@ module type POLYNOMIAL =
 
     val equal : t -> t -> bool
 
-    val print : Format.formatter -> t -> unit
+    val pp_print : Format.formatter -> t -> unit
 
     (** Composition of two polynoms *)
     val compo : t -> v -> t -> t

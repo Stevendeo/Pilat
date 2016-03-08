@@ -13,12 +13,12 @@ module Ring =
 struct 
   type t = float
   let zero = 0.
-  let unit = 1.
+  let one = 1.
   let add = (+.)
   let mul = ( *. )
   let sub = (-.)
   let equal = (=)
-  let print fmt i = 
+  let pp_print fmt i = 
     Format.fprintf fmt "%.3f" i 
 end
 
@@ -156,7 +156,7 @@ let add_monomial_modifications (p_list:(varinfo * F_poly.t) list) : (F_poly.Mono
     (fun (v,p) -> 
 
       let useful_monoms = 
-	M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.unit) |> F_poly.deg) > 1)
+	M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.one) |> F_poly.deg) > 1)
 	  (F_poly.get_monomials p)
       in
       let old_bind = 
@@ -279,7 +279,7 @@ let add_monomial_modifications (p_list:(varinfo * F_poly.t) list) : (F_poly.Mono
 	  Mat_option.debug ~dkey:dkey_lowerizer ~level:3
 	    "%a = %a"
 	    F_poly.Monom.pretty monom
-	    F_poly.print compo;
+	    F_poly.pp_print compo;
 	  (monom,compo)::acc2
 	)
 	monoms_modified
@@ -401,7 +401,7 @@ let block_to_poly_lists block =
 	  | Some p ->
 	    Mat_option.debug ~dkey:dkey_stmt 
 	      "Polynom generated : %a"
-	      F_poly.print (snd p);
+	      F_poly.pp_print (snd p);
 	    let (++) elt l = List.map (fun li -> elt :: li) l
 	    in
 	    p ++ future_lists
@@ -468,7 +468,7 @@ let loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
       Mat_option.debug ~dkey:dkey_loop_mat ~level:2
 	"New matrix for %a = %a :"
         F_poly.Monom.pretty v
-	F_poly.print poly_affect;
+	F_poly.pp_print poly_affect;
 
       Mat_option.debug ~dkey:dkey_loop_mat ~level:2 "%a * %a"
 	Lacaml_D.pp_mat new_matrix
