@@ -5,18 +5,20 @@ PLUGIN_DIR ?=.
 
 PLUGIN_NAME	:= Pilat
 
+PLUGIN_HAS_MLI := yes
+
 PLUGIN_CMO 	:= mat_option\
 		poly\
-		matrix_utilities\
+		pilat_matrix\
+		invariant_utils\
 		matrix_ast\
 		main
 
-PLUGIN_HAS_MLI := yes
 
-PLUGIN_OFLAGS 		:= -I $(dir @LACAML@)
+PLUGIN_OFLAGS 		:= -I $(dir @LACAML@) -I $(dir @ZARITH@)
 
-PLUGIN_BFLAGS 		:= -I $(dir @LACAML@)
-PLUGIN_EXTRA_OPT 	:=  @LACAML@ @LACAML_TOP@
+PLUGIN_BFLAGS 		:= -I $(dir @LACAML@) -I $(dir @ZARITH@)
+PLUGIN_EXTRA_OPT 	:=  @LACAML@ @LACAML_TOP@ @ZARITH@
 
 PLUGIN_NO_TEST		:=yes
 PLUGIN_DISTRIBUTED	:=yes

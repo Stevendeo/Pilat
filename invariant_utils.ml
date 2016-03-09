@@ -10,11 +10,7 @@ type mat = Lacaml_D.mat
 
 let copy_mat m = m |> Lacaml_D.Mat.to_col_vecs |> Lacaml_D.Mat.of_col_vecs
 
-(** 1. Matrix computation *)
-
-(** 2. Matrix generation *)
-
-(** Eigen vectors *)
+(** Eigenvalues of a lacaml matrix *)
 let eigen_val matrix = 
   
   let dimx,dimy = (Lacaml_D.Mat.dim1 matrix),(Lacaml_D.Mat.dim2 matrix)
@@ -163,9 +159,12 @@ let nullspace_computation mat =
     no_pivs;
   vecs
 
+(** Invariant computation *)
+
 let invariant_computation mat = 
   let eigen_vals = eigen_val mat in
   let mat_dim = Lacaml_D.Mat.dim1 mat in
+    
   List.fold_left
     (fun acc ev -> 
       let new_mat = Lacaml_D.Mat.transpose_copy (copy_mat mat) in 
