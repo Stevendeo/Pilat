@@ -7,7 +7,7 @@ int main (){
   w = 0;
   k = k0;
 
-  while(1 ) 
+  while( true ) 
     { 
       r = r;
       w = w;

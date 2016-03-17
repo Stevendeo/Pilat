@@ -1,6 +1,6 @@
 open Cil_types
 open Cil_datatype 
-
+open Pilat_matrix
 exception Not_solvable
 
 let dkey_stmt = Mat_option.register_category "matast:block_analyzer" 
@@ -26,7 +26,7 @@ module F_poly =
   
 struct 
   include Poly.Make(Ring)(Cil_datatype.Varinfo)
-  let to_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * Lacaml_D.mat = 
+  let to_lacal_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * Lacaml_D.mat = 
       let base_monom = 
 	if Monom.Map.is_empty base
 	then 
@@ -67,6 +67,50 @@ struct
 	  (get_monomials ext_poly)
       in
       base_monom,mat 
+
+
+  let to_q_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * QMat.t= 
+    let base_monom = 
+	if Monom.Map.is_empty base
+	then 
+	  let poly_base = 
+	    Monom.Set.add monom_var (get_monomials p) in 
+	  let i = ref 0 in 
+	  Monom.Set.fold
+	    (fun m map ->
+	      i := !i + 1;
+	      Monom.Map.add m !i map
+	    )
+	    poly_base
+	    Monom.Map.empty
+	else base
+	    
+      in
+      
+      let mat = QMat.identity (Monom.Map.cardinal base_monom) in
+		
+      let ext_poly = 
+	if has_monomial p monom_var 
+	then p
+	else (add (mono_poly Ring.zero monom_var) p)
+      (* p + 0*v, so the next iteration sets to zero the unit of the identity *)
+	    
+      in
+	
+      
+      let row = Monom.Map.find monom_var base_monom in 
+
+      let () = 
+	Monom.Set.iter
+	  (fun m -> 
+	      let col_monom = Monom.Map.find m base_monom in
+	      let coef = coef p m in
+	      QMat.set_coef row col_monom mat (Q.of_float coef)
+	  )
+	  (get_monomials ext_poly)
+      in
+      base_monom,mat 
+    
 end
 let all_possible_monomials e_deg_hashtbl =
   let module M_set = F_poly.Monom.Set in
@@ -418,7 +462,7 @@ let block_to_poly_lists block =
 
 (** 3. Matrix from poly *)
  
-let loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  = 
+let lacaml_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  = 
 
   let poly_affect_list (* We add here the variables used in the loop, but not modified *) = 
     
@@ -459,7 +503,7 @@ let loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
     (fun acc (v,poly_affect) -> 
       let new_matrix = 
       (snd
-	   (F_poly.to_mat 
+	   (F_poly.to_lacal_mat 
 	   ~base 
 	   v 
 	   poly_affect)
@@ -480,3 +524,69 @@ let loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
     )
     (Lacaml_D.Mat.identity !i)
     all_modifs
+
+let q_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  = 
+
+  let poly_affect_list =  (* We add here the variables used in the loop, but not modified *)
+    
+      let rec allvars poly_list = 
+	match poly_list with
+	  [] -> Varinfo.Set.empty
+	| (_,poly)::tl -> 
+	  let vars_in_poly = 
+	    F_poly.Monom.Set.fold
+	      (fun monom acc -> 
+		Varinfo.Set.union acc (Varinfo.Set.of_list (F_poly.to_var monom))  
+	      )
+	      (F_poly.get_monomials poly)
+	      Varinfo.Set.empty
+	  in
+	  Varinfo.Set.union (allvars tl) vars_in_poly
+      in 
+      let all_vars = allvars poly_affect_list in
+       
+      Varinfo.Set.fold
+	(fun v acc -> (v, (F_poly.monomial 1. [v,1])) :: acc)
+	all_vars
+	poly_affect_list in
+
+  let all_modifs,all_monoms = add_monomial_modifications poly_affect_list in
+  let i = ref 0 in 
+  let base = 
+    F_poly.Monom.Set.fold
+      (fun m map -> 
+	i := !i + 1;
+	F_poly.Monom.Map.add m !i map
+      )
+      all_monoms
+      F_poly.Monom.Map.empty
+  in
+  base,
+  List.fold_left
+    (fun acc (v,poly_affect) -> 
+      let new_matrix = 
+      (snd
+	   (F_poly.to_q_mat 
+	   ~base 
+	   v 
+	   poly_affect)
+      ) in 
+      
+      Mat_option.debug ~dkey:dkey_loop_mat ~level:2
+	"New matrix for %a = %a :"
+        F_poly.Monom.pretty v
+	F_poly.pp_print poly_affect;
+
+      Mat_option.debug ~dkey:dkey_loop_mat ~level:2 "%a * %a"
+        QMat.pp_print new_matrix
+	QMat.pp_print acc;
+      
+      QMat.mul
+	new_matrix
+	acc 
+    )
+    (QMat.identity !i)
+    all_modifs
+
+let loop_matrix = 
+  lacaml_loop_matrix

@@ -1,18 +1,9 @@
 int main(){
-  int x,y,z,s,t,s2,t2;
-  while (1)
-    {
-      y++;
-      z--;
-      s*=2;
-      t/=2;
-      s2*=3;
-      t2/=3;
-	
-      if(x) x /= 2;
-      else {x++; x/=3;}
+  int x, y, a, b, p, q, r, s;
+  while (a != b) {
+   	if (a>b) {a = a-b; p = p-q; r=r-s;}
 
+        else {b = b-a; q = q-p; s = s-r;}
+      }
     }
-  return 0;
-
 }

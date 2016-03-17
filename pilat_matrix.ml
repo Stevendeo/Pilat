@@ -1,4 +1,3 @@
-
 module type Field = 
   sig 
     include Poly.RING
@@ -26,7 +25,12 @@ module type M = sig
   val get_row : t -> int -> t
   val get_col : t -> int -> t
   val get_col_in_line : t -> int -> vec
+  val get_dim_col : t -> int
+  val get_dim_row : t -> int
 
+  val to_array : t -> elt array array
+
+  val set_coef : int -> int -> t -> elt -> unit
   (** 3. Iterators *)
 
   val map : (elt -> elt) -> t -> t
@@ -34,19 +38,22 @@ module type M = sig
 
   (** 4. Operations *)
   val add : t -> t -> t
+  val sub : t -> t -> t
   val transpose : t -> t
   val scal_mul : t -> elt -> t
   val mul : t -> t -> t
   val pow : t -> int -> t
+  val trace : t -> elt
 
   (** 5. Nullspace computation *)
   (* Changes the input !! *)
   val nullspace : t -> vec list
 
-(** 6. Pretty printers *)
+  (** 6. Pretty printers *)
   val pp_print : Format.formatter -> t -> unit
   val pp_vec : Format.formatter -> vec -> unit
 end  
+
 module Make (F:Field) : M with type elt = F.t = 
 struct
   
@@ -103,6 +110,14 @@ struct
   let get_col_in_line mat i = 
     Array.init mat.rows
       (fun row -> mat.m.(row).(i))
+
+  let get_dim_row mat = mat.rows
+
+  let get_dim_col mat = mat.cols
+
+  let set_coef i j mat elt = mat.m.(i).(j) <- elt
+
+  let to_array mat = mat.m
     
   (* 3. Iterators  *)
 
@@ -132,6 +147,20 @@ struct
 	  (fun i a1 -> 
 	    Array.mapi
 	      (fun j c1 -> F.add c1 m2.m.(i).(j)) 
+	      a1
+	  )
+	  m1.m
+    } 
+  let sub m1 m2 = 
+    if m1.rows <> m2.rows || m1.cols <> m2.cols
+    then error m1 m2
+    else
+    {rows = m1.rows; cols = m1.cols;
+     m = 
+	Array.mapi
+	  (fun i a1 -> 
+	    Array.mapi
+	      (fun j c1 -> F.sub c1 m2.m.(i).(j)) 
 	      a1
 	  )
 	  m1.m
@@ -166,7 +195,7 @@ struct
     in
       
     create_mat m1.rows m2.cols scal
-
+ 
   let rec pow mat n = 
     match n with 
       0 -> identity n
@@ -175,6 +204,14 @@ struct
       if n mod 2 = 0
       then pow (mul mat mat) (n/2)
       else mul mat (pow (mul mat mat) ((n-1)/2))
+
+  let trace mat = 
+    snd (Array.fold_left
+      (fun (cpt,acc) vec -> 
+	((cpt + 1), F.add acc vec.(cpt)))
+      (0,F.zero)
+      mat.m
+    )
 
 (** 3. Nullspace computation *)
 
@@ -315,7 +352,7 @@ let pp_print fmt mat =
  
 end
       
-
+(*
 module Ring = 
 struct 
   type t = float
@@ -329,3 +366,140 @@ struct
   let pp_print fmt i = 
     Format.fprintf fmt "%.3f" i 
 end
+*)
+module QMat = Make(Q)
+
+module QPoly = struct include Poly.XMake(Q) end 
+
+module Q_Set:Set.S with type elt = Q.t = Set.Make
+  (Q)
+module Z_Set:Set.S with type elt = Z.t = Set.Make
+  (Z)
+
+let char_poly (mat:QMat.t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Faddeev-Leverrier *)
+  (* To find eigenvalues, we will compute the faddeev-leverrier iteration in order to find
+     the extremities of the rational characteristic polynomial and then apply the rational root
+     theorem.*)
+
+  let dim = (QMat.get_dim_col mat) in
+  let identity = QMat.identity dim in
+
+  let rec trace_mk index mk = 
+    if index < dim
+    then 
+      let mk_coef = Q.div (QMat.trace mk) (Q.of_int index) in
+      
+      let new_monom = (QPoly.monomial (Q.sub Q.zero mk_coef) [Poly.X,(dim-index)]) in
+      
+      let mkpo =  QMat.mul mat (QMat.sub mk (QMat.scal_mul identity mk_coef)) in
+
+      QPoly.add new_monom (trace_mk (index + 1) mkpo)
+    else (QPoly.monomial Q.one [Poly.X,dim])
+    
+  in
+  trace_mk 1 mat 
+
+let eigenvalues mat = 
+  
+  let deg_poly = (QMat.get_dim_col mat) in
+  let integrate_poly p = (* gets all divisors of the main elt of k.p, with k.p a polynomial
+			    with integer coeficients and also returns k. *)
+    let rec integ xn p = 
+      if QPoly.deg_of_var xn Poly.X = deg_poly
+      then Z.one,Z_Set.singleton Z.one (* by construction, its xn's coef is an integer *)
+      else 
+	let den_of_coef = 
+	  Q.den (QPoly.coef p xn)
+	in
+	let xnpo = (QPoly.mono_mul xn (QPoly.mono_minimal [Poly.X,1]))
+	in 
+	let k,integ_set = 
+	  integ xnpo (QPoly.scal_mul (Q.of_bigint den_of_coef) p) in
+	
+	
+	(Z.mul k den_of_coef),
+
+	(Z_Set.fold 
+	   (fun elt acc -> 
+	     Z_Set.add 
+	       (Z.mul elt den_of_coef)
+	       acc)
+	   
+	   integ_set
+	   integ_set)
+    in
+    integ QPoly.empty_monom p
+  in
+  let poly = char_poly mat in 
+  let k,divisors = integrate_poly poly in
+
+  let div_by_x poly = (* returns (coef,n) with coef*xn with the littlest n such that xn | poly *)
+    let rec __div_by_x monomial = 
+      let coef = QPoly.coef poly monomial in
+      if coef = Q.zero
+      then __div_by_x (QPoly.mono_mul monomial (QPoly.mono_minimal [Poly.X,1]))
+      else (coef,(QPoly.deg_of_var monomial Poly.X))
+    in
+    __div_by_x QPoly.empty_monom
+  in
+  let (coef,power) = div_by_x poly
+  in
+
+  let affine_constant = Q.mul coef (Q.of_bigint k) 
+  in
+  assert (Q.den affine_constant = Z.one);
+  let affine_constant = Q.num affine_constant in
+  
+
+  let max_number_of_roots = deg_poly - power
+  in
+  let all_divs (i:Z.t) : (bool*Z_Set.t) = 
+    (* Set of all positive divisors, the boolean is set to true if i is negative *) 
+    let rec __all_divs cpt i = 
+      if  Z.geq (Z.shift_left cpt 1) i 
+      then Z_Set.empty
+      else if Z.erem i cpt = Z.zero 
+      then 
+	let divs = __all_divs cpt (Z.div i cpt) in
+	Z_Set.fold
+	  (fun elt -> Z_Set.add (Z.mul cpt elt) )
+	  divs
+	  divs
+      else
+	 __all_divs (Z.nextprime cpt) i
+    in
+    if Z.leq i Z.zero
+    then 
+      true,__all_divs (Z.of_int 2) (Z.mul Z.minus_one i)
+      
+      
+    else 
+      false,__all_divs (Z.of_int 2) i
+
+  in
+  
+  let neg,divs_of_main_coef = all_divs affine_constant in
+  
+  let root_candidates = 
+    Z_Set.fold
+      (fun p acc -> 
+	Z_Set.fold
+	  (fun q acc2 -> 
+	    Q_Set.add ((Q.(///)) p q) acc2)
+	  divisors
+	  acc
+      )
+      divs_of_main_coef
+      Q_Set.empty
+  in
+  Q_Set.filter (* does not deal with negative roots yet *)
+    (fun elt -> 
+      let eval_poly = QPoly.eval poly Poly.X elt in
+      QPoly.coef eval_poly QPoly.empty_monom = Q.zero
+    )
+    root_candidates
+  
+	    
+	    
+    
+  

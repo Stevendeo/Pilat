@@ -97,7 +97,7 @@ let run () =
 	  )
 	  b1
 	  Imap.empty in
-      let first_invar = Matrix_utilities.invariant_computation m1
+      let first_invar = Invariant_utils.invariant_computation m1
       in 
       let stmt_base = 
 	List.fold_left
@@ -106,9 +106,9 @@ let run () =
 	    else
 	    let _,m2 = Matrix_ast.loop_matrix p_list in 	  
 	     
- 	    let invar = (Matrix_utilities.invariant_computation m2)
+ 	    let invar = (Invariant_utils.invariant_computation m2)
 	    in 
-	    Matrix_utilities.intersection_invariants invar acc
+	    Invariant_utils.intersection_invariants invar acc
 	  )
 	  first_invar
 	  (List.tl poly_lists)

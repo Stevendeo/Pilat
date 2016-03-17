@@ -35,7 +35,7 @@ module type POLYNOMIAL =
            It is superfluous, since it is a special case of monomial;
            however this makes polynomials match the interface of rings *)
 
-
+    val empty_monom : Monom.t
 
     val mono_poly : c -> Monom.t -> t
     val mono_minimal : (v * int) list -> Monom.t
@@ -52,10 +52,12 @@ module type POLYNOMIAL =
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
+    val scal_mul : c -> t -> t
     val pow : t -> int -> t
 
     val equal : t -> t -> bool
 
+    val eval : t -> v -> c -> t
     val pp_print : Format.formatter -> t -> unit
 
     (** Composition of two polynoms *)
@@ -129,8 +131,12 @@ struct
 
   let (zero:t) = P.empty
     
+  let empty_monom = V.Map.empty
+
   let equal (p1:t) (p2:t) : bool = P.equal A.equal p1 p2
+
     
+      
     (* monomial creation *)
   let mono_poly (a:A.t) (m:Monom.t) : t =
     P.singleton m a
@@ -200,6 +206,10 @@ struct
 	p
 	zero
 
+    let scal_mul (c:c) = 
+      P.map (A.mul c)
+      
+
     let mul (p1:t) (p2:t) : t =     
       P.fold
 	(fun monom coeff acc -> 
@@ -209,7 +219,29 @@ struct
 	)
 	p1
 	zero
-	  
+    
+    let rec pow_ring (c:c) (n:int) : c = 
+      match n with
+	0 -> A.one
+      | 1 -> c
+      | _ -> 
+	if n mod 2 = 0
+	then pow_ring (A.mul c c) (n/2)
+	else A.mul c (pow_ring (A.mul c c) ((n-1)/2))
+      
+
+    let eval (p:t) (x:v) (xval:c) : t =
+      Monom.Map.mapi
+	(fun (m:Monom.t) (coef:c) -> 
+	  if V.Map.mem x m
+	  then 
+	    let pow = 
+	      V.Map.find x m
+	    in
+	    A.mul coef (pow_ring xval pow)
+	  else coef
+	)
+	p
 
     let print_monom = Monom.pretty
 	
@@ -299,3 +331,28 @@ F.print Format.std_formatter (F.add (F.monomial 2. []) j);;
 F.print Format.std_formatter (F.compo (F.add i j) "b" (F.add (F.const 2.) j));;
 *)
 
+type var = | X
+
+module XMake (A:RING) : (POLYNOMIAL with type c = A.t and type v = var) 
+ = 
+  Make 
+    (A) 
+    (Datatype.Make_with_collections 
+       (struct  
+	 type t = var
+	 let compare _ _ = 0
+	 let copy _ = X
+	 let name = "string" 
+	 let hash = Hashtbl.hash
+	 let rehash s = s
+	 let structural_descr = Structural_descr.t_abstract
+	 let reprs = [X]
+	 let equal = (=)
+	 let internal_pretty_code = Datatype.undefined
+	 let pretty = Datatype.undefined
+	 let varname s = "X"
+	 let mem_project = Datatype.never_any_project
+	end
+       )
+    );;
+  
