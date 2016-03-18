@@ -93,7 +93,7 @@ struct
       struct
 	include Datatype.Undefined
 	type t = (int V.Map.t)
-	let name = "Monom" 
+	let name = "Monom_"  ^ V.name
 	let equal = V.Map.equal (fun (a:int) (b:int) -> a = b)   
 	let hash = Hashtbl.hash (* For now, do not hash monomials *)
 	let compare = V.Map.compare Pervasives.compare
@@ -342,7 +342,7 @@ module XMake (A:RING) : (POLYNOMIAL with type c = A.t and type v = var)
 	 type t = var
 	 let compare _ _ = 0
 	 let copy _ = X
-	 let name = "string" 
+	 let name = "X" 
 	 let hash = Hashtbl.hash
 	 let rehash s = s
 	 let structural_descr = Structural_descr.t_abstract

@@ -5,8 +5,6 @@ PLUGIN_DIR ?=.
 
 PLUGIN_NAME	:= Pilat
 
-PLUGIN_HAS_MLI := yes
-
 PLUGIN_CMO 	:= mat_option\
 		poly\
 		pilat_matrix\

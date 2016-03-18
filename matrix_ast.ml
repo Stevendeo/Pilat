@@ -1,6 +1,7 @@
 open Cil_types
 open Cil_datatype 
 open Pilat_matrix
+
 exception Not_solvable
 
 let dkey_stmt = Mat_option.register_category "matast:block_analyzer" 
@@ -68,7 +69,6 @@ struct
       in
       base_monom,mat 
 
-
   let to_q_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * QMat.t= 
     let base_monom = 
 	if Monom.Map.is_empty base
@@ -105,12 +105,11 @@ struct
 	  (fun m -> 
 	      let col_monom = Monom.Map.find m base_monom in
 	      let coef = coef p m in
-	      QMat.set_coef row col_monom mat (Q.of_float coef)
+	      QMat.set_coef (row - 1) (col_monom - 1) mat (Q.of_float coef)
 	  )
 	  (get_monomials ext_poly)
       in
       base_monom,mat 
-    
 end
 let all_possible_monomials e_deg_hashtbl =
   let module M_set = F_poly.Monom.Set in
@@ -587,6 +586,9 @@ let q_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
     )
     (QMat.identity !i)
     all_modifs
-
+  
 let loop_matrix = 
   lacaml_loop_matrix
+
+let loop_qmat = q_loop_matrix
+

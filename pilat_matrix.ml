@@ -181,9 +181,9 @@ struct
     then error m1 m2
     else
     let scal i j = 
-      Format.print_int i;
+    (*  Format.print_int i;
       Format.print_int j;
-      let _,res = 
+    *)let _,res = 
 	Array.fold_left
 	  (fun (cpt,acc) elt -> 
 
@@ -344,12 +344,15 @@ let pp_vec fmt v =
   Format.fprintf fmt ")\n"
 
 let pp_print fmt mat = 
-   Format.fprintf fmt "(";
-     Array.iter
-     (pp_vec fmt)
-     mat.m;
+
+  Format.fprintf fmt "(";
+  Array.iter
+    (fun vec -> 
+      (pp_vec fmt vec)
+    )
+    mat.m;
   Format.fprintf fmt ")\n"
- 
+    
 end
       
 (*

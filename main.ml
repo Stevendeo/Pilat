@@ -1,6 +1,7 @@
 open Cil_types
 open Cil_datatype
 open Cil
+open Pilat_matrix
 (*open Logic_const
 *)
 let dkey_stmt = Mat_option.register_category "main:loop_analyser"
@@ -47,11 +48,11 @@ object
 end
 
 let run () =  
-  if Mat_option.Enabled.get ()
+  if (Mat_option.Enabled.get ())
   then
   let () = 
     Mat_option.feedback
-      "Welcome to Frama-C Polynomial INvariant Generator"
+      "Welcome to Frama-C's Polynomial Invariants from Linear Algebra Tool"
   in 
   let file = Ast.get () 
   in
@@ -203,4 +204,70 @@ let run () =
     "Time to compute the relations : %f" 
     (Sys.time () -. t0)
        
-let () = Db.Main.extend run
+let run_debug () = 
+  if Mat_option.Enabled.get ()
+  then
+  let () = 
+    Mat_option.feedback
+      "Welcome to Frama-C's Polynomial Invariants from Linear Algebra Tool (Debug mode)"
+  in 
+  let file = Ast.get () 
+  in
+  Cfg.clearFileCFG file;
+  Cfg.computeFileCFG file;
+  let t0 = Sys.time () in
+  
+  let () = 
+    let vis = loop_analyzer () in
+    Cil.visitCilFile (vis :> Cil.cilVisitor) file
+  in
+  
+  let module Imap = Map.Make(struct type t = int let compare = compare end) in
+  let print_vec rev_base vec = 
+    let i = ref 0 in
+    Lacaml_D.Vec.iter
+      (fun fl ->
+	i := !i + 1;
+	if abs_float fl < 1E-10
+	then () 
+	else 
+	  Mat_option.feedback 
+	    "+%f%a" 
+	    fl 
+	    Matrix_ast.F_poly.Monom.pretty 
+	    (Imap.find !i rev_base)
+      ) vec in
+  
+  (*let stmt_to_invarbase_tbl = Stmt.Hashtbl.create 3 in
+  *)
+  Stmt.Hashtbl.iter
+    (fun stmt poly_lists -> 
+      let first_poly = List.hd poly_lists in 
+      Mat_option.feedback
+	"Loop to qmat begin";
+      
+      let b1,m1 = Matrix_ast.loop_qmat first_poly in
+      Mat_option.feedback
+	"Loop to qmat end";
+      let rev_base =  
+	Matrix_ast.F_poly.Monom.Map.fold
+	  (fun monom i intmap -> 
+	    Mat_option.debug ~level:5 "Basis %i : %a" 
+	      i 
+	      Matrix_ast.F_poly.Monom.pretty monom; 
+	    Imap.add i monom intmap
+	  )
+	  b1
+	  Imap.empty in 
+      Mat_option.feedback
+	"I shall print the matrix now. Behold !";
+      Mat_option.feedback
+	"Matrix :%a" 
+	QMat.pp_print m1
+      
+    )     loop_poly_hashtbl
+
+
+let () = 
+  Db.Main.extend run_debug
+
