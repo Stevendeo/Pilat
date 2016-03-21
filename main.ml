@@ -22,11 +22,42 @@ let read_file chan =
       (fun str acc -> acc ^ str ^ "\n") 
       !lines 
       ""
+
+module Imap = Map.Make(struct type t = int let compare = compare end)
+
+let rev_base base = 
+
+  Matrix_ast.F_poly.Monom.Map.fold
+    (fun monom i intmap -> 
+      Mat_option.debug ~level:5 "Basis %i : %a" 
+	i 
+	Matrix_ast.F_poly.Monom.pretty monom; 
+      Imap.add i monom intmap
+    )
+    base
+    Imap.empty 
+
+let print_vec rev_base vec = 
+
+  let i = ref 0 in
+  Lacaml_D.Vec.iter
+    (fun fl ->
+      i := !i + 1;
+      if abs_float fl < 1E-10
+      then () 
+      else 
+	Mat_option.debug ~dkey:dkey_stmt
+	  "+%f%a" 
+	  fl 
+	  Matrix_ast.F_poly.Monom.pretty 
+	  (Imap.find !i rev_base)
+    ) vec
+    
+let time = ref 0.
+
 let loop_analyzer () = 
 object(self)
   inherit Visitor.frama_c_inplace
-    
-  val mutable time = 0.
 
   method! vstmt_aux stmt =
  
@@ -66,7 +97,26 @@ object(self)
 	      first_invar
 	      (List.tl poly_lists)
 	  in
-	  time <- Sys.time() -. t0 +. time;
+	  let () = 
+	    Mat_option.debug ~dkey:dkey_stmt
+	      "Invariants generated :"
+	  in
+	  let rev_base = rev_base b1 in
+	  List.iteri
+	    (fun i invars -> 
+	      let () = 
+		Mat_option.debug ~dkey:dkey_stmt
+		  "Invariant %i :" (i + 1) in
+	      List.iter
+		(fun invar ->  
+		  print_vec rev_base invar;
+		  Mat_option.debug ~dkey:dkey_stmt "__\n";
+		)invars
+		  
+	    )
+	    whole_loop_invar;
+	  
+	  time := Sys.time() -. t0 +. !time;
 	  
 	  Acsl_gen.add_loop_annots kf stmt b1 whole_loop_invar;
 	  DoChildren
@@ -189,7 +239,8 @@ let run () =
   *)
 
   Mat_option.debug ~dkey:dkey_time 
-    "Time to compute the relations : %f" loop_analyser#time ;
+    "Time to compute the relations : %f" !time ;
+  
   
 
   let cout = open_out filename in
