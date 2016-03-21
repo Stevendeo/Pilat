@@ -1,6 +1,8 @@
 open Poly
 open Cil_types
 
+exception Not_solvable
+
 module Ring : RING
 
 module F_poly : POLYNOMIAL with type c = Ring.t and type v = Cil_datatype.Varinfo.t

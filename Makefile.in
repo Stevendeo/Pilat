@@ -9,6 +9,7 @@ PLUGIN_CMO 	:= mat_option\
 		poly\
 		matrix_utilities\
 		matrix_ast\
+		acsl_gen\
 		main
 
 PLUGIN_HAS_MLI := yes
