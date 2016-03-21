@@ -9,6 +9,11 @@ let to_code_annot (pred:predicate named) =
   
   Logic_const.new_code_annotation (AInvariant ([],true,pred))
 
+let term_node_is_zero tnode = 
+  match tnode with
+  | TConst (Integer (i,_)) -> i = Integer.zero
+  | _ -> true
+
 let monomial_to_mul_term m = 
   
   let rec __m_to_term vars = 
@@ -27,6 +32,10 @@ let monomial_to_mul_term m =
       let tlval = Logic_const.term (TLval (TVar lvar,TNoOffset)) Linteger in
       let end_term =  __m_to_term tl in
       
+      if term_node_is_zero end_term.term_node 
+      then Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
+      else
+      
       Logic_const.term (TBinOp (Mult,tlval,end_term)) Linteger
   in
  
@@ -37,6 +46,8 @@ let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
   in
   F_poly.Monom.Map.fold
     (fun monom row acc -> 
+      if vec.{row} = 0. then acc else
+      
       let logic_cst = 
 	{ r_literal = string_of_float vec.{row};
 	  r_nearest = vec.{row} ;
@@ -44,8 +55,13 @@ let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
 	  r_lower = vec.{row} ;
 	}
       in
+
       let term_cst = Logic_const.term (TConst (LReal logic_cst)) Linteger  in
+
+
       let monom_term = 
+	
+	
 	Logic_const.term
 	  (TBinOp
 	     (Mult,
@@ -54,7 +70,7 @@ let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
 	  ) Linteger 
 	  
       in
-      
+      if acc = zero then monom_term else
       Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
 	
     )
@@ -89,6 +105,7 @@ let vec_space_to_predicate
 	    ) Linteger 
 	    
 	in
+	if acc = zero then prod_term else 
 	Logic_const.term
 	   (TBinOp (PlusA,acc,prod_term)) Linteger 
 	    
