@@ -43,6 +43,7 @@ module type POLYNOMIAL =
     val const : c -> t
 
     val to_var : Monom.t -> v list
+    val to_var_set : Monom.t -> v list
     val deg_monom : Monom.t -> int
     val deg_of_var : Monom.t -> v -> int
 
@@ -150,10 +151,21 @@ struct
 
   let monomial (a:A.t) (l:(v * int) list) : t = 
     mono_poly a (mono_minimal l)
-      
+       
   let to_var (m:Monom.t) : v list = 
+    let rec add_i_var v i acc = 
+      match i with 
+	0 -> acc
+      | _ -> add_i_var v (i-1) (v :: acc)
+    in
     V.Map.fold
-      (fun v _ acc -> v::acc)
+      add_i_var
+      m
+      []
+
+  let to_var_set (m:Monom.t) : v list = 
+    V.Map.fold
+      (fun v _ acc -> v :: acc)
       m
       []
 

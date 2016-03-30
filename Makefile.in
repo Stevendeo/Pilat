@@ -10,6 +10,7 @@ PLUGIN_CMO 	:= mat_option\
 		pilat_matrix\
 		invariant_utils\
 		matrix_ast\
+		acsl_gen\
 		main
 
 
