@@ -78,9 +78,11 @@ let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
     zero
 
 let vec_space_to_predicate
+    (fundec: Cil_types.fundec)
     (base:int Matrix_ast.F_poly.Monom.Map.t) 
     (vec_list : Lacaml_D.vec list) 
     : predicate named =
+
   let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
   in
   let term = 
@@ -88,7 +90,7 @@ let vec_space_to_predicate
       (fun acc vec -> 
 	let term = vec_to_term base vec 
 	in
-	let new_ghost_var = Cil.makeGlobalVar (new_name ()) (TInt (IInt,[]))
+	let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
 	in
 	new_ghost_var.vghost <- true;     
 	let lvar = Cil.cvar_to_lvar new_ghost_var in
@@ -123,10 +125,14 @@ let vec_space_to_predicate
   Logic_const.unamed pred
 
 let add_loop_annots kf stmt base vec_lists = 
+  let fundec = match kf.fundec with
+      Definition(f,_) -> f
+    | Declaration _ -> assert false
+  in
   let annots =   
     List.map 
       (fun vec -> 
-	to_code_annot (vec_space_to_predicate base vec)
+	to_code_annot (vec_space_to_predicate fundec base vec)
       )
       vec_lists
       

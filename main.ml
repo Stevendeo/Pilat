@@ -211,11 +211,7 @@ let run () =
     let fname = Mat_option.Output_C_File.get () in 
     if  fname = "" then file.fileName ^ "_annot.c" else fname
   in
-      
-  
-  Cfg.clearFileCFG file;
-  Cfg.computeFileCFG file;
-  
+       
   let () = 
     let vis = loop_analyzer () in
     Cil.visitCilFile (vis :> Cil.cilVisitor) file
@@ -241,8 +237,6 @@ let run () =
   Mat_option.debug ~dkey:dkey_time 
     "Time to compute the relations : %f" !time ;
   
-  
-
   let cout = open_out filename in
   let fmt = Format.formatter_of_out_channel cout in
   Kernel.Unicode.without_unicode

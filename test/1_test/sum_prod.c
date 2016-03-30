@@ -1,5 +1,5 @@
 int main(){
-  int x=0, y=0, z, N;
+  int x=0, y=0, z, N = 30;
   while(y < N)
     {
       x += y*y;
