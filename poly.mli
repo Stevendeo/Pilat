@@ -44,6 +44,10 @@ module type POLYNOMIAL =
     val const : c -> t
     
     val to_var : Monom.t -> v list
+
+    (** Same than before, but each variable appears only once *)
+    val to_var_set : Monom.t -> v list
+
     val deg_monom : Monom.t -> int
     val deg_of_var : Monom.t -> v -> int
    

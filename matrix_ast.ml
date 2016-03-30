@@ -60,7 +60,10 @@ struct
       let () = 
 	Monom.Set.iter
 	  (fun m -> 
-	      let col_monom = Monom.Map.find m base_monom in
+	      let col_monom = 
+		Monom.Map.find m base_monom 
+
+	      in
 	      let coef = coef p m in
 	      mat.{row,col_monom}<-coef
 	  )
@@ -74,7 +77,7 @@ let all_possible_monomials e_deg_hashtbl =
 
   let effective_deg_of_monom monom = 
 
-    let v_list = F_poly.to_var monom in 
+    let v_list = F_poly.to_var_set monom in 
     List.fold_left
       (fun acc_deg v -> 
 	let eff_deg = try Varinfo.Hashtbl.find e_deg_hashtbl v with Not_found -> 1
@@ -208,9 +211,10 @@ let add_monomial_modifications (p_list:(varinfo * F_poly.t) list) : (F_poly.Mono
 			   (Varinfo.Set.add v seen_vars) 
 			   v2)
 		      *
-			(F_poly.deg_of_var m v2))
+		        F_poly.deg_of_var m v2)
 		    0
-		    (F_poly.to_var m)
+		    (F_poly.to_var_set m)
+		    
 		in
 		max acc deg
 	      )
@@ -261,7 +265,7 @@ let add_monomial_modifications (p_list:(varinfo * F_poly.t) list) : (F_poly.Mono
 	    Varinfo.Map.add v (M_set.add monom old_bind) acc
 	  )
 	  map
-	  (F_poly.to_var monom)
+	  (F_poly.to_var_set monom)
       )
       s
       Varinfo.Map.empty
@@ -429,7 +433,7 @@ let loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
 	  let vars_in_poly = 
 	    F_poly.Monom.Set.fold
 	      (fun monom acc -> 
-		Varinfo.Set.union acc (Varinfo.Set.of_list (F_poly.to_var monom))  
+		Varinfo.Set.union acc (Varinfo.Set.of_list (F_poly.to_var_set monom))  
 	      )
 	      (F_poly.get_monomials poly)
 	      Varinfo.Set.empty

@@ -2,6 +2,8 @@
 open Cil_types
 open Matrix_ast
 
+let dkey_term = Mat_option.register_category "acsl_gen:term"  
+
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
@@ -12,7 +14,7 @@ let to_code_annot (pred:predicate named) =
 let term_node_is_zero tnode = 
   match tnode with
   | TConst (Integer (i,_)) -> i = Integer.zero
-  | _ -> true
+  | _ -> false
 
 let monomial_to_mul_term m = 
   
@@ -21,25 +23,41 @@ let monomial_to_mul_term m =
       [] -> Logic_const.term (TConst (Integer (Integer.one,(Some "1")))) Linteger
     | var :: [] -> 
       let lvar = Cil.cvar_to_lvar var in
+      let term = 
+	Logic_const.term 
+	  (TLval 
+	     (TVar lvar,TNoOffset)
+	  ) 
+	  Linteger
+      in
+      Mat_option.debug ~dkey:dkey_term ~level:3
+	"End of the var list. Partial term generated : %a"
+	Printer.pp_term term ;
+      term
       
-      Logic_const.term 
-	(TLval 
-	   (TVar lvar,TNoOffset)
-	) 
-	Linteger
     | var :: tl -> 
       let lvar = Cil.cvar_to_lvar var in
       let tlval = Logic_const.term (TLval (TVar lvar,TNoOffset)) Linteger in
       let end_term =  __m_to_term tl in
-      
-      if term_node_is_zero end_term.term_node 
-      then Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
-      else
-      
-      Logic_const.term (TBinOp (Mult,tlval,end_term)) Linteger
+      let res = 
+	if term_node_is_zero end_term.term_node 
+	then Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
+	else
+	  
+	  Logic_const.term (TBinOp (Mult,tlval,end_term)) Linteger
+      in
+      Mat_option.debug ~dkey:dkey_term ~level:3
+	"Partial term generated : %a"
+	Printer.pp_term res ;
+      res
   in
-  
+  let res = 
   __m_to_term (F_poly.to_var m)
+  in
+  Mat_option.debug ~dkey:dkey_term ~level:2
+    "Whole term generated : %a"
+    Printer.pp_term res ;
+  res
 
 let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
@@ -60,7 +78,6 @@ let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
 
 
       let monom_term = 
-	
 	
 	Logic_const.term
 	  (TBinOp
