@@ -38,7 +38,7 @@ let monomial_to_mul_term m =
       
       Logic_const.term (TBinOp (Mult,tlval,end_term)) Linteger
   in
- 
+  
   __m_to_term (F_poly.to_var m)
 
 let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =

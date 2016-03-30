@@ -144,10 +144,15 @@ struct
 
   let monomial (a:A.t) (l:(v * int) list) : t = 
     mono_poly a (mono_minimal l)
-      
+       
   let to_var (m:Monom.t) : v list = 
+    let rec add_i_var v i = 
+      match i with 
+	0 -> []
+      | _ -> v :: (add_i_var v (i-1))
+    in
     V.Map.fold
-      (fun v _ acc -> v::acc)
+      (fun v i acc -> add_i_var v i)
       m
       []
 
