@@ -1,3 +1,5 @@
+let dkey_ev = Mat_option.register_category "pilat_matrix:eigenvalue"
+
 module type Field = 
   sig 
     include Poly.RING
@@ -336,23 +338,26 @@ let nullspace mat =
     no_pivs;
   vecs
   
-let pp_vec fmt v = 
+let pp_vec fmt v =   
+
   Format.fprintf fmt "(";
   Array.iter
-    (Format.fprintf fmt "%a ," F.pp_print)
+    (fun elt -> 
+      Format.fprintf fmt "%a ," F.pp_print elt)
     v;
   Format.fprintf fmt ")\n"
 
 let pp_print fmt mat = 
+  
+  Format.fprintf fmt "(";  
 
-  Format.fprintf fmt "(";
   Array.iter
     (fun vec -> 
       (pp_vec fmt vec)
     )
     mat.m;
   Format.fprintf fmt ")\n"
-    
+   
 end
       
 (*
@@ -388,7 +393,7 @@ let char_poly (mat:QMat.t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Fadd
   let identity = QMat.identity dim in
 
   let rec trace_mk index mk = 
-    if index < dim
+    if index <= dim
     then 
       let mk_coef = Q.div (QMat.trace mk) (Q.of_int index) in
       
@@ -435,11 +440,20 @@ let eigenvalues mat =
   in
   let poly = char_poly mat in 
   let k,divisors = integrate_poly poly in
+  
+  let () = 
+    Mat_option.debug ~dkey:dkey_ev ~level:2
+      "Polynomial : %a\n First parameter of the integrated poly : %a"
+      QPoly.pp_print poly
+      Z.pp_print k
+  in
 
   let div_by_x poly = (* returns (coef,n) with coef*xn with the littlest n such that xn | poly *)
     let rec __div_by_x monomial = 
       let coef = QPoly.coef poly monomial in
-      if coef = Q.zero
+      Mat_option.debug ~dkey:dkey_ev ~level:4
+	"Coef for div_by_x : %a" Q.pp_print coef;
+      if Q.equal coef Q.zero
       then __div_by_x (QPoly.mono_mul monomial (QPoly.mono_minimal [Poly.X,1]))
       else (coef,(QPoly.deg_of_var monomial Poly.X))
     in
@@ -453,14 +467,17 @@ let eigenvalues mat =
   assert (Q.den affine_constant = Z.one);
   let affine_constant = Q.num affine_constant in
   
+  let () = Mat_option.debug ~dkey:dkey_ev ~level:2
+    "Divisible by 0 %i times. Affine constant : %a"
+    power Z.pp_print affine_constant in
 
   let max_number_of_roots = deg_poly - power
   in
-  let all_divs (i:Z.t) : (bool*Z_Set.t) = 
+  let all_divs (i:Z.t) : Z_Set.t = 
     (* Set of all positive divisors, the boolean is set to true if i is negative *) 
     let rec __all_divs cpt i = 
       if  Z.geq (Z.shift_left cpt 1) i 
-      then Z_Set.empty
+      then Z_Set.add Z.minus_one (Z_Set.singleton Z.one)
       else if Z.erem i cpt = Z.zero 
       then 
 	let divs = __all_divs cpt (Z.div i cpt) in
@@ -473,15 +490,15 @@ let eigenvalues mat =
     in
     if Z.leq i Z.zero
     then 
-      true,__all_divs (Z.of_int 2) (Z.mul Z.minus_one i)
+      __all_divs (Z.of_int 2) (Z.mul Z.minus_one i)
       
       
     else 
-      false,__all_divs (Z.of_int 2) i
+      __all_divs (Z.of_int 2) i
 
   in
   
-  let neg,divs_of_main_coef = all_divs affine_constant in
+  let divs_of_main_coef = all_divs affine_constant in
   
   let root_candidates = 
     Z_Set.fold
@@ -495,9 +512,13 @@ let eigenvalues mat =
       divs_of_main_coef
       Q_Set.empty
   in
-  Q_Set.filter (* does not deal with negative roots yet *)
+  Q_Set.filter 
     (fun elt -> 
       let eval_poly = QPoly.eval poly Poly.X elt in
+      Mat_option.debug ~dkey:dkey_ev ~level:2
+	"Root candidate : %a. Returns %a" Q.pp_print elt QPoly.pp_print eval_poly;
+      
+      
       QPoly.coef eval_poly QPoly.empty_monom = Q.zero
     )
     root_candidates

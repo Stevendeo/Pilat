@@ -1,6 +1,7 @@
 open Cil_types
-open Cil_datatype
 open Cil
+open Pilat_matrix
+
 (*open Logic_const
 *)
 let dkey_stmt = Mat_option.register_category "main:loop_analyser"
@@ -56,11 +57,13 @@ let print_vec rev_base vec =
     
 let time = ref 0.
 
+let loop_poly_hashtbl = Cil_datatype.Stmt.Hashtbl.create 2
+
 let loop_analyzer () = 
 object(self)
   inherit Visitor.frama_c_inplace
     
-  val loop_treated = ref Stmt.Set.empty
+  val loop_treated = ref Cil_datatype.Stmt.Set.empty
 
   method! vstmt_aux stmt =
  
@@ -83,9 +86,11 @@ object(self)
 	  None -> 
 	    Mat_option.debug ~dkey:dkey_stmt "The loop is not solvable"; DoChildren
 	| Some poly_lists -> 
+	  let () = (* Debug for zarith  *)
+	    Cil_datatype.Stmt.Hashtbl.add loop_poly_hashtbl stmt poly_lists in
 	  let first_poly = List.hd poly_lists in 
 	  let b1,m1 = Matrix_ast.loop_matrix first_poly in
-	  let first_invar = Matrix_utilities.invariant_computation m1 in
+	  let first_invar = Invariant_utils.invariant_computation m1 in
 	  let whole_loop_invar = 
 	    List.fold_left
 	      (fun acc p_list -> 
@@ -93,9 +98,9 @@ object(self)
 		else
 		  let _,m2 = Matrix_ast.loop_matrix p_list in 	  
 		  
- 		  let invar = (Matrix_utilities.invariant_computation m2)
+ 		  let invar = (Invariant_utils.invariant_computation m2)
 		  in 
-		  Matrix_utilities.intersection_invariants invar acc
+		  Invariant_utils.intersection_invariants invar acc
 	      )
 	      first_invar
 	      (List.tl poly_lists)
@@ -126,10 +131,7 @@ object(self)
       end (* Loop *)
     | _ -> DoChildren
 end
-
-
-
-
+      
 
 let run () =  
   if Mat_option.Enabled.get ()
@@ -149,24 +151,10 @@ let run () =
     let vis = loop_analyzer () in
     Cil.visitCilFile (vis :> Cil.cilVisitor) file
   in
-  (*
-  let module Imap = Map.Make(struct type t = int let compare = compare end) in
-  let print_vec rev_base vec = 
-    let i = ref 0 in
-    Lacaml_D.Vec.iter
-      (fun fl ->
-	i := !i + 1;
-	if abs_float fl < 1E-10
-	then () 
-	else 
-	  Mat_option.feedback 
-	    "+%f%a" 
-	    fl 
-	    Matrix_ast.F_poly.Monom.pretty 
-	    (Imap.find !i rev_base)
-      ) vec in
-  *)
-  Stmt.Hashtbl.iter
+
+  Mat_option.debug ~dkey:dkey_time 
+    "Time to compute the relations : %f" !time ;
+  Cil_datatype.Stmt.Hashtbl.iter
     (fun stmt poly_lists -> 
       let first_poly = List.hd poly_lists in 
       Mat_option.feedback
@@ -175,6 +163,7 @@ let run () =
       let b1,m1 = Matrix_ast.loop_qmat first_poly in
       Mat_option.feedback
 	"Loop to qmat end";
+      
       let rev_base =  
 	Matrix_ast.F_poly.Monom.Map.fold
 	  (fun monom i intmap -> 
@@ -189,12 +178,25 @@ let run () =
 	"I shall print the matrix now. Behold !";
       Mat_option.feedback
 	"Matrix :%a" 
-	QMat.pp_print m1
+	QMat.pp_print m1;
       
-    )     loop_poly_hashtbl
+      let char_poly = Pilat_matrix.char_poly m1 in 
+      
+      Mat_option.feedback
+	"Char poly :%a" 
+	QPoly.pp_print char_poly;
 
-  Mat_option.debug ~dkey:dkey_time 
-    "Time to compute the relations : %f" !time ;
+      let eigenvalues = Pilat_matrix.eigenvalues m1 in
+      Mat_option.feedback
+	"Eigenvalues =";
+      Pilat_matrix.Q_Set.iter
+	(fun ev -> 
+	  Mat_option.feedback
+	    "%a \n" Q.pp_print ev)
+	eigenvalues
+      
+    )     loop_poly_hashtbl;
+
   
   let cout = open_out filename in
   let fmt = Format.formatter_of_out_channel cout in

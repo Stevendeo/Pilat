@@ -23,21 +23,9 @@ configure_library([LACAML],
 		  yes
 		)
 
-configure_library([LACAML_CMA],
-		  [$(ocamlc -where)/../lacaml/lacaml.cma],
-		  [lacaml not installed],
-		  yes
-		)
-
 configure_library([LACAML_TOP],
 		  [$(ocamlc -where)/../lacaml/lacaml_top.cmxa],
 		  [lacaml_top not installed],
-		  yes
-		)
-
-configure_library([ZARITH_CMA],
-		  [$(ocamlc -where)/../zarith/zarith.cma],
-		  [zarith not installed],
 		  yes
 		)
 
@@ -45,7 +33,7 @@ configure_library([ZARITH],
 		  [$(ocamlc -where)/../zarith/zarith.cmxa],
 		  [zarith not installed],
 		  yes
-		)
+		) 
 
 plugin_require_external(pilat,zarith)
 plugin_require_external(pilat,lacaml)

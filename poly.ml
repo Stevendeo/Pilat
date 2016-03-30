@@ -145,6 +145,7 @@ struct
   let mono_minimal (l:(v * int) list) : Monom.t = 
     List.fold_left
       (fun acc (v,i) -> 
+	if i = 0 then acc else
 	V.Map.add v i acc
       )
       V.Map.empty l
@@ -243,17 +244,22 @@ struct
       
 
     let eval (p:t) (x:v) (xval:c) : t =
-      Monom.Map.mapi
-	(fun (m:Monom.t) (coef:c) -> 
+      Monom.Map.fold
+	(fun (m:Monom.t) (coef:c) acc -> 
 	  if V.Map.mem x m
 	  then 
 	    let pow = 
 	      V.Map.find x m
 	    in
-	    A.mul coef (pow_ring xval pow)
-	  else coef
+	    let mono_poly = 
+	      mono_poly 
+		(A.mul coef (pow_ring xval pow)) 
+		(V.Map.remove x m) in
+	    add acc mono_poly
+	  else add acc (mono_poly coef m)
 	)
 	p
+	zero
 
     let print_monom = Monom.pretty
 	
@@ -361,8 +367,8 @@ module XMake (A:RING) : (POLYNOMIAL with type c = A.t and type v = var)
 	 let reprs = [X]
 	 let equal = (=)
 	 let internal_pretty_code = Datatype.undefined
-	 let pretty = Datatype.undefined
-	 let varname s = "X"
+	 let pretty fmt _ = Format.fprintf fmt "X"
+	 let varname _ = "X"
 	 let mem_project = Datatype.never_any_project
 	end
        )
