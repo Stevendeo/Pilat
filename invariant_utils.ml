@@ -411,9 +411,9 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
       (* u = *) QMat.transpose (QMat.from_array array_b1),
       (* n = (the b1_length first lines of n)*) 
 
-      QMat.create_mat b1_length (QMat.get_dim_col mat)
+      QMat.create_mat (Array.length arr_nullspace) (QMat.get_dim_col mat)
 	(fun i j -> 
-	  (QMat.vec_to_array arr_nullspace.(j)).(i)
+	  (QMat.vec_to_array arr_nullspace.(i)).(j)
 	)
       else
 	let () = 
@@ -425,16 +425,18 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
 	
       (* u = *) QMat.transpose ((QMat.from_array array_b2)),
 	(* n = (the b2_length last first lines of n)*) 
-        QMat.create_mat b2_length  (QMat.get_dim_col mat  - b1_length)
+        QMat.create_mat (Array.length arr_nullspace) (QMat.get_dim_col mat  - b1_length)
 	  (fun i j -> 
 	    Mat_option.debug ~dkey:dkey_zinter ~level:4
 	      "Taking coordinates %i,%i+%i" i (j) b1_length;
-	    (QMat.vec_to_array arr_nullspace.(j))
-	      .(i + b1_length)
+	    (QMat.vec_to_array arr_nullspace.(i))
+	      .(j + b1_length)
 	  )
-  in  
-  
-  let () = Mat_option.debug ~dkey:dkey_zinter ~level:3 
+    in  
+    
+    let n = QMat.transpose n in
+    
+    let () = Mat_option.debug ~dkey:dkey_zinter ~level:3 
     "U*N = %a * %a"
     QMat.pp_print u QMat.pp_print n in
   
@@ -516,3 +518,5 @@ let integrate_vec (vec:QMat.vec) =
     array
     
     |> QMat.vec_from_array 
+
+

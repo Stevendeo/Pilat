@@ -3,6 +3,7 @@ open Cil_types
 open Matrix_ast
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
+let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
 
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
@@ -160,11 +161,17 @@ let add_loop_annots kf stmt base vec_lists =
 (** Zarith *)
 
 let vec_to_term_zarith (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
+
+  let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
+    "Vector given : %a" Pilat_matrix.QMat.pp_vec vec in
+    
+
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
   let vec_array = Pilat_matrix.QMat.vec_to_array vec in 
   F_poly.Monom.Map.fold
     (fun monom row acc -> 
+      let row = row - 1 in
       assert (Z.equal Z.one (Q.den vec_array.(row)));
       let cst = Q.to_int vec_array.(row) in
       if cst = 0 then acc else
