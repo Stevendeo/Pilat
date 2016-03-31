@@ -30,7 +30,11 @@ module type M = sig
   val get_dim_col : t -> int
   val get_dim_row : t -> int
 
+  val vec_to_array : vec -> elt array
+  val vec_from_array : elt array -> vec
+
   val to_array : t -> elt array array
+  val from_array : vec array -> t
 
   val set_coef : int -> int -> t -> elt -> unit
   (** 3. Iterators *)
@@ -119,8 +123,27 @@ struct
 
   let set_coef i j mat elt = mat.m.(i).(j) <- elt
 
+  let vec_from_array v = v
+
+  let vec_to_array v = v
+
   let to_array mat = mat.m
     
+  let from_array array =
+    if array = [||]
+    then {rows = 0; cols = 0; m = array}
+    else
+      
+      let rows = Array.length array in 
+      let cols = Array.length array.(0) in 
+      Array.iter
+	(fun row -> 
+	  if Array.length row <> cols
+	  then raise (Dimension_error (cols,rows,cols,Array.length row))
+	  else ())
+	array
+      ;
+      {rows = rows; cols = cols; m = array}
   (* 3. Iterators  *)
 
   let mapi (f : int -> int -> elt -> elt) m = 
@@ -173,7 +196,7 @@ struct
     if d1 = 0 then mat
     else 
       let d2 = Array.length mat.m.(0) in 
-      create_mat d1 d2 (fun i j -> mat.m.(j).(i))
+      create_mat d2 d1 (fun i j -> mat.m.(j).(i))
 
   let scal_mul m k = map (F.mul k) m
     

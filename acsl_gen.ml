@@ -156,3 +156,99 @@ let add_loop_annots kf stmt base vec_lists =
 
   in
   List.iter (Annotations.add_code_annot Mat_option.emitter ~kf stmt) annots
+
+(** Zarith *)
+
+let vec_to_term_zarith (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
+  let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
+  in
+  let vec_array = Pilat_matrix.QMat.vec_to_array vec in 
+  F_poly.Monom.Map.fold
+    (fun monom row acc -> 
+      assert (Z.equal Z.one (Q.den vec_array.(row)));
+      let cst = Q.to_int vec_array.(row) in
+      if cst = 0 then acc else
+      
+      let term_cst = 
+	Logic_const.term (TConst (Integer (Integer.of_int cst,(Some (string_of_int cst))))) Linteger in
+
+
+      let monom_term = 
+	
+	Logic_const.term
+	  (TBinOp
+	     (Mult,
+ 	      term_cst,
+	      monomial_to_mul_term monom)
+	  ) Linteger 
+      
+      in
+      if acc = zero then monom_term else
+      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
+	
+    )
+    base
+    zero
+
+let vec_space_to_predicate_zarith
+    (fundec: Cil_types.fundec)
+    (base:int Matrix_ast.F_poly.Monom.Map.t) 
+    (vec_list : Pilat_matrix.QMat.vec list) 
+    : predicate named =
+
+  let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
+  in
+  let term = 
+    List.fold_left
+      (fun acc vec -> 
+	let term = vec_to_term_zarith base vec 
+	in
+	let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
+	in
+	new_ghost_var.vghost <- true;     
+	let lvar = Cil.cvar_to_lvar new_ghost_var in
+        let term_gvar = 
+	  Logic_const.term
+	    (TLval ((TVar lvar),TNoOffset)) Linteger 
+	in
+	let prod_term = 
+	  Logic_const.term
+	    (TBinOp
+	       (Mult,
+ 		term_gvar,
+		term) 
+	    ) Linteger 
+	    
+	in
+	if acc = zero then prod_term else 
+	Logic_const.term
+	   (TBinOp (PlusA,acc,prod_term)) Linteger 
+	    
+      )
+      zero
+      vec_list
+  in
+  let pred = 
+    Prel
+      (Req,
+       term,
+       zero)
+  in
+   
+  Logic_const.unamed pred
+
+let add_loop_annots_zarith kf stmt base vec_lists = 
+  let fundec = match kf.fundec with
+      Definition(f,_) -> f
+    | Declaration _ -> assert false
+  in
+  let annots =   
+    List.map 
+      (fun vec -> 
+	to_code_annot (vec_space_to_predicate_zarith fundec base vec)
+      )
+      vec_lists
+      
+
+  in
+  List.iter (Annotations.add_code_annot Mat_option.emitter ~kf stmt) annots
