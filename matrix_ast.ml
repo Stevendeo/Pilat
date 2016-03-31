@@ -527,72 +527,9 @@ let lacaml_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
     )
     (Lacaml_D.Mat.identity !i)
     all_modifs
-
-let q_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  = 
-
-  let poly_affect_list =  (* We add here the variables used in the loop, but not modified *)
-    
-      let rec allvars poly_list = 
-	match poly_list with
-	  [] -> Varinfo.Set.empty
-	| (_,poly)::tl -> 
-	  let vars_in_poly = 
-	    F_poly.Monom.Set.fold
-	      (fun monom acc -> 
-		Varinfo.Set.union acc (Varinfo.Set.of_list (F_poly.to_var monom))  
-	      )
-	      (F_poly.get_monomials poly)
-	      Varinfo.Set.empty
-	  in
-	  Varinfo.Set.union (allvars tl) vars_in_poly
-      in 
-      let all_vars = allvars poly_affect_list in
-       
-      Varinfo.Set.fold
-	(fun v acc -> (v, (F_poly.monomial 1. [v,1])) :: acc)
-	all_vars
-	poly_affect_list in
-
-  let all_modifs,all_monoms = add_monomial_modifications poly_affect_list in
-  let i = ref 0 in 
-  let base = 
-    F_poly.Monom.Set.fold
-      (fun m map -> 
-	i := !i + 1;
-	F_poly.Monom.Map.add m !i map
-      )
-      all_monoms
-      F_poly.Monom.Map.empty
-  in
-  base,
-  List.fold_left
-    (fun acc (v,poly_affect) -> 
-      let new_matrix = 
-      (snd
-	   (F_poly.to_q_mat 
-	   ~base 
-	   v 
-	   poly_affect)
-      ) in 
-      
-      Mat_option.debug ~dkey:dkey_loop_mat ~level:2
-	"New matrix for %a = %a :"
-        F_poly.Monom.pretty v
-	F_poly.pp_print poly_affect;
-
-      Mat_option.debug ~dkey:dkey_loop_mat ~level:2 "%a * %a"
-        QMat.pp_print new_matrix
-	QMat.pp_print acc;
-      
-      QMat.mul
-	new_matrix
-	acc 
-    )
-    (QMat.identity !i)
-    all_modifs
   
 let loop_matrix = 
   lacaml_loop_matrix
 
-let loop_qmat = q_loop_matrix
+let loop_qmat m = let b,mat = loop_matrix m in b,Pilat_matrix.lacaml_to_qmat mat
 

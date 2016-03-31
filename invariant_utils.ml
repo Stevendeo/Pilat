@@ -31,11 +31,18 @@ let eigen_val matrix =
     (fun b -> 
       assert (b = 0.))
     b;
- *)Lacaml_D.Vec.fold
-    (fun acc a -> if List.mem a acc  then acc else 
-	let () = Mat_option.debug ~dkey:dkey_ev "Ev : %f" a in a::acc)
-    []
-    a
+ *)
+  let res = ref [] in 
+  Lacaml_D.Vec.iteri 
+    (fun i f -> 
+      if f = 0.
+      then 
+	let ev = a.{i} in  
+	if not (List.mem ev !res)
+	then res := ev :: !res
+    )
+    b;
+  !res
 
 (** 4. Nullspace computation *)
 
@@ -163,7 +170,7 @@ let nullspace_computation mat =
 
 (** Invariant computation *)
 
-let invariant_computation mat = 
+let old_invariant_computation mat = 
   let eigen_vals = eigen_val mat in
   let mat_dim = Lacaml_D.Mat.dim1 mat in
     
@@ -181,6 +188,29 @@ let invariant_computation mat =
      
       
       (nullspace_computation new_mat) :: acc
+    )
+    []
+    eigen_vals
+
+let invariant_computation mat = 
+  let eigen_vals = eigen_val mat in
+  let mat_dim = Lacaml_D.Mat.dim1 mat in
+    
+  List.fold_left
+    (fun acc ev -> 
+      let new_mat = Lacaml_D.Mat.transpose_copy (copy_mat mat) in 
+      let alpha = (-1.) *. ev in 
+      let id = (Lacaml_D.Mat.identity mat_dim) in
+      let () = (Lacaml_D.Mat.axpy id new_mat ~alpha);
+	Mat_option.debug ~dkey:dkey_inv ~level:2 
+	  "Computation of the kernel of %a"
+	  Lacaml_D.pp_mat new_mat
+	
+      in
+     
+      let qmat = Pilat_matrix.lacaml_to_qmat mat in
+      
+      (QMat.nullspace qmat) :: acc
     )
     []
     eigen_vals
@@ -377,7 +407,7 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
   in
   let b1_length = List.length b1 in
   let b2_length = List.length b2 in
-  Mat_option.debug ~dkey:dkey_zinter
+  Mat_option.debug ~dkey:dkey_zinter ~level:4
     "Matrix :\n%a\nSize of kernel elements : %i + %i = %i. Size of matrix : %i x %i"
     QMat.pp_print mat
      b1_length  b2_length
@@ -388,7 +418,7 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
   
   List.iter
     (fun k_vec -> 
-	Mat_option.debug ~dkey:dkey_zinter
+	Mat_option.debug ~dkey:dkey_zinter ~level:4
 	  "kernel vector : %a."
 	  QMat.pp_vec k_vec
     ) null_space;
@@ -436,7 +466,7 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
     
     let n = QMat.transpose n in
     
-    let () = Mat_option.debug ~dkey:dkey_zinter ~level:3 
+    let () = Mat_option.debug ~dkey:dkey_zinter ~level:4 
     "U*N = %a * %a"
     QMat.pp_print u QMat.pp_print n in
   
@@ -452,39 +482,39 @@ let intersection_invariants_pilat ll1 ll2 =
   (* Takes two union of eigenspaces represented as list of list of vectors,
      and intersects them. *)
 
-  let print_vec_list v_list = 
+  let print_vec_list ?(level = 5) v_list = 
     List.iter
       (fun v -> 
-	Mat_option.debug ~dkey:dkey_zinter ~level:5
+	Mat_option.debug ~dkey:dkey_zinter ~level
 	  "%a --\n" 
 	  QMat.pp_vec v)
       v_list in
   
   List.fold_left
     (fun acc l1 -> 
-      Mat_option.debug ~dkey:dkey_inter ~level:5
+      Mat_option.debug ~dkey:dkey_inter ~level:3
 	"Intersection of";
       
-      print_vec_list l1;
+      print_vec_list  ~level:3 l1 ;
       
       
       List.fold_left
 	(fun acc2 l2 -> 
-	  Mat_option.debug ~dkey:dkey_zinter ~level:5
+	  Mat_option.debug ~dkey:dkey_zinter ~level:3
 	    "with";
-	  print_vec_list l2;
+	  print_vec_list  ~level:3 l2;
 	  let new_base = intersection_bases_pilat l1 l2 in
 	  if new_base = []
 	  then
 	    begin
-	      Mat_option.debug ~dkey:dkey_zinter ~level:5
+	      Mat_option.debug ~dkey:dkey_zinter ~level:3
 		"Returns nothing !";
 	      acc2
 	    end
 	  else 
 	    let res = new_base in
 	    begin
-	      Mat_option.debug ~dkey:dkey_zinter ~level:5
+	      Mat_option.debug ~dkey:dkey_zinter ~level:3
 		"Returns ";
 	      print_vec_list res;
 	      res :: acc2

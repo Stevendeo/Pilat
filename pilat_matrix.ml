@@ -4,7 +4,8 @@ module type Field =
   sig 
     include Poly.RING
       
-    val div : t -> t -> t
+    val div : t -> t -> t    
+
   end 
 
 module type M = sig
@@ -36,7 +37,9 @@ module type M = sig
   val to_array : t -> elt array array
   val from_array : vec array -> t
 
-  val set_coef : int -> int -> t -> elt -> unit
+  val set_coef : int -> int -> t -> elt -> unit  
+  val get_coef : int -> int -> t -> elt
+
   (** 3. Iterators *)
 
   val map : (elt -> elt) -> t -> t
@@ -122,6 +125,8 @@ struct
   let get_dim_col mat = mat.cols
 
   let set_coef i j mat elt = mat.m.(i).(j) <- elt
+
+  let get_coef i j mat =  mat.m.(i).(j)
 
   let vec_from_array v = v
 
@@ -546,7 +551,20 @@ let eigenvalues mat =
     )
     root_candidates
   
-	    
-	    
-    
+let lacaml_to_qmat lmat = 
   
+  QMat.create_mat 
+    (Lacaml_D.Mat.dim1 lmat)
+    (Lacaml_D.Mat.dim2 lmat)
+    (fun i j -> Q.of_float (lmat.{j+1,i+1}))
+
+let qmat_to_lacaml qmat = 
+  
+  Lacaml_D.Mat.init_rows
+    (QMat.get_dim_row qmat)
+    (QMat.get_dim_col qmat)
+    (fun i j -> 
+      let c = (QMat.get_coef i j qmat) in 
+      let den = c |> Q.den |> Z.to_float  and num = c |> Q.num |> Z.to_float in 
+      den /. num
+    )
