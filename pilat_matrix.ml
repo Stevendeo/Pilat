@@ -429,12 +429,21 @@ let qmat_to_lacaml qmat =
     arr
 	 |> Lacaml_D.Mat.of_array
 
+let lvec_to_qvec lvec = 
+  lvec |> Lacaml_D.Vec.to_array
+	 |> Array.map (fun fl -> Q.of_float fl)
+	 |> QMat.vec_from_array
 
+let qvec_to_lvec lvec = 
+  let arr = QMat.vec_to_array lvec in
+  Array.map (fun fl -> (Z.to_float (Q.num fl)) /. (Z.to_float (Q.den fl))) arr 
+	 |> Lacaml_D.Vec.of_array
 
 let char_poly (mat:QMat.t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Faddeev-Leverrier *)
   (* To find eigenvalues, we will compute the faddeev-leverrier iteration in order to find
      the extremities of the rational characteristic polynomial and then apply the rational root
      theorem.*)
+  assert (Mat_option.Use_zarith.get ());
   let t = Sys.time () in
   let dim = (QMat.get_dim_col mat) in
   let identity = QMat.identity dim in

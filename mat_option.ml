@@ -35,6 +35,13 @@ module Output_C_File =
        let help = "specifies generated file name for annotated C code"
      end)
 
+module Use_zarith = 
+  True
+    (struct
+      let option_name = "-pilat-z"
+      let help = "When on, uses zarith library." 
+   end)
+
 (** Tools for ACSL generation *)
 
 let emitter = Emitter.create 

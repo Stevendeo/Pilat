@@ -104,18 +104,18 @@ object(self)
 	| Some poly_lists -> 
 	  
 	  let first_poly = List.hd poly_lists in 
-	  let b1,m1 = Matrix_ast.loop_qmat first_poly in
-	  let first_invar = Invariant_utils.invariant_computation_pilat m1 in
+	  let b1,m1 = Matrix_ast.loop_matrix first_poly in
+	  let first_invar = Invariant_utils.invariant_computation m1 in
 	  let whole_loop_invar = 
 	    List.fold_left
 	      (fun acc p_list -> 
 		if acc = [] then [] 
 		else
-		  let _,m2 = Matrix_ast.loop_qmat p_list in 	  
+		  let _,m2 = Matrix_ast.loop_matrix p_list in 	  
 		  
- 		  let invar = (Invariant_utils.invariant_computation_pilat m2)
+ 		  let invar = (Invariant_utils.invariant_computation m2)
 		  in 
-		  Invariant_utils.intersection_invariants_pilat invar acc
+		  Invariant_utils.intersection_invariants invar acc
 	      )
 	      first_invar
 	      (List.tl poly_lists)

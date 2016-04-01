@@ -8,6 +8,8 @@ module NameConst: Parameter_sig.String
 
 module Output_C_File: Parameter_sig.String
 
+module Use_zarith: Parameter_sig.Bool
+
 (** Tools for ACSL generation *)
 
 val emitter : Emitter.t

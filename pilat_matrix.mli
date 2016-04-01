@@ -75,5 +75,8 @@ val char_poly : QMat.t -> QPoly.t
 
 val eigenvalues : QMat.t -> Q_Set.t
 
+val lvec_to_qvec : Lacaml_D.vec -> QMat.vec
+val qvec_to_lvec : QMat.vec -> Lacaml_D.vec 
+
 val lacaml_to_qmat : Lacaml_D.Mat.t -> QMat.t
 val qmat_to_lacaml : QMat.t -> Lacaml_D.Mat.t
