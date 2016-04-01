@@ -112,6 +112,9 @@ let insert_val vec elt pos =
   insert vec elt pos
 
 let nullspace_computation mat = 
+  mat |> Pilat_matrix.lacaml_to_qmat |> QMat.nullspace
+
+let bad_nullspace_computation mat = 
   
   let no_pivs = List.rev (rref mat) in 
 
@@ -179,7 +182,6 @@ let invariant_computation mat =
 	
       in
      
-      
       (nullspace_computation new_mat) :: acc
     )
     []
@@ -199,7 +201,7 @@ let invariant_computation_pilat (mat:QMat.t) : QMat.vec list list =
       eigenvalues
       []
 
-let intersection_bases b1 b2 = 
+let intersection_bases b1 b2 = [||] (*
   if b1 = [] || b2 = [] then [||]
   else 
    
@@ -289,11 +291,11 @@ let intersection_bases b1 b2 =
   in
   
   Lacaml_D.Mat.to_col_vecs mat_base
-
-let intersection_invariants ll1 ll2 = 
+				    *)
+let intersection_invariants ll1 ll2 = []
   (* Takes two union of eigenspaces represented as list of list of vectors,
      and intersects them. *)
-
+(*
   let print_vec_list v_list = 
     List.iter
 	(fun v -> 
@@ -335,7 +337,7 @@ let intersection_invariants ll1 ll2 =
 	  ll2
       )
       []
-      ll1
+      ll1*)
   
 (** Intersection bases with zarith *)
 
