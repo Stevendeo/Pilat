@@ -5,6 +5,7 @@ let dkey_ev = Mat_option.register_category "lacaml:ev"
 let dkey_inter = Mat_option.register_category "lacaml:inter"
 let dkey_zinv = Mat_option.register_category "zarith:inv"
 let dkey_zinter = Mat_option.register_category "zarith:inter"
+let dkey_nullspace = Mat_option.register_category "invar:null"
 module Int = Datatype.Int 
 
 type vec = Lacaml_D.vec
@@ -33,10 +34,25 @@ let eigen_val matrix =
     b;
  *)Lacaml_D.Vec.fold
     (fun acc a -> if List.mem a acc  then acc else 
-	let () = Mat_option.debug ~dkey:dkey_ev "Ev : %f" a in a::acc)
+	let () = Mat_option.debug ~dkey:dkey_ev ~level:4 "Ev : %f" a in a::acc)
     []
     a
 
+(** Eigenvalues of a zarith matrix *)
+
+let eigen_val_zarith m = 
+  let res = 
+    List.map
+      Q.of_float 
+      (m |> Pilat_matrix.qmat_to_lacaml |> eigen_val)
+  in
+
+  List.iter
+    (fun ev ->   
+      Mat_option.debug ~dkey:dkey_ev 
+	"Ev : %a"
+	Q.pp_print ev
+    )res; res
 (** 4. Nullspace computation *)
 
 let revert_rows mat a b = 
@@ -111,8 +127,25 @@ let insert_val vec elt pos =
   in
   insert vec elt pos
 
-let nullspace_computation mat = 
-  mat |> Pilat_matrix.lacaml_to_qmat |> QMat.nullspace
+let nullspace_computation m = 
+  Mat_option.debug ~dkey:dkey_nullspace 
+    "Nullspace computation";
+  let t = Sys.time () in
+  let res = QMat.nullspace m in 
+  let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
+  Mat_option.debug ~dkey:dkey_nullspace 
+    "Nullspace done"; res
+
+let nullspace_computation_lmat mat = 
+  
+   Mat_option.debug ~dkey:dkey_nullspace 
+    "Parsing before nullspace computation";
+
+  let t = Sys.time () in
+  let mat = mat |> Pilat_matrix.lacaml_to_qmat in
+  let () = Mat_option.ltoq_timer := !Mat_option.ltoq_timer +. Sys.time() -. t in
+  QMat.nullspace mat
+  
 
 let bad_nullspace_computation mat = 
   
@@ -167,12 +200,16 @@ let bad_nullspace_computation mat =
 (** Invariant computation *)
 
 let invariant_computation mat = 
+
+  let t = Sys.time () in
+  
   let eigen_vals = eigen_val mat in
   let mat_dim = Lacaml_D.Mat.dim1 mat in
     
+  let res = 
   List.fold_left
     (fun acc ev -> 
-      let new_mat = Lacaml_D.Mat.transpose_copy (copy_mat mat) in 
+      let new_mat = Lacaml_D.Mat.transpose_copy mat in 
       let alpha = (-1.) *. ev in 
       let id = (Lacaml_D.Mat.identity mat_dim) in
       let () = (Lacaml_D.Mat.axpy id new_mat ~alpha);
@@ -182,26 +219,32 @@ let invariant_computation mat =
 	
       in
      
-      (nullspace_computation new_mat) :: acc
+      (nullspace_computation_lmat new_mat) :: acc
     )
     []
     eigen_vals
+  in
+  let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t
+  in res
 
 let invariant_computation_pilat (mat:QMat.t) : QMat.vec list list = 
-  let open QMat in
-  let eigenvalues = Pilat_matrix.eigenvalues mat in
+  let open QMat in  let t = Sys.time () in
+
+  let eigenvalues = Pilat_matrix.eigenvalues (*eigen_val_zarith*) mat in
   let identity = identity (get_dim_row mat) in
-  
-    Q_Set.fold
-      (fun ev acc -> 
+  let res = 
+    Q_Set.fold      (fun ev acc -> 
 	
 	let new_mat = sub (transpose mat) (scal_mul identity ev) in 
-        (nullspace new_mat) :: acc
+        (nullspace_computation new_mat) :: acc
       )
       eigenvalues
-      []
+      []  
+  in
+  let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t
+  in res
 
-let intersection_bases b1 b2 = [||] (*
+let intersection_bases b1 b2 = [| |](*
   if b1 = [] || b2 = [] then [||]
   else 
    
@@ -291,11 +334,12 @@ let intersection_bases b1 b2 = [||] (*
   in
   
   Lacaml_D.Mat.to_col_vecs mat_base
-				    *)
-let intersection_invariants ll1 ll2 = []
+				    *)				    
+let intersection_invariants ll1 ll2 = [] 
   (* Takes two union of eigenspaces represented as list of list of vectors,
-     and intersects them. *)
-(*
+     and intersects them. *)(*
+  let t = Sys.time () in
+
   let print_vec_list v_list = 
     List.iter
 	(fun v -> 
@@ -303,7 +347,7 @@ let intersection_invariants ll1 ll2 = []
 	    "%a --\n" 
 	    Lacaml_D.pp_vec v)
       v_list in
-    List.fold_left
+  let res = List.fold_left
       (fun acc l1 -> 
 	Mat_option.debug ~dkey:dkey_inter ~level:5
 	  "Intersection of";
@@ -337,8 +381,11 @@ let intersection_invariants ll1 ll2 = []
 	  ll2
       )
       []
-      ll1*)
-  
+      ll1
+  in
+  let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t
+  in res
+*)
 (** Intersection bases with zarith *)
 
 let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list = 
@@ -453,7 +500,7 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
 let intersection_invariants_pilat ll1 ll2 = 
   (* Takes two union of eigenspaces represented as list of list of vectors,
      and intersects them. *)
-
+  let t = Sys.time () in
   let print_vec_list v_list = 
     List.iter
       (fun v -> 
@@ -462,7 +509,7 @@ let intersection_invariants_pilat ll1 ll2 =
 	  QMat.pp_vec v)
       v_list in
   
-  List.fold_left
+  let res = List.fold_left
     (fun acc l1 -> 
       Mat_option.debug ~dkey:dkey_inter ~level:5
 	"Intersection of";
@@ -497,6 +544,10 @@ let intersection_invariants_pilat ll1 ll2 =
     )
     []
     ll1
+  in
+  
+  let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t
+  in res 
     
 let integrate_vec (vec:QMat.vec) = 
   let array = QMat.vec_to_array vec in

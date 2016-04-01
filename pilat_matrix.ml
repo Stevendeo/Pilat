@@ -411,11 +411,31 @@ module Q_Set:Set.S with type elt = Q.t = Set.Make
 module Z_Set:Set.S with type elt = Z.t = Set.Make
   (Z)
 
+
+let lacaml_to_qmat lmat = 
+  
+  lmat 	 |> Lacaml_D.Mat.to_array 
+	 |> Array.map 
+	     (fun arr -> QMat.vec_from_array (Array.map (fun fl -> Q.of_float fl) arr)) 
+	 |> QMat.from_array
+  
+let qmat_to_lacaml qmat = 
+  
+  let arr = QMat.to_array qmat in
+  
+  Array.map 
+    (fun a -> Array.map
+      (fun q -> (Z.to_float (Q.num q)) /. (Z.to_float (Q.den q))) a)
+    arr
+	 |> Lacaml_D.Mat.of_array
+
+
+
 let char_poly (mat:QMat.t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Faddeev-Leverrier *)
   (* To find eigenvalues, we will compute the faddeev-leverrier iteration in order to find
      the extremities of the rational characteristic polynomial and then apply the rational root
      theorem.*)
-
+  let t = Sys.time () in
   let dim = (QMat.get_dim_col mat) in
   let identity = QMat.identity dim in
 
@@ -432,9 +452,12 @@ let char_poly (mat:QMat.t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Fadd
     else (QPoly.monomial Q.one [Poly.X,dim])
     
   in
-  trace_mk 1 mat 
+  let res = trace_mk 1 mat 
+  in
+  let () = Mat_option.char_poly_timer := !Mat_option.char_poly_timer +. Sys.time () -. t in res
 
 let eigenvalues mat = 
+  let t = Sys.time () in
   
   let deg_poly = (QMat.get_dim_col mat) in
   let integrate_poly p = (* gets all divisors of the main elt of k.p, with k.p a polynomial
@@ -539,21 +562,15 @@ let eigenvalues mat =
       divs_of_main_coef
       Q_Set.empty
   in
-  Q_Set.filter 
+  let res = Q_Set.filter 
     (fun elt -> 
       let eval_poly = QPoly.eval poly Poly.X elt in
       Mat_option.debug ~dkey:dkey_ev ~level:2
 	"Root candidate : %a. Returns %a" Q.pp_print elt QPoly.pp_print eval_poly;
       
       
-      QPoly.coef eval_poly QPoly.empty_monom = Q.zero
+      Q.equal (QPoly.coef eval_poly QPoly.empty_monom) Q.zero
     )
     root_candidates
-
-let lacaml_to_qmat lmat = 
-  
-  lmat 	 |> Lacaml_D.Mat.to_array 
-	 |> Array.map 
-	     (fun arr -> QMat.vec_from_array (Array.map (fun fl -> Q.of_float fl) arr)) 
-	 |> QMat.from_array
-  
+  in
+  let () = Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t in res

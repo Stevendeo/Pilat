@@ -35,13 +35,6 @@ module Output_C_File =
        let help = "specifies generated file name for annotated C code"
      end)
 
-module Use_zarith = 
-  False
-    (struct
-      let option_name = "-pilat-z"
-      let help = "when on, uses zarith instead of lacaml"
-     end)
-
 (** Tools for ACSL generation *)
 
 let emitter = Emitter.create 
@@ -50,3 +43,19 @@ let emitter = Emitter.create
   ~correctness:
   [Degree.parameter]
   ~tuning:[]
+
+(** Misc. *)
+
+let parsing_timer = ref 0.
+
+let invar_timer = ref 0.
+
+let inter_timer = ref 0.
+
+let nullspace_timer = ref 0.
+
+let ltoq_timer = ref 0.
+
+let ev_timer = ref 0.
+
+let char_poly_timer = ref 0.

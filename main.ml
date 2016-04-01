@@ -111,15 +111,18 @@ object(self)
 	      (fun acc p_list -> 
 		if acc = [] then [] 
 		else
-		  let _,m2 = Matrix_ast.loop_matrix p_list in 	  
+		  let _,m2 = Matrix_ast.loop_qmat p_list in 	  
 		  
- 		  let invar = (Invariant_utils.invariant_computation m2)
+ 		  let invar = (Invariant_utils.invariant_computation_pilat m2)
 		  in 
 		  Invariant_utils.intersection_invariants_pilat invar acc
 	      )
 	      first_invar
 	      (List.tl poly_lists)
 	  in
+	  let whole_loop_invar = 
+	  List.map
+	    (List.map Invariant_utils.integrate_vec) whole_loop_invar in
 	  let () = 
 	    Mat_option.debug ~dkey:dkey_stmt
 	      "Invariants generated :"
@@ -140,7 +143,7 @@ object(self)
 	    whole_loop_invar;
 	  
 	  time := Sys.time() -. t0 +. !time;
-	  
+
 	  Acsl_gen.add_loop_annots_zarith kf stmt b1 whole_loop_invar;
 	  DoChildren
       end (* Loop *)
@@ -169,68 +172,15 @@ let run () =
 
   Mat_option.debug ~dkey:dkey_time 
     "Time to compute the relations : %f" !time ;
-  (*Cil_datatype.Stmt.Hashtbl.iter
-    (fun stmt poly_lists -> 
-      let first_poly = List.hd poly_lists in 
-      Mat_option.feedback
-	"Loop to qmat begin";
-      
-      let b1,m1 = Matrix_ast.loop_qmat first_poly in
-      Mat_option.feedback
-	"Loop to qmat end";
-      
-      let rev_base =  
-	Matrix_ast.F_poly.Monom.Map.fold
-	  (fun monom i intmap -> 
-	    Mat_option.debug ~level:5 "Basis %i : %a" 
-	      i 
-	      Matrix_ast.F_poly.Monom.pretty monom; 
-	    Imap.add i monom intmap
-	  )
-	  b1
-	  Imap.empty in 
-      Mat_option.feedback
-	"Matrix :%a" 
-	QMat.pp_print m1;
-      
-      let char_poly = Pilat_matrix.char_poly m1 in 
-      
-      Mat_option.feedback
-	"Char poly :%a" 
-	QPoly.pp_print char_poly;
-
-      let eigenvalues = Pilat_matrix.eigenvalues m1 in
-      Mat_option.feedback
-	"Eigenvalues =";
-      Pilat_matrix.Q_Set.iter
-	(fun ev -> 
-	  Mat_option.feedback
-	    "%a \n" Q.pp_print ev)
-	eigenvalues;
-
-      let invar = Invariant_utils.invariant_computation_pilat m1 in
-      List.iter
-	(fun vecs -> 
-	  Mat_option.feedback "Invariant";
-	  List.iter
-	    (fun vec -> 
-	      Mat_option.feedback " %a\n____" 
-		Pilat_matrix.QMat.pp_vec vec)
-	    vecs)
-	invar;
-      List.iter
-	(fun vecs -> 
-	  Mat_option.feedback "Invariant test intersect";
-	  List.iter
-	    (fun vec -> 
-	      Mat_option.feedback " %a\n____" 
-		Pilat_matrix.QMat.pp_vec (Invariant_utils.integrate_vec vec))
-	    vecs)
-      (Invariant_utils.intersection_invariants_pilat invar invar)
-      
-    )     loop_poly_hashtbl;
-  *)
-  
+ 
+   Mat_option.debug ~dkey:dkey_time ~level:2
+    "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly %f" 
+     !Mat_option.invar_timer 
+     !Mat_option.inter_timer 
+     !Mat_option.nullspace_timer
+     !Mat_option.ev_timer
+     !Mat_option.char_poly_timer;
+   
   let cout = open_out filename in
   let fmt = Format.formatter_of_out_channel cout in
   Kernel.Unicode.without_unicode
