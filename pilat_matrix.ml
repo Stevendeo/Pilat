@@ -549,8 +549,11 @@ let eigenvalues mat =
       QPoly.coef eval_poly QPoly.empty_monom = Q.zero
     )
     root_candidates
+
+let lacaml_to_qmat lmat = 
   
-	    
-	    
-    
+  lmat 	 |> Lacaml_D.Mat.to_array 
+	 |> Array.map 
+	     (fun arr -> QMat.vec_from_array (Array.map (fun fl -> Q.of_float fl) arr)) 
+	 |> QMat.from_array
   

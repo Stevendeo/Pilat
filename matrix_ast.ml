@@ -594,5 +594,6 @@ let q_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
 let loop_matrix = 
   lacaml_loop_matrix
 
-let loop_qmat = q_loop_matrix
-
+let loop_qmat m = 
+  let b,m = loop_matrix m in
+  b, Pilat_matrix.lacaml_to_qmat m

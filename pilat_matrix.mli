@@ -74,3 +74,5 @@ module Q_Set:Set.S with type elt = Q.t
 val char_poly : QMat.t -> QPoly.t
 
 val eigenvalues : QMat.t -> Q_Set.t
+
+val lacaml_to_qmat : Lacaml_D.Mat.t -> QMat.t
