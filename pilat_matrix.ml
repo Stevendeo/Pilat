@@ -37,6 +37,8 @@ module type M = sig
   val from_array : vec array -> t
 
   val set_coef : int -> int -> t -> elt -> unit
+  val get_coef : int -> int -> t -> elt
+	
   (** 3. Iterators *)
 
   val map : (elt -> elt) -> t -> t
@@ -122,6 +124,8 @@ struct
   let get_dim_col mat = mat.cols
 
   let set_coef i j mat elt = mat.m.(i).(j) <- elt
+
+  let get_coef i j mat = mat.m.(i).(j)
 
   let vec_from_array v = v
 
