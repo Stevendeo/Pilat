@@ -1,7 +1,6 @@
 open Pilat_matrix
 
 let dkey_inv = Mat_option.register_category "lacaml:inv"
-let dkey_ev = Mat_option.register_category "lacaml:ev"
 let dkey_inter = Mat_option.register_category "lacaml:inter"
 let dkey_zinter = Mat_option.register_category "zarith:inter"
 let dkey_nullspace = Mat_option.register_category "invar:null"
@@ -14,7 +13,7 @@ let copy_mat m = m |> Lacaml_D.Mat.to_col_vecs |> Lacaml_D.Mat.of_col_vecs
 
 (** Eigenvalues of a lacaml matrix *)
 let eigen_val matrix = 
-  
+  let t = Sys.time () in
   let dimx,dimy = (Lacaml_D.Mat.dim1 matrix),(Lacaml_D.Mat.dim2 matrix)
   in
   
@@ -34,7 +33,9 @@ let eigen_val matrix =
  *)
   let res = ref [] in
   Lacaml_D.Vec.iteri
-    (fun i im -> if im = 0. then res :=  a.{i} :: !res) b;
+    (fun i im -> if im = 0. && not (List.mem a.{i} !res) then res :=  a.{i} :: !res) b;
+  Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t;
+  
   !res
 
 (** Eigenvalues of a zarith matrix *)
@@ -201,12 +202,9 @@ let nullspace_computation_lmat mat =
 
 let invariant_computation_lacaml mat = 
 
-  let t = Sys.time () in
-  
   let eigen_vals = eigen_val mat in
   let mat_dim = Lacaml_D.Mat.dim1 mat in
     
-  let res = 
   List.fold_left
     (fun acc ev -> 
       let new_mat = Lacaml_D.Mat.transpose_copy mat in 
@@ -223,17 +221,13 @@ let invariant_computation_lacaml mat =
     )
     []
     eigen_vals
-  in  let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t
-  in res
 
 let invariant_computation_pilat mat : QMat.vec list list = 
   let open QMat in  
-  let t = Sys.time () in
   let mat = Pilat_matrix.lacaml_to_qmat mat in
 
   let eigenvalues = Pilat_matrix.eigenvalues (*eigen_val_zarith*) mat in
   let identity = identity (get_dim_row mat) in
-  let res = 
     Q_Set.fold      
       (fun ev acc -> 
 	let new_mat = sub (transpose mat) (scal_mul identity ev) in 
@@ -241,14 +235,19 @@ let invariant_computation_pilat mat : QMat.vec list list =
       )
       eigenvalues
       []  
+
+
+
+let invariant_computation mat = 
+  
+  let t = Sys.time () in
+  let res =   
+    if Mat_option.Use_zarith.get () 
+    then invariant_computation_pilat mat
+    else invariant_computation_lacaml mat
   in
   let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t
   in res
-
-let invariant_computation mat = 
-  if Mat_option.Use_zarith.get () 
-  then invariant_computation_pilat mat
-  else invariant_computation_lacaml mat
 
 let intersection_bases_lacaml b1 b2 =
   if b1 = [] || b2 = [] then [||]
@@ -344,7 +343,6 @@ let intersection_bases_lacaml b1 b2 =
 let intersection_invariants_lacaml ll1 ll2 =
   (* Takes two union of eigenspaces represented as list of list of vectors,
      and intersects them. *)
-  let t = Sys.time () in
 
   let print_vec_list v_list = 
     List.iter
@@ -353,7 +351,7 @@ let intersection_invariants_lacaml ll1 ll2 =
 	    "%a --\n" 
 	    Lacaml_D.pp_vec v)
       v_list in
-  let res = List.fold_left
+ List.fold_left
       (fun acc l1 -> 
 	Mat_option.debug ~dkey:dkey_inter ~level:5
 	  "Intersection of";
@@ -388,9 +386,7 @@ let intersection_invariants_lacaml ll1 ll2 =
       )
       []
       ll1
-  in
-  let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t
-  in res
+
 
 (** Intersection bases with zarith *)
 
@@ -506,7 +502,6 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
 let intersection_invariants_pilat ll1 ll2 = 
   (* Takes two union of eigenspaces represented as list of list of vectors,
      and intersects them. *)
-  let t = Sys.time () in
   let print_vec_list v_list = 
     List.iter
       (fun v -> 
@@ -515,7 +510,7 @@ let intersection_invariants_pilat ll1 ll2 =
 	  QMat.pp_vec v)
       v_list in
   
-  let res = List.fold_left
+  List.fold_left
     (fun acc l1 -> 
       Mat_option.debug ~dkey:dkey_inter ~level:5
 	"Intersection of";
@@ -550,33 +545,37 @@ let intersection_invariants_pilat ll1 ll2 =
     )
     []
     ll1
-  in
   
-  let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t
-  in res 
+ 
 
 let intersection_invariants vll1 vll2 = 
-  if Mat_option.Use_zarith.get () 
-  then intersection_invariants_pilat vll1 vll2
-  else 
-    (* Not optimal, to change *)
-    let qll_to_lll vll = 
-      List.map
-	(fun vl -> List.map Pilat_matrix.qvec_to_lvec vl )
-	vll
-    in
-    let lll_to_qll vll = 
-      List.map
-	(fun vl -> List.map Pilat_matrix.lvec_to_qvec vl
-	) vll
-    in
-    lll_to_qll 
-      (intersection_invariants_lacaml 
-	 (qll_to_lll 
-	    vll1) 
-	 (qll_to_lll 
-	    vll2))
+  let t = Sys.time () in
+  let res = 
     
+    
+    if Mat_option.Use_zarith.get () 
+    then intersection_invariants_pilat vll1 vll2
+    else 
+    (* Not optimal, to change *)
+      let qll_to_lll vll = 
+	List.map
+	  (fun vl -> List.map Pilat_matrix.qvec_to_lvec vl )
+	  vll
+      in
+      let lll_to_qll vll = 
+	List.map
+	  (fun vl -> List.map Pilat_matrix.lvec_to_qvec vl
+	  ) vll
+      in
+      lll_to_qll 
+	(intersection_invariants_lacaml 
+	   (qll_to_lll 
+	      vll1) 
+	   (qll_to_lll 
+	      vll2))
+  in
+  let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t
+  in res
 let integrate_vec (vec:QMat.vec) = 
   let array = QMat.vec_to_array vec in
   let coef = 

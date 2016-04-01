@@ -520,7 +520,7 @@ let eigenvalues mat =
   in
   let (coef,power) = div_by_x poly
   in
-
+  
   let affine_constant = Q.mul coef (Q.of_bigint k) 
   in
   assert (Q.den affine_constant = Z.one);
@@ -582,4 +582,7 @@ let eigenvalues mat =
     )
     root_candidates
   in
+  let res = 
+    if power = 0 then res 
+    else Q_Set.add Q.zero res in
   let () = Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t in res
