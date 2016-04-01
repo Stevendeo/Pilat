@@ -177,9 +177,8 @@ let vec_to_term_zarith (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Pilat_mat
       if cst = 0 then acc else
       
       let term_cst = 
-	Logic_const.term 
-	  (TConst (Integer (Integer.of_int cst,(Some (string_of_int cst))))) Linteger 
-      in
+	Logic_const.term (TConst (Integer (Integer.of_int cst,(Some (string_of_int cst))))) Linteger in
+
 
       let monom_term = 
 	

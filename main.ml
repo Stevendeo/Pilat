@@ -74,13 +74,9 @@ let print_vec_zarith rev_base vec =
 
 let time = ref 0.
 
+let loop_poly_hashtbl = Cil_datatype.Stmt.Hashtbl.create 2
+
 (** Loop analyzer functions*)
-
-let parsing_time = ref 0.
-
-let invar_time = ref 0.
-
-let inter_time = ref 0.
 
 let vstmt_lacaml kf stmt = 
   
@@ -102,42 +98,21 @@ let vstmt_lacaml kf stmt =
 	None -> 
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is not solvable"; DoChildren
       | Some poly_lists -> 
-
+	let () = (* Debug for zarith  *)
+	  Cil_datatype.Stmt.Hashtbl.add loop_poly_hashtbl stmt poly_lists in
 	let first_poly = List.hd poly_lists in 
-
-	let () = Mat_option.feedback "Parsing" in
-	let parsing = Sys.time () in
 	let b1,m1 = Matrix_ast.loop_matrix first_poly in
-	let () = parsing_time := !parsing_time -. parsing +. Sys.time () in
-
-
-	let () = Mat_option.feedback "Invariant generation" in
-	let invar = Sys.time () in
 	let first_invar = Invariant_utils.invariant_computation m1 in
-	let () = invar_time := !invar_time -. invar +. Sys.time () in
-
 	let whole_loop_invar = 
 	  List.fold_left
 	    (fun acc p_list -> 
 	      if acc = [] then [] 
 	      else
-		let () = Mat_option.feedback "Parsing" in
-		let parsing = Sys.time () in
 		let _,m2 = Matrix_ast.loop_matrix p_list in 	  
-		let () = parsing_time := !parsing_time -. parsing +. Sys.time () in
-
 		
-		let () = Mat_option.feedback "Invariant generation" in
-		let invar_t = Sys.time () in
- 		let invar = (Invariant_utils.invariant_computation m2) in
-		let () = invar_time := !invar_time -. invar_t +. Sys.time () in
-		
-		let () = Mat_option.feedback "Invariant intersection" in
-		let inter = Sys.time () in
-		let i = Invariant_utils.intersection_invariants_pilat invar acc in
-		let () = inter_time := !inter_time -. inter +. Sys.time () in
-
-		i
+ 		let invar = (Invariant_utils.invariant_computation m2)
+		in 
+		Invariant_utils.intersection_invariants invar acc
 	    )
 	    first_invar
 	    (List.tl poly_lists)
@@ -154,7 +129,7 @@ let vstmt_lacaml kf stmt =
 		"Invariant %i :" (i + 1) in
 	    List.iter
 	      (fun invar ->  
-		print_vec_zarith rev_base invar;
+		print_vec rev_base invar;
 		Mat_option.debug ~dkey:dkey_stmt "__\n";
 	      )invars
 	      
@@ -163,7 +138,7 @@ let vstmt_lacaml kf stmt =
 	
 	time := Sys.time() -. t0 +. !time;
 	
-	Acsl_gen.add_loop_annots_zarith kf stmt b1 whole_loop_invar;
+	Acsl_gen.add_loop_annots kf stmt b1 whole_loop_invar;
 	DoChildren
     end (* Loop *)
   | _ -> DoChildren
@@ -190,32 +165,18 @@ let vstmt_zarith kf stmt =
       | Some poly_lists -> 
 	
 	let first_poly = List.hd poly_lists in 
-
-	let parsing = Sys.time () in
 	let b1,m1 = Matrix_ast.loop_qmat first_poly in
-	let () = parsing_time := !parsing_time -. parsing +. Sys.time () in
-
-	let invar_t = Sys.time () in	
 	let first_invar = Invariant_utils.invariant_computation_pilat m1 in
-	let () = invar_time := !invar_time -. invar_t +. Sys.time () in
-
-
 	let whole_loop_invar = 
 	  List.fold_left
 	    (fun acc p_list -> 
 	      if acc = [] then [] 
 	      else
-		let parsing = Sys.time () in
-		let _,m2 = Matrix_ast.loop_qmat p_list in 
-		let () = parsing_time := !parsing_time -. parsing +. Sys.time () in	  
+		let _,m2 = Matrix_ast.loop_qmat p_list in 	  
 		
-		let invar_t = Sys.time () in    
- 		let invar = (Invariant_utils.invariant_computation_pilat m2) in 
-		let () = invar_time := !invar_time -. invar_t +. Sys.time () in
-		
-		let inter = Sys.time () in
-		let i = Invariant_utils.intersection_invariants_pilat invar acc in
-		let () = inter_time := !inter_time -. inter +. Sys.time () in i
+ 		let invar = (Invariant_utils.invariant_computation_pilat m2)
+		in 
+		Invariant_utils.intersection_invariants_pilat invar acc
 	    )
 	    first_invar
 	    (List.tl poly_lists)
@@ -284,13 +245,6 @@ let run () =
 
   Mat_option.debug ~dkey:dkey_time 
     "Time to compute the relations : %f" !time ;
-
-  Mat_option.debug ~dkey:dkey_time ~level:2
-    "Parsing time : %f\nInvariant generation time : %f\n Intersection time : %f" 
-    !parsing_time 
-    !invar_time
-    !inter_time;
-
   (*Cil_datatype.Stmt.Hashtbl.iter
     (fun stmt poly_lists -> 
       let first_poly = List.hd poly_lists in 
