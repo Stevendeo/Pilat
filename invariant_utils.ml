@@ -3,7 +3,6 @@ open Pilat_matrix
 let dkey_inv = Mat_option.register_category "lacaml:inv"
 let dkey_ev = Mat_option.register_category "lacaml:ev"
 let dkey_inter = Mat_option.register_category "lacaml:inter"
-let dkey_zinv = Mat_option.register_category "zarith:inv"
 let dkey_zinter = Mat_option.register_category "zarith:inter"
 let dkey_nullspace = Mat_option.register_category "invar:null"
 module Int = Datatype.Int 
@@ -32,14 +31,14 @@ let eigen_val matrix =
     (fun b -> 
       assert (b = 0.))
     b;
- *)Lacaml_D.Vec.fold
-    (fun acc a -> if List.mem a acc  then acc else 
-	let () = Mat_option.debug ~dkey:dkey_ev ~level:4 "Ev : %f" a in a::acc)
-    []
-    a
+ *)
+  let res = ref [] in
+  Lacaml_D.Vec.iteri
+    (fun i im -> if im = 0. then res :=  a.{i} :: !res) b;
+  !res
 
 (** Eigenvalues of a zarith matrix *)
-
+(*
 let eigen_val_zarith m = 
   let res = 
     List.map
@@ -53,6 +52,7 @@ let eigen_val_zarith m =
 	"Ev : %a"
 	Q.pp_print ev
     )res; res
+*)
 (** 4. Nullspace computation *)
 
 let revert_rows mat a b = 
