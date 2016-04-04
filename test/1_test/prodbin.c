@@ -1,13 +1,15 @@
 int main(){
-  int a,b;
-  int x,y,z;
+  int a=50000,b=100000;
+  int x,y,z=0;
 
   x = a;
   y = b;
   z = 0;
   
   while( y!=0 ) 
-    { 
+    { x=x;
+      y=y;
+      z = z;
       if ( y % 2 ==1 )
 	{
 	  z = z+x;
@@ -16,6 +18,7 @@ int main(){
       x = 2*x;
       y = y/2;
     }
+  //@ assert z == a*b;
   return z; 
 }
 
