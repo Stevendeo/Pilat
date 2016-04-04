@@ -7,9 +7,8 @@ int main(){
   z = 0;
   
   while( y!=0 ) 
-    { x=x;
-      y=y;
-      z = z;
+    { 
+      
       if ( y % 2 ==1 )
 	{
 	  z = z+x;

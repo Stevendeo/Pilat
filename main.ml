@@ -80,7 +80,7 @@ let varinfo_registerer block =
   let vinfos = ref Cil_datatype.Varinfo.Set.empty in
   
   let visitor = 
-    object(self)
+    object
       
       inherit Visitor.frama_c_inplace
       method! vvrbl v = 
@@ -90,7 +90,7 @@ let varinfo_registerer block =
     end 
   in
   let () = 
-    Cil.visitCilFile (visitor :> Cil.cilVisitor) (Ast.get ())
+    ignore (Cil.visitCilBlock (visitor :> Cil.cilVisitor) block)
   in
   !vinfos
     
@@ -120,17 +120,24 @@ object(self)
 	  None -> 
 	    Mat_option.debug ~dkey:dkey_stmt "The loop is not solvable"; DoChildren
 	| Some poly_lists -> 
+	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 	  
 	  let varinfos_used = varinfo_registerer b in
+	  Mat_option.debug ~dkey:dkey_stmt ~level: 2 "Used varinfos computed";
+
+     
 	  let first_poly = List.hd poly_lists in 
-	  let b1,m1 = Matrix_ast.loop_matrix first_poly in
+	  let b1,m1 = Matrix_ast.loop_matrix varinfos_used first_poly in
+	  Mat_option.debug ~dkey:dkey_stmt ~level: 2 "First matrix computed";
+
+
 	  let first_invar = Invariant_utils.invariant_computation m1 in
 	  let whole_loop_invar = 
 	    List.fold_left
 	      (fun acc p_list -> 
 		if acc = [] then [] 
 		else
-		  let _,m2 = Matrix_ast.loop_matrix p_list in 	  
+		  let _,m2 = Matrix_ast.loop_matrix varinfos_used p_list in 	  
 		  
  		  let invar = (Invariant_utils.invariant_computation m2)
 		  in 

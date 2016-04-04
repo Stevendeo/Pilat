@@ -465,11 +465,11 @@ let block_to_poly_lists block =
 
 (** 3. Matrix from poly *)
  
-let lacaml_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  = 
+let lacaml_loop_matrix (all_vars:Varinfo.Set.t) (poly_affect_list :(varinfo * F_poly.t) list)  = 
 
   let poly_affect_list (* We add here the variables used in the loop, but not modified *) = 
     
-      let rec allvars poly_list = 
+      (*let rec allvars poly_list = 
 	match poly_list with
 	  [] -> Varinfo.Set.empty
 	| (_,poly)::tl -> 
@@ -484,7 +484,8 @@ let lacaml_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
 	  Varinfo.Set.union (allvars tl) vars_in_poly
       in 
       let all_vars = allvars poly_affect_list in
-       
+      *)
+    
       Varinfo.Set.fold
 	(fun v acc -> (v, (F_poly.monomial 1. [v,1])) :: acc)
 	all_vars
@@ -531,6 +532,6 @@ let lacaml_loop_matrix (poly_affect_list :(varinfo * F_poly.t)  list)  =
 let loop_matrix = 
   lacaml_loop_matrix
 
-let loop_qmat m = 
-  let b,m = loop_matrix m in
+let loop_qmat v m = 
+  let b,m = loop_matrix v m in
   b, Pilat_matrix.lacaml_to_qmat m
