@@ -76,6 +76,24 @@ let time = ref 0.
     
 (** Visitor *)
     
+let varinfo_registerer block = 
+  let vinfos = ref Cil_datatype.Varinfo.Set.empty in
+  
+  let visitor = 
+    object(self)
+      
+      inherit Visitor.frama_c_inplace
+      method! vvrbl v = 
+	let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
+	in
+	SkipChildren
+    end 
+  in
+  let () = 
+    Cil.visitCilFile (visitor :> Cil.cilVisitor) (Ast.get ())
+  in
+  !vinfos
+    
 let loop_analyzer () = 
 object(self)
   inherit Visitor.frama_c_inplace
@@ -93,16 +111,17 @@ object(self)
 	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
 	    stmt.sid in
 	
-	let res = 
+	let polys_opt = 
 	try Some (Matrix_ast.block_to_poly_lists b)
 	with Matrix_ast.Not_solvable -> None 
 	in
 	
-	match res with 
+	match polys_opt with 
 	  None -> 
 	    Mat_option.debug ~dkey:dkey_stmt "The loop is not solvable"; DoChildren
 	| Some poly_lists -> 
 	  
+	  let varinfos_used = varinfo_registerer b in
 	  let first_poly = List.hd poly_lists in 
 	  let b1,m1 = Matrix_ast.loop_matrix first_poly in
 	  let first_invar = Invariant_utils.invariant_computation m1 in
@@ -149,7 +168,7 @@ object(self)
       end (* Loop *)
     | _ -> DoChildren 
 end
-      
+     
 
 let run () =  
   if Mat_option.Enabled.get ()
