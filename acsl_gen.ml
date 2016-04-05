@@ -263,12 +263,29 @@ let value_search_of_non_zero term_list stmt=
     )
     term_list
 
-(** Searches if a term is never equals to zero. Fails if so *)
+(** Searches if a term does not contains variables. By construction, ther should not be 
+    a term equal to 0. Fails if we find a term. *)
 
-let non_zero_search_from_scratch term_list stmt =
-  let annots = Annotations.code_annot stmt in
-  ()
+exception Var_found
+let non_zero_search_from_scratch term_list =
 
+  let var_visitor = 
+    object
+      inherit Visitor.frama_c_inplace
+      method! vvrbl v = raise Var_found
+    end
+  in
+  List.iter
+    (fun t ->
+      try 
+	begin
+	  ignore (Cil.visitCilTerm (var_visitor :> Cil.cilVisitor) t);
+	  raise (No_zero_found t)
+	end
+      with   
+	Var_found -> ()
+    )
+    term_list
 (** Returns (Some t) if t is never equal to zero, None else*)
 let test_never_zero (stmt : stmt) (term_list : term list) : term option =
 
@@ -279,7 +296,7 @@ let test_never_zero (stmt : stmt) (term_list : term list) : term option =
 	value_search_of_non_zero term_list stmt
       else
 	(** Naive search : looking for a term without not-constant variables *)
-	non_zero_search_from_scratch term_list stmt
+	non_zero_search_from_scratch term_list
 	
   in
 
