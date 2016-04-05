@@ -289,7 +289,6 @@ let non_zero_search_from_scratch term_list =
 (** Returns (Some t) if t is never equal to zero, None else*)
 let test_never_zero (stmt : stmt) (term_list : term list) : term option =
 
-
   let if_no_zero_fails () = 
       if Db.Value.is_computed ()
       then
@@ -303,9 +302,53 @@ let test_never_zero (stmt : stmt) (term_list : term list) : term option =
     try if_no_zero_fails (); None 
     with No_zero_found t -> Some t
 	
-
+(* Sum (term_list) = k*t  *)
+let term_list_to_simple_predicate t term_list fundec = 
+  let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
+  in
+  let kt = 
+    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
+    in
+    new_ghost_var.vghost <- true;     
+    let lvar = Cil.cvar_to_lvar new_ghost_var in
+    let term_gvar = 
+      Logic_const.term
+	(TLval ((TVar lvar),TNoOffset)) Linteger 
+    in
+    Logic_const.term
+      (TBinOp
+	 (Mult,
+ 	  term_gvar,
+	  t) 
+      ) Linteger
+  in
+  let sum_term = 
+    List.fold_left
+      (fun acc term -> 
+	if Cil_datatype.Term.equal t term
+	then acc
+	else if acc = zero 
+	then term 
+	else 
+	    Logic_const.term
+	      (TBinOp (PlusA,acc,term)) Linteger 
+	    
+      )
+      zero
+      term_list
+  in
+  let pred = 
+    Prel
+      (Req,
+       sum_term,
+       kt)
+  in
+   
+  Logic_const.unamed pred
+  
 let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
+    (stmt: Cil_types.stmt)
     (base:int Matrix_ast.F_poly.Monom.Map.t) 
     (vec_list : Pilat_matrix.QMat.vec list) 
     : predicate named =
@@ -315,8 +358,12 @@ let vec_space_to_predicate_zarith
       (vec_to_term_zarith base) vec_list in
 
   (** If a term is always different to 0, then a stronger result is possible *)
-  term_list_to_predicate term_list fundec
-  
+
+ 
+  match test_never_zero stmt term_list with
+    None -> 
+      term_list_to_predicate term_list fundec
+  | Some t -> term_list_to_simple_predicate t term_list fundec
 
 let add_loop_annots_zarith kf stmt base vec_lists = 
   let fundec = match kf.fundec with
@@ -326,7 +373,7 @@ let add_loop_annots_zarith kf stmt base vec_lists =
   let annots =   
     List.map 
       (fun vecs -> 
-	to_code_annot (vec_space_to_predicate_zarith fundec base vecs)
+	to_code_annot (vec_space_to_predicate_zarith fundec stmt base vecs)
       )
       vec_lists
       
