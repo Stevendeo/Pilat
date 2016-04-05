@@ -6,6 +6,7 @@ PLUGIN_DIR ?=.
 PLUGIN_NAME	:= Pilat
 
 PLUGIN_CMO 	:= mat_option\
+		pilat_visitors\
 		poly\
 		pilat_matrix\
 		invariant_utils\

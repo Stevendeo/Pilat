@@ -394,8 +394,6 @@ let term_list_to_simple_predicate t term_list fundec stmt =
 	    t) 
 	) Linteger
     in
-
- 
     
     let () =     
       let init_k = 
@@ -472,7 +470,6 @@ let vec_space_to_predicate_zarith
 
   (** If a term is always different to 0, then a stronger result is possible *)
 
- 
   match test_never_zero stmt term_list with
     None -> 
       term_list_to_predicate term_list fundec

@@ -76,34 +76,10 @@ let time = ref 0.
     
 (** Visitor *)
     
-let varinfo_registerer block = 
-  let vinfos = ref Cil_datatype.Varinfo.Set.empty in
-  
-  let visitor = 
-    object
-      
-      inherit Visitor.frama_c_inplace
-      method! vvrbl v = 
-	let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
-	in
-	SkipChildren      
-      method! vstmt s = 
-	match s.skind with 
-	  If _ -> Cil.SkipChildren 
-	| _ -> Cil.DoChildren
-    end 
-  in
-  let () = 
-    ignore (Cil.visitCilBlock (visitor :> Cil.cilVisitor) block)
-  in
-  !vinfos
-    
 let loop_analyzer () = 
 object(self)
   inherit Visitor.frama_c_inplace
     
-  val loop_treated = ref Cil_datatype.Stmt.Set.empty
-
   method! vstmt_aux stmt =
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
@@ -126,7 +102,7 @@ object(self)
 	| Some poly_lists -> 
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 	  
-	  let varinfos_used = varinfo_registerer b in
+	  let varinfos_used = Pilat_visitors.varinfo_registerer b in
 	  Mat_option.debug ~dkey:dkey_stmt ~level: 2 "Used varinfos computed";
 
      
