@@ -273,6 +273,10 @@ let non_zero_search_from_scratch term_list =
     object
       inherit Visitor.frama_c_inplace
       method! vvrbl v = raise Var_found
+      method! vstmt s = 
+	match s.skind with 
+	  If _ -> Cil.SkipChildren 
+	| _ -> Cil.DoChildren
     end
   in
   List.iter

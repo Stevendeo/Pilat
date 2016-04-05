@@ -86,7 +86,11 @@ let varinfo_registerer block =
       method! vvrbl v = 
 	let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
 	in
-	SkipChildren
+	SkipChildren      
+      method! vstmt s = 
+	match s.skind with 
+	  If _ -> Cil.SkipChildren 
+	| _ -> Cil.DoChildren
     end 
   in
   let () = 
