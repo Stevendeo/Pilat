@@ -273,10 +273,7 @@ let non_zero_search_from_scratch term_list =
     object
       inherit Visitor.frama_c_inplace
       method! vvrbl v = raise Var_found
-      method! vstmt s = 
-	match s.skind with 
-	  If _ -> Cil.SkipChildren 
-	| _ -> Cil.DoChildren
+
     end
   in
   List.iter
@@ -305,27 +302,64 @@ let test_never_zero (stmt : stmt) (term_list : term list) : term option =
 
     try if_no_zero_fails (); None 
     with No_zero_found t -> Some t
-	
+
+let get_inst_loc = function
+  | Set (_, _, l)
+  | Call (_, _, _, l)
+  | Asm (_,_,_,_,_,_,l)
+  | Skip l
+  | Code_annot (_, l) -> l
+    
+let rec get_stmt_loc s = match s.skind with
+  | Instr i -> get_inst_loc i
+  | Return (_, l)
+  | Goto (_, l)
+  | Break l
+  | Continue l
+  | If (_, _, _, l)
+  | Switch(_, _, _, l)
+  | Loop (_, _, l, _, _)
+  | Throw (_, l)
+  | TryCatch (_, _, l)
+  | TryFinally (_, _, l)
+  | TryExcept (_, _, _, l) -> l
+  | Block b ->
+    (try
+       let first_stmt = List.hd b.bstmts in
+       get_stmt_loc first_stmt
+     with
+     | _ -> raise (Invalid_argument "No statement found"))
+  | UnspecifiedSequence s ->
+    (try
+       let first_stmt, _, _, _, _ = List.hd s in
+       get_stmt_loc first_stmt
+     with
+       _ -> raise (Invalid_argument "No statement found"))
+      
+      
+(** When the invariant is simple (ie sum term = k*t), then the value of
+    k can be computed from the initial values of the variables. Returns 
+    the assignment to add just before the loop starts. *)
+
+let k_first_value lval term loc = 
+  let exp = !Db.Properties.Interp.term_to_exp ~result:None term in 
+  Mat_option.debug 
+    ~dkey:dkey_term ~level:2 
+    "Assigning %a to %a = %a"
+    Printer.pp_lval lval
+    Printer.pp_term term
+    Printer.pp_exp exp;
+  
+  let instr = 
+    Set (lval,exp,loc)
+  in
+  Cil.mkStmtOneInstr ~ghost:true ~valid_sid:true instr
+
 (* Sum (term_list) = k*t  *)
-let term_list_to_simple_predicate t term_list fundec = 
+let term_list_to_simple_predicate t term_list fundec stmt = 
   let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
   in
-  let kt = 
-    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
-    in
-    new_ghost_var.vghost <- true;     
-    let lvar = Cil.cvar_to_lvar new_ghost_var in
-    let term_gvar = 
-      Logic_const.term
-	(TLval ((TVar lvar),TNoOffset)) Linteger 
-    in
-    Logic_const.term
-      (TBinOp
-	 (Mult,
- 	  term_gvar,
-	  t) 
-      ) Linteger
-  in
+
   let sum_term = 
     List.fold_left
       (fun acc term -> 
@@ -336,11 +370,86 @@ let term_list_to_simple_predicate t term_list fundec =
 	else 
 	    Logic_const.term
 	      (TBinOp (PlusA,acc,term)) Linteger 
-	    
+	      
       )
       zero
       term_list
   in
+
+  let kt = 
+    
+    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
+    in
+    new_ghost_var.vghost <- true;     
+    let lvar = Cil.cvar_to_lvar new_ghost_var in
+    let term_gvar = 
+      Logic_const.term
+	(TLval ((TVar lvar),TNoOffset)) Linteger 
+    in
+    let term =  
+      Logic_const.term
+	(TBinOp
+	   (Mult,
+ 	    term_gvar,
+	    t) 
+	) Linteger
+    in
+
+ 
+    
+    let () =     
+      let init_k = 
+	k_first_value 
+	  (Var new_ghost_var,NoOffset) 
+	  sum_term 
+	  (get_stmt_loc stmt)
+      in
+      let () = 
+	Mat_option.debug 
+	  ~dkey:dkey_term ~level:2 
+	  "Adding stmt %a to the CFG" Printer.pp_stmt init_k;
+	fundec.sbody.bstmts <- init_k :: fundec.sbody.bstmts
+      in
+      
+
+      let loop_block = 
+	match stmt.skind with 
+	  Loop(_,b,_,_,_) -> b.bstmts
+	| _ -> assert false
+      in
+      try 
+	let stmt_before_loop = 
+	  List.find
+	    (fun s -> not(List.mem s loop_block))
+	    loop_block
+	in 
+	let () = 
+	  Mat_option.debug 
+	    ~dkey:dkey_term ~level:2 
+	    "between %a and %a" 
+	    Printer.pp_stmt stmt_before_loop
+	    Printer.pp_stmt stmt in
+
+	stmt_before_loop.succs <- [init_k];
+	init_k.preds <- [stmt_before_loop];
+	init_k.succs <- [stmt];
+	stmt.preds <- init_k :: ( 
+	  List.filter
+	  (fun s -> Cil_datatype.Stmt.equal s stmt_before_loop)
+	    stmt.preds)
+      with Not_found (* No previous stmt from the loop *) -> 
+	let () = 
+	  Mat_option.debug 
+	    ~dkey:dkey_term ~level:2
+	    "before %a" Printer.pp_stmt stmt 
+	in 
+	init_k.succs <- [stmt];
+	stmt.preds <- [init_k];
+    in
+    term
+   
+  in
+  
   let pred = 
     Prel
       (Req,
@@ -349,7 +458,7 @@ let term_list_to_simple_predicate t term_list fundec =
   in
    
   Logic_const.unamed pred
-  
+
 let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
@@ -367,7 +476,8 @@ let vec_space_to_predicate_zarith
   match test_never_zero stmt term_list with
     None -> 
       term_list_to_predicate term_list fundec
-  | Some t -> term_list_to_simple_predicate t term_list fundec
+  | Some t -> 
+    term_list_to_simple_predicate t term_list fundec stmt
 
 let add_loop_annots_zarith kf stmt base vec_lists = 
   let fundec = match kf.fundec with
