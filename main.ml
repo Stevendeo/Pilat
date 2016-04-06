@@ -100,6 +100,7 @@ object(self)
 	match polys_opt with 
 	  None -> 
 	    Mat_option.debug ~dkey:dkey_stmt "The loop is not solvable"; DoChildren
+
 	| Some poly_lists -> 
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 	  
@@ -111,7 +112,10 @@ object(self)
 	       loop, even if a variable doesn't appear on all loops, we need to 
 	       add identity assignment *)
 	    Cil_datatype.Varinfo.Set.fold
-	      (fun v acc -> (v, (Matrix_ast.F_poly.monomial 1. [v,1])):: acc )
+	      (fun v acc -> 
+		
+	       
+		(v, (Matrix_ast.F_poly.monomial 1. [v,1])):: acc )
 	      varinfos_used
 	      []
 	      

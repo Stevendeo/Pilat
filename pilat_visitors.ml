@@ -9,17 +9,17 @@ let varinfo_registerer block =
   let vinfos = ref Cil_datatype.Varinfo.Set.empty in
   
   let visitor = 
-    object
-      
+object(self)
       inherit Visitor.frama_c_inplace
       method! vvrbl v = 
-	let () = vinfos := Varinfo.Set.add v !vinfos
-	in
-	SkipChildren      
-      method! vstmt s = 
-	match s.skind with 
-	  If _ -> SkipChildren 
-	| _ -> DoChildren
+	match self#current_stmt with 
+	  None -> DoChildren (* This case might be useless *)
+	| Some {skind = If _ } -> DoChildren
+	| _ -> 
+	  let () = vinfos := Varinfo.Set.add v !vinfos
+	  in
+	  SkipChildren      
+
     end 
   in
   let () = 
