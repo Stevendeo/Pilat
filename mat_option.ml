@@ -12,7 +12,7 @@ module Enabled = False
    end)
       
 module Degree = Int
-  (struct 
+  (struct 2
     let option_name = "-pilat-degree"
     let help = "sets the degree of the invariants seeked"
     let arg_name = "n"

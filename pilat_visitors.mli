@@ -7,4 +7,4 @@ val varinfo_registerer : block -> Varinfo.Set.t
     stmts registered by register_stmt *)
 
 val register_stmt : stmt -> stmtkind -> unit
-class fundec_updater : Visitor.frama_c_inplace
+class fundec_updater : Project.t -> Visitor.frama_c_copy

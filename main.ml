@@ -156,7 +156,6 @@ object(self)
     | _ -> DoChildren 
 end
      
-
 let run () =  
   if Mat_option.Enabled.get ()
   then
@@ -170,11 +169,24 @@ let run () =
     let fname = Mat_option.Output_C_File.get () in 
     if  fname = "" then file.fileName ^ "_annot.c" else fname
   in
-       
+  
   let () = 
     let vis = loop_analyzer () in
     Cil.visitCilFile (vis :> Cil.cilVisitor) file
   in
+
+  let prj = 
+    File.create_project_from_visitor 
+      "new_pilat_project" 
+      (fun p -> new Pilat_visitors.fundec_updater p) 
+      
+  in
+  List.iter
+    (function
+    |GFun (f,_) -> 
+      File.must_recompute_cfg f;
+    | _ -> ())
+    file.globals;
 
   Mat_option.debug ~dkey:dkey_time 
     "Time to compute the relations : %f" !time ;
@@ -191,10 +203,9 @@ let run () =
   let fmt = Format.formatter_of_out_channel cout in
   Kernel.Unicode.without_unicode
     (fun () ->
-      File.pretty_ast ~fmt ();
+      File.pretty_ast ~prj ~fmt ();
       close_out cout;
       Mat_option.feedback "C file generation      : done\n";
     ) ()
-    
   
 let () = Db.Main.extend run

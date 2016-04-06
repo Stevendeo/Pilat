@@ -350,10 +350,8 @@ let k_first_value lval term loc =
     Printer.pp_term term
     Printer.pp_exp exp;
   
-  let instr = 
-    Set (lval,exp,loc)
-  in
-  Cil.mkStmtOneInstr ~ghost:true ~valid_sid:true instr
+    Instr(Set (lval,exp,loc))
+ 
 
 (* Sum (term_list) = k*t  *)
 let term_list_to_simple_predicate t term_list fundec stmt = 
@@ -402,50 +400,12 @@ let term_list_to_simple_predicate t term_list fundec stmt =
 	  sum_term 
 	  (get_stmt_loc stmt)
       in
-      let () = 
-	Mat_option.debug 
-	  ~dkey:dkey_term ~level:2 
-	  "Adding stmt %a to the CFG" Printer.pp_stmt init_k;
-	fundec.sbody.bstmts <- init_k :: fundec.sbody.bstmts
-      in
-      
 
-      let loop_block = 
-	match stmt.skind with 
-	  Loop(_,b,_,_,_) -> b.bstmts
-	| _ -> assert false
-      in
-      try 
-	let stmt_before_loop = 
-	  List.find
-	    (fun s -> not(List.mem s loop_block))
-	    loop_block
-	in 
-	let () = 
-	  Mat_option.debug 
-	    ~dkey:dkey_term ~level:2 
-	    "between %a and %a" 
-	    Printer.pp_stmt stmt_before_loop
-	    Printer.pp_stmt stmt in
-
-	stmt_before_loop.succs <- [init_k];
-	init_k.preds <- [stmt_before_loop];
-	init_k.succs <- [stmt];
-	stmt.preds <- init_k :: ( 
-	  List.filter
-	  (fun s -> Cil_datatype.Stmt.equal s stmt_before_loop)
-	    stmt.preds)
-      with Not_found (* No previous stmt from the loop *) -> 
-	let () = 
-	  Mat_option.debug 
-	    ~dkey:dkey_term ~level:2
-	    "before %a" Printer.pp_stmt stmt 
-	in 
-	init_k.succs <- [stmt];
-	stmt.preds <- [init_k];
+      Pilat_visitors.register_stmt stmt init_k
     in
+    
     term
-   
+      
   in
   
   let pred = 
@@ -454,9 +414,9 @@ let term_list_to_simple_predicate t term_list fundec stmt =
        sum_term,
        kt)
   in
-   
+  
   Logic_const.unamed pred
-
+    
 let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
