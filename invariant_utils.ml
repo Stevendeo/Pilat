@@ -4,6 +4,8 @@ let dkey_inv = Mat_option.register_category "lacaml:inv"
 let dkey_inter = Mat_option.register_category "lacaml:inter"
 let dkey_zinter = Mat_option.register_category "zarith:inter"
 let dkey_nullspace = Mat_option.register_category "invar:null"
+
+
 module Int = Datatype.Int 
 
 type vec = Pilat_matrix.QMat.vec 
@@ -227,6 +229,13 @@ let invariant_computation_pilat mat : QMat.vec list list =
   let mat = Pilat_matrix.lacaml_to_qmat mat in
 
   let eigenvalues = Pilat_matrix.eigenvalues (*eigen_val_zarith*) mat in
+
+  Mat_option.debug ~dkey:dkey_inv ~level:3 "Eigenvalues : ";
+  Pilat_matrix.Q_Set.iter
+    (fun ev -> Mat_option.debug ~dkey:dkey_inv ~level:3 "ev : %a" Q.pp_print ev)
+    eigenvalues;
+    
+
   let identity = identity (get_dim_row mat) in
     Q_Set.fold      
       (fun ev acc -> 
@@ -513,14 +522,14 @@ let intersection_invariants_pilat ll1 ll2 =
   
   List.fold_left
     (fun acc l1 -> 
-      Mat_option.debug ~dkey:dkey_zinter ~level:5
-	"Intersection of";
-      
-      print_vec_list l1;
+
       
       
       List.fold_left
 	(fun acc2 l2 -> 
+	  Mat_option.debug ~dkey:dkey_zinter ~level:5
+	    "Intersection of";
+	  print_vec_list l1;
 	  Mat_option.debug ~dkey:dkey_zinter ~level:5
 	    "with";
 	  print_vec_list l2;

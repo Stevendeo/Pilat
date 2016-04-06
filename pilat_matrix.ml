@@ -469,45 +469,30 @@ let eigenvalues mat =
   let t = Sys.time () in
   
   let deg_poly = (QMat.get_dim_col mat) in
-  let integrate_poly p = (* gets all divisors of the main elt of k.p, with k.p a polynomial
-			    with integer coeficients and also returns k. *)
+  let integrate_poly p = (* returns the main coefficient of the polynomial after multiplying it
+			    by a scalar such that the polynomial have only integer coefficients.*)
     let rec integ xn p = 
       if QPoly.deg_of_var xn Poly.X = deg_poly
-      then Z.one,Z_Set.singleton Z.one (* by construction, its xn's coef is an integer *)
+      then Z.one (* by construction, its xn's coef is an integer *)
       else 
 	let den_of_coef = 
 	  Q.den (QPoly.coef p xn)
 	in
 	let xnpo = (QPoly.mono_mul xn (QPoly.mono_minimal [Poly.X,1]))
 	in 
-	let k,integ_set = 
+	let k = 
 	  integ xnpo (QPoly.scal_mul (Q.of_bigint den_of_coef) p) in
 	
 	
-	(Z.mul k den_of_coef),
+	(Z.mul k den_of_coef)
 
-	(Z_Set.fold 
-	   (fun elt acc -> 
-	     Z_Set.add 
-	       (Z.mul elt den_of_coef)
-	       acc)
-	   
-	   integ_set
-	   integ_set)
     in
     integ QPoly.empty_monom p
   in
   let poly = char_poly mat in 
-  let k,divisors = integrate_poly poly in
+  let k = integrate_poly poly in
   
-  let () = 
-    Mat_option.debug ~dkey:dkey_ev ~level:2
-      "Polynomial : %a\n First parameter of the integrated poly : %a"
-      QPoly.pp_print poly
-      Z.pp_print k
-  in
-
-  let div_by_x poly = (* returns (coef,n) with coef*xn with the littlest n such that xn | poly *)
+    let div_by_x poly = (* returns (coef,n) with coef*xn with the littlest n such that xn | poly *)
     let rec __div_by_x monomial = 
       let coef = QPoly.coef poly monomial in
       Mat_option.debug ~dkey:dkey_ev ~level:4
@@ -533,10 +518,13 @@ let eigenvalues mat =
   let max_number_of_roots = deg_poly - power
   in
   let all_divs (i:Z.t) : Z_Set.t = 
-    (* Set of all positive divisors, the boolean is set to true if i is negative *) 
+
     let rec __all_divs cpt i = 
-      if  Z.geq (Z.shift_left cpt 1) i 
-      then Z_Set.add Z.minus_one (Z_Set.singleton Z.one)
+           
+      if  Z.gt (Z.shift_left cpt 1) i (* 2*p > i => p does not div i *)
+      then 
+	(Z_Set.singleton Z.one) 
+	 |> Z_Set.add Z.minus_one 
       else if Z.erem i cpt = Z.zero 
       then 
 	let divs = __all_divs cpt (Z.div i cpt) in
@@ -553,22 +541,39 @@ let eigenvalues mat =
       
       
     else 
-      __all_divs (Z.of_int 2) i
+      __all_divs (Z.of_int 2) i |> Z_Set.add i |> Z_Set.add (Z.mul i Z.minus_one)
 
   in
   
-  let divs_of_main_coef = all_divs affine_constant in
-  
+
+
+  let divs_of_affine_coef = all_divs affine_constant in
+  let divs_of_main_coef = all_divs k in
+
+  Z_Set.iter
+      (fun q -> 
+	Mat_option.debug 
+	  ~dkey:dkey_ev 
+	  ~level:3 
+	  "Divisor of affine const : %a" Z.pp_print q) divs_of_affine_coef ; 
+  Z_Set.iter
+      (fun p -> 
+	Mat_option.debug 
+	  ~dkey:dkey_ev 
+	  ~level:3 
+	  "Divisor of main const : %a" Z.pp_print p) divs_of_main_coef ; 
+
   let root_candidates = 
     Z_Set.fold
       (fun p acc -> 
+	
 	Z_Set.fold
 	  (fun q acc2 -> 
 	    Q_Set.add ((Q.(///)) p q) acc2)
-	  divisors
+	  divs_of_main_coef
 	  acc
       )
-      divs_of_main_coef
+      divs_of_affine_coef
       Q_Set.empty
   in
   let res = Q_Set.filter 

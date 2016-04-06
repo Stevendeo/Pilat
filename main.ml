@@ -6,6 +6,7 @@ open Pilat_matrix
 *)
 let dkey_stmt = Mat_option.register_category "main:loop_analyser"
 let dkey_time = Mat_option.register_category "main:timer"
+let dkey_base = Mat_option.register_category "main:base"
 
 let output_fun chan = Printf.fprintf chan "%s\n" 
   
@@ -135,28 +136,65 @@ object(self)
 	    Matrix_ast.F_poly.Monom.Set.fold
 	      (fun m map -> 
 		i := !i + 1;
+		Mat_option.debug ~dkey:dkey_base 
+		  "%i <-> %a" !i Matrix_ast.F_poly.Monom.pretty m;
 		Matrix_ast.F_poly.Monom.Map.add m !i map
 	      )
 	      bases_for_each_loop
 	      Matrix_ast.F_poly.Monom.Map.empty
 	  in
-	    
+	  let rev_base = rev_base base in
+ 
      
 	  let first_poly = List.hd affects in 
 	  let m1 = Matrix_ast.loop_matrix base first_poly in
-	  Mat_option.debug ~dkey:dkey_stmt ~level: 2 "First matrix computed";
+	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "First matrix computed";
+	  Mat_option.debug ~dkey:dkey_stmt ~level:3 "%a" Lacaml_D.pp_mat m1;
 
 
 	  let first_invar = Invariant_utils.invariant_computation m1 in
+	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
+	  List.iteri
+	    (fun i invars -> 
+	      let () = 
+		Mat_option.debug ~dkey:dkey_stmt
+		  "Invariant %i :" (i + 1) in
+	      List.iter
+		(fun invar ->  
+		  print_vec_zarith rev_base invar;
+		  Mat_option.debug ~dkey:dkey_stmt "__\n";
+		)invars
+		
+	    ) first_invar;
+	  
 	  let whole_loop_invar = 
 	    List.fold_left
 	      (fun acc p_list -> 
 		if acc = [] then [] 
 		else
 		  let m2 = Matrix_ast.loop_matrix base p_list in 	  
-		  
+		  Mat_option.debug ~dkey:dkey_stmt ~level:3 "New mat : %a" Lacaml_D.pp_mat m2;
  		  let invar = (Invariant_utils.invariant_computation m2)
 		  in 
+
+		  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
+		  List.iteri
+		    (fun i invars -> 
+		      let () = 
+			Mat_option.debug ~dkey:dkey_stmt
+			  "Invariant %i :" (i + 1) in
+		      List.iter
+			(fun invar ->  
+			  print_vec_zarith rev_base invar;
+			  Mat_option.debug ~dkey:dkey_stmt "__\n";
+			)invars
+			
+		    ) invar;
+
+
+
+
+
 		  Invariant_utils.intersection_invariants invar acc
 	      )
 	      first_invar
@@ -169,7 +207,6 @@ object(self)
 	    Mat_option.debug ~dkey:dkey_stmt
 	      "Invariants generated :"
 	  in
-	  let rev_base = rev_base base in
 	  List.iteri
 	    (fun i invars -> 
 	      let () = 
