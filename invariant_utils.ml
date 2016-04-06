@@ -390,7 +390,7 @@ let intersection_invariants_lacaml ll1 ll2 =
 
 (** Intersection bases with zarith *)
 
-let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list = 
+let intersection_bases_pilat (b1 : QMat.vec list)( b2 : QMat.vec list) : QMat.vec list = 
   if b1 = [] || b2 = [] then []
   else 
     let () = 
@@ -459,10 +459,10 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
     let u,n = 
       if b1_length < b2_length
       then 
-      (* u = *) QMat.transpose (QMat.from_array array_b1),
+      (* u =*)  QMat.transpose (QMat.from_array array_b1),
       (* n = (the b1_length first lines of n)*) 
 
-      QMat.create_mat (Array.length arr_nullspace) (QMat.get_dim_col mat)
+      QMat.create_mat (Array.length arr_nullspace) (b1_length)
 	(fun i j -> 
 	  (QMat.vec_to_array arr_nullspace.(i)).(j)
 	)
@@ -474,9 +474,9 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
 	  
 	in
 	
-      (* u = *) QMat.transpose ((QMat.from_array array_b2)),
+      (* u =*) QMat.transpose ((QMat.from_array array_b2)),
 	(* n = (the b2_length last first lines of n)*) 
-        QMat.create_mat (Array.length arr_nullspace) (QMat.get_dim_col mat  - b1_length)
+        QMat.create_mat (Array.length arr_nullspace) (b2_length)
 	  (fun i j -> 
 	    Mat_option.debug ~dkey:dkey_zinter ~level:4
 	      "Taking coordinates %i,%i+%i" i (j) b1_length;
@@ -494,7 +494,8 @@ let intersection_bases_pilat (b1 : QMat.vec list) b2 : QMat.vec list =
   let mat_base = QMat.transpose (QMat.mul u n)
   in 
   Array.fold_left
-    (fun acc arr -> (QMat.vec_from_array arr) :: acc)
+    (fun acc arr -> 
+      (QMat.vec_from_array arr) :: acc)
     []
     (QMat.to_array mat_base)
 
@@ -512,7 +513,7 @@ let intersection_invariants_pilat ll1 ll2 =
   
   List.fold_left
     (fun acc l1 -> 
-      Mat_option.debug ~dkey:dkey_inter ~level:5
+      Mat_option.debug ~dkey:dkey_zinter ~level:5
 	"Intersection of";
       
       print_vec_list l1;

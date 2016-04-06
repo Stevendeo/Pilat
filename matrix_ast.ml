@@ -57,7 +57,7 @@ struct
 	
       
       let row = Monom.Map.find monom_var base_monom in 
-
+      
       let () = 
 	Monom.Set.iter
 	  (fun m -> 
@@ -465,8 +465,11 @@ let block_to_poly_lists block =
 
 (** 3. Matrix from poly *)
  
-let lacaml_loop_matrix (all_vars:Varinfo.Set.t) (poly_affect_list :(varinfo * F_poly.t) list)  = 
+let lacaml_loop_matrix 
+    (base:int F_poly.Monom.Map.t) 
+    (all_modifs :(F_poly.Monom.t * F_poly.t) list)  = 
 
+  (*
   let poly_affect_list (* We add here the variables used in the loop, but not modified *) = 
     
       (*let rec allvars poly_list = 
@@ -492,6 +495,16 @@ let lacaml_loop_matrix (all_vars:Varinfo.Set.t) (poly_affect_list :(varinfo * F_
 	poly_affect_list in
 
   let all_modifs,all_monoms = add_monomial_modifications poly_affect_list in
+  let () = 
+    Mat_option.debug ~dkey:dkey_loop_mat ~level:3 
+      "Monomials studied :";
+    F_poly.Monom.Set.iter
+      (fun m -> 
+	Mat_option.debug ~dkey:dkey_loop_mat ~level:3 
+	"M = %a" F_poly.Monom.pretty m
+      )all_monoms
+      
+  in
   let i = ref 0 in 
   let base = 
     F_poly.Monom.Set.fold
@@ -502,7 +515,8 @@ let lacaml_loop_matrix (all_vars:Varinfo.Set.t) (poly_affect_list :(varinfo * F_
       all_monoms
       F_poly.Monom.Map.empty
   in
-  base,
+  base,*)
+  let mat_size = F_poly.Monom.Map.cardinal base in
   List.fold_left
     (fun acc (v,poly_affect) -> 
       let new_matrix = 
@@ -513,12 +527,12 @@ let lacaml_loop_matrix (all_vars:Varinfo.Set.t) (poly_affect_list :(varinfo * F_
 	   poly_affect)
       ) in 
       
-      Mat_option.debug ~dkey:dkey_loop_mat ~level:2
+      Mat_option.debug ~dkey:dkey_loop_mat ~level:4
 	"New matrix for %a = %a :"
         F_poly.Monom.pretty v
 	F_poly.pp_print poly_affect;
 
-      Mat_option.debug ~dkey:dkey_loop_mat ~level:2 "%a * %a"
+      Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
 	Lacaml_D.pp_mat new_matrix
 	Lacaml_D.pp_mat acc;
       
@@ -526,12 +540,12 @@ let lacaml_loop_matrix (all_vars:Varinfo.Set.t) (poly_affect_list :(varinfo * F_
 	new_matrix
 	acc 
     )
-    (Lacaml_D.Mat.identity !i)
+    (Lacaml_D.Mat.identity mat_size)
     all_modifs
   
 let loop_matrix = 
   lacaml_loop_matrix
 
 let loop_qmat v m = 
-  let b,m = loop_matrix v m in
-  b, Pilat_matrix.lacaml_to_qmat m
+  let m = loop_matrix v m in
+  Pilat_matrix.lacaml_to_qmat m

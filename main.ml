@@ -104,10 +104,46 @@ object(self)
 	  
 	  let varinfos_used = Pilat_visitors.varinfo_registerer b in
 	  Mat_option.debug ~dkey:dkey_stmt ~level: 2 "Used varinfos computed";
-
+	  
+	  let basic_assigns = 
+	    (* In order to compute the transformations for all variables in each 
+	       loop, even if a variable doesn't appear on all loops, we need to 
+	       add identity assignment *)
+	    Cil_datatype.Varinfo.Set.fold
+	      (fun v acc -> (v, (Matrix_ast.F_poly.monomial 1. [v,1])):: acc )
+	      varinfos_used
+	      []
+	      
+	    
+	  in
+	  let affects,bases_for_each_loop = 
+	    List.fold_left
+	      (fun (acc_affect,acc_base) p_list -> 
+		let affect,m_set = 
+		  Matrix_ast.add_monomial_modifications 
+		    (basic_assigns@p_list) in 
+				
+		let acc_affect = affect :: acc_affect and  
+		    acc_base = Matrix_ast.F_poly.Monom.Set.union acc_base m_set in
+		(acc_affect,acc_base))
+	      ([],Matrix_ast.F_poly.Monom.Set.empty)
+	      poly_lists
+	  in
+	  
+	  let base = 
+	    let i = ref 0 in
+	    Matrix_ast.F_poly.Monom.Set.fold
+	      (fun m map -> 
+		i := !i + 1;
+		Matrix_ast.F_poly.Monom.Map.add m !i map
+	      )
+	      bases_for_each_loop
+	      Matrix_ast.F_poly.Monom.Map.empty
+	  in
+	    
      
-	  let first_poly = List.hd poly_lists in 
-	  let b1,m1 = Matrix_ast.loop_matrix varinfos_used first_poly in
+	  let first_poly = List.hd affects in 
+	  let m1 = Matrix_ast.loop_matrix base first_poly in
 	  Mat_option.debug ~dkey:dkey_stmt ~level: 2 "First matrix computed";
 
 
@@ -117,14 +153,14 @@ object(self)
 	      (fun acc p_list -> 
 		if acc = [] then [] 
 		else
-		  let _,m2 = Matrix_ast.loop_matrix varinfos_used p_list in 	  
+		  let m2 = Matrix_ast.loop_matrix base p_list in 	  
 		  
  		  let invar = (Invariant_utils.invariant_computation m2)
 		  in 
 		  Invariant_utils.intersection_invariants invar acc
 	      )
 	      first_invar
-	      (List.tl poly_lists)
+	      (List.tl affects)
 	  in
 	  let whole_loop_invar = 
 	  List.map
@@ -133,7 +169,7 @@ object(self)
 	    Mat_option.debug ~dkey:dkey_stmt
 	      "Invariants generated :"
 	  in
-	  let rev_base = rev_base b1 in
+	  let rev_base = rev_base base in
 	  List.iteri
 	    (fun i invars -> 
 	      let () = 
@@ -150,7 +186,7 @@ object(self)
 	  
 	  time := Sys.time() -. t0 +. !time;
 
-	  Acsl_gen.add_loop_annots_zarith kf stmt b1 whole_loop_invar;
+	  Acsl_gen.add_loop_annots_zarith kf stmt base whole_loop_invar;
 	  DoChildren
       end (* Loop *)
     | _ -> DoChildren 
