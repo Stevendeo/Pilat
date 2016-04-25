@@ -8,6 +8,7 @@ PLUGIN_NAME	:= Pilat
 PLUGIN_CMO 	:= mat_option\
 		pilat_visitors\
 		poly\
+		lacaml_matrix\
 		pilat_matrix\
 		poly_affect\
 		invariant_utils\

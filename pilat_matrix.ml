@@ -1,4 +1,5 @@
 let dkey_ev = Mat_option.register_category "pilat_matrix:eigenvalue"
+let dkey_null = Mat_option.register_category "pilat_matrix:nullspace"
 
 module type M = sig
     
@@ -307,7 +308,7 @@ let insert_val vec elt pos =
   in
   insert vec elt pos
  
-let nullspace mat = 
+let nullspace_computation mat = 
   
   let mat = copy_mat mat in
   let no_pivs = List.rev (rref mat) in 
@@ -358,6 +359,16 @@ let nullspace mat =
     no_pivs;
   vecs
   
+let nullspace m = 
+  Mat_option.debug ~dkey:dkey_null
+    "Nullspace computation";
+  let t = Sys.time () in
+  let res = nullspace_computation m in 
+  let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
+  Mat_option.debug ~dkey:dkey_null
+    "Nullspace done"; res
+
+
 let pp_vec fmt v =   
 
   Format.fprintf fmt "(";
@@ -380,21 +391,6 @@ let pp_print fmt mat =
    
 end
       
-(*
-module Ring = 
-struct 
-  type t = float
-  let zero = 0.
-  let one = 1.
-  let add = (+.)
-  let mul = ( *. )
-  let sub = (-.)
-  let div = (/.)
-  let equal = (=)
-  let pp_print fmt i = 
-    Format.fprintf fmt "%.3f" i 
-end
-*)
 module QMat = Make(Q)
 
 module QPoly = struct include Poly.XMake(Q) end 
