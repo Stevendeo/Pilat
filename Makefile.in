@@ -9,6 +9,7 @@ PLUGIN_CMO 	:= mat_option\
 		pilat_visitors\
 		poly\
 		pilat_matrix\
+		poly_affect\
 		invariant_utils\
 		matrix_ast\
 		acsl_gen\

@@ -9,6 +9,7 @@ module type RING =
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
+    val div : t -> t -> t
     val equal : t -> t -> bool
     val pp_print : Format.formatter -> t -> unit
   end
@@ -53,6 +54,7 @@ module type POLYNOMIAL =
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
+    val div : t -> t -> t (** Fails every time, but allows to match the RING signature. *)
     val scal_mul : c -> t -> t
     val pow : t -> int -> t
 
@@ -233,6 +235,8 @@ struct
 	p1
 	zero
     
+    let div _ _ = assert false
+
     let rec pow_ring (c:c) (n:int) : c = 
       match n with
 	0 -> A.one

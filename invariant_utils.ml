@@ -1,5 +1,6 @@
 open Pilat_matrix
 
+let dkey_ev = Mat_option.register_category "lacaml:ev"
 let dkey_inv = Mat_option.register_category "lacaml:inv"
 let dkey_inter = Mat_option.register_category "lacaml:inter"
 let dkey_zinter = Mat_option.register_category "zarith:inter"
@@ -28,11 +29,14 @@ let eigen_val matrix =
       ~vr:(Some vr)
       (copy_mat matrix)
   in 
- (* Lacaml_D.Vec.iter
-    (fun b -> 
-      assert (b = 0.))
+  Lacaml_D.Vec.iteri
+    (fun i b -> 
+      if (b = 0.)
+      then Mat_option.feedback ~dkey:dkey_ev "Eigenvalue : %f" a.{i}
+      else Mat_option.feedback ~dkey:dkey_ev "Eigenvalue %f + i.%f is complex. Assuming equal to %f " a.{i} b a.{i}
+      )
     b;
- *)
+  
   let res = ref [] in
   Lacaml_D.Vec.iteri
     (fun i im -> if im = 0. && not (List.mem a.{i} !res) then res :=  a.{i} :: !res) b;

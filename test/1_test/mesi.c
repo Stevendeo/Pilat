@@ -2,9 +2,10 @@
 // A farewell to Gröbner bases
 
 int main(){
-  int s = 0,e = 0,m = 0, i = 0;
-  while (1)
+  int s = 0,e = 0,m = 0, i = 0, N=30;
+  while (N > 0)
     {
+      N--;
       if (i != 0){
 	s = s + e + m;
 	i--;

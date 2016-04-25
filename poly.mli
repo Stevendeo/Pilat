@@ -7,27 +7,25 @@ module type RING =
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
+    val div : t -> t -> t
     val equal : t -> t -> bool
     val pp_print : Format.formatter -> t -> unit
   end
-      
-
-(** the polynom structure *)
-
-(* la structure d'anneau sur des valeurs de type t *)
+    
+(** the polynomial structure *)
 module type POLYNOMIAL =
   sig
 
     type c
-        (* type of coefficients *)
+        (** type of coefficients *)
 
     type v 
-        (* type of variables *)
+        (** type of variables *)
 
     module Monom : Datatype.S_with_collections
     
     type t
-        (* type of polynoms *)
+        (** type of polynoms *)
 
 
     val zero : t
@@ -44,7 +42,6 @@ module type POLYNOMIAL =
     val const : c -> t
 
     val to_var : Monom.t -> v list
-
     (** Same than before, but each variable appears only once *)
     val to_var_set : Monom.t -> v list
 
@@ -57,6 +54,7 @@ module type POLYNOMIAL =
     val add : t -> t -> t
     val sub : t -> t -> t
     val mul : t -> t -> t
+    val div : t -> t -> t (** Fails every time, but allows to match the RING signature. *)
     val scal_mul : c -> t -> t
     val pow : t -> int -> t
 

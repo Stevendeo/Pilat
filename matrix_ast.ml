@@ -1,6 +1,7 @@
 open Cil_types
 open Cil_datatype 
 open Pilat_matrix
+open Poly_affect 
 
 exception Not_solvable
 
@@ -9,111 +10,8 @@ let dkey_lowerizer = Mat_option.register_category "matast:lowerizer"
 let dkey_all_monom = Mat_option.register_category "matast:lowerizer:all_monom" 
 let dkey_loop_mat = Mat_option.register_category "matast:loop_mat"
 
+type poly_stmt = Poly_affect.t
 
-module Ring = 
-struct 
-  type t = float
-  let zero = 0.
-  let one = 1.
-  let add = (+.)
-  let mul = ( *. )
-  let sub = (-.)
-  let equal = (=)
-  let pp_print fmt i = 
-    Format.fprintf fmt "%.3f" i 
-end
-
-module F_poly = 
-  
-struct 
-  include Poly.Make(Ring)(Cil_datatype.Varinfo)
-  let to_lacal_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * Lacaml_D.mat = 
-      let base_monom = 
-	if Monom.Map.is_empty base
-	then 
-	  let poly_base = 
-	    Monom.Set.add monom_var (get_monomials p) in 
-	  let i = ref 0 in 
-	  Monom.Set.fold
-	    (fun m map ->
-	      i := !i + 1;
-	      Monom.Map.add m !i map
-	    )
-	    poly_base
-	    Monom.Map.empty
-	else base
-	    
-      in
-      
-      let mat = Lacaml_D.Mat.identity (Monom.Map.cardinal base_monom) in
-		
-      let ext_poly = 
-	if has_monomial p monom_var 
-	then p
-	else (add (mono_poly Ring.zero monom_var) p)
-      (* p + 0*v, so the next iteration sets to zero the unit of the identity *)
-	    
-      in
-	
-      
-      let row = Monom.Map.find monom_var base_monom in 
-      
-      let () = 
-	Monom.Set.iter
-	  (fun m -> 
-	      let col_monom = 
-		Monom.Map.find m base_monom 
-
-	      in
-	      let coef = coef p m in
-	      mat.{row,col_monom}<-coef
-	  )
-	  (get_monomials ext_poly)
-      in
-      base_monom,mat 
-
-  let to_q_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * QMat.t= 
-    let base_monom = 
-	if Monom.Map.is_empty base
-	then 
-	  let poly_base = 
-	    Monom.Set.add monom_var (get_monomials p) in 
-	  let i = ref 0 in 
-	  Monom.Set.fold
-	    (fun m map ->
-	      i := !i + 1;
-	      Monom.Map.add m !i map
-	    )
-	    poly_base
-	    Monom.Map.empty
-	else base
-	    
-      in
-      
-      let mat = QMat.identity (Monom.Map.cardinal base_monom) in
-		
-      let ext_poly = 
-	if has_monomial p monom_var 
-	then p
-	else (add (mono_poly Ring.zero monom_var) p)
-      (* p + 0*v, so the next iteration sets to zero the unit of the identity *)
-	    
-      in
-	
-      
-      let row = Monom.Map.find monom_var base_monom in 
-
-      let () = 
-	Monom.Set.iter
-	  (fun m -> 
-	      let col_monom = Monom.Map.find m base_monom in
-	      let coef = coef p m in
-	      QMat.set_coef (row - 1) (col_monom - 1) mat (Q.of_float coef)
-	  )
-	  (get_monomials ext_poly)
-      in
-      base_monom,mat 
-end
 let all_possible_monomials e_deg_hashtbl =
   let module M_set = F_poly.Monom.Set in
   let max_deg = Mat_option.Degree.get () in
@@ -386,9 +284,11 @@ let instr_to_poly_assign = function
 
 let register_poly = Stmt.Hashtbl.replace poly_hashtbl   
 
-let stmt_to_poly_assign s = 
+let stmt_to_poly_assign s : poly_stmt option = 
   begin
-  try Stmt.Hashtbl.find poly_hashtbl s with 
+  try 
+    Stmt.Hashtbl.find poly_hashtbl s 
+  with 
     Not_found -> 
       match s.skind with
 	Instr i -> 
@@ -397,7 +297,7 @@ let stmt_to_poly_assign s =
 	  in
 	  begin
 	    match instr_to_poly_assign i with 
-	      Some p -> register_poly s (Some p); Some p 
+	      Some p -> register_poly s (Some p); Some p
 	    | None -> register_poly s None; None
 	  end
       | Loop _ -> assert false
@@ -405,7 +305,7 @@ let stmt_to_poly_assign s =
       | _ -> None
   end
 
-let block_to_poly_lists block = 
+let block_to_poly_lists block : poly_stmt list list = 
   let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
   in
   let rec dfs stmt = 
@@ -426,6 +326,7 @@ let block_to_poly_lists block =
 	Mat_option.debug ~dkey:dkey_stmt ~level:3
 	  "Stmt never seen" 
 	;
+		
 	try
 	  
 
@@ -457,7 +358,7 @@ let block_to_poly_lists block =
 	  Loop_break -> []
       end 
   in
-  
+    
   let res = dfs (List.hd head.succs)
   in
   Mat_option.debug ~dkey:dkey_stmt ~level:5

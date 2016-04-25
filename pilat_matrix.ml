@@ -1,12 +1,5 @@
 let dkey_ev = Mat_option.register_category "pilat_matrix:eigenvalue"
 
-module type Field = 
-  sig 
-    include Poly.RING
-      
-    val div : t -> t -> t
-  end 
-
 module type M = sig
     
   type elt
@@ -53,8 +46,7 @@ module type M = sig
   val pow : t -> int -> t
   val trace : t -> elt
 
-  (** 5. Nullspace computation *)
-  (* Changes the input !! *)
+  (** 5. Advanced computation *)
   val nullspace : t -> vec list
 
   (** 6. Pretty printers *)
@@ -62,7 +54,7 @@ module type M = sig
   val pp_vec : Format.formatter -> vec -> unit
 end  
 
-module Make (F:Field) : M with type elt = F.t = 
+module Make (F:Poly.RING) : M with type elt = F.t = 
 struct
   
   type elt = F.t
@@ -317,6 +309,7 @@ let insert_val vec elt pos =
  
 let nullspace mat = 
   
+  let mat = copy_mat mat in
   let no_pivs = List.rev (rref mat) in 
 
   let dim2 = mat.rows in

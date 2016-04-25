@@ -53,17 +53,17 @@ let monomial_to_mul_term m =
       res
   in
   let res = 
-  __m_to_term (F_poly.to_var m)
+  __m_to_term (Poly_affect.F_poly.to_var m)
   in
   Mat_option.debug ~dkey:dkey_term ~level:2
     "Whole term generated : %a"
     Printer.pp_term res ;
   res
 
-let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
+let vec_to_term (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
-  F_poly.Monom.Map.fold
+  Poly_affect.F_poly.Monom.Map.fold
     (fun monom row acc -> 
       if vec.{row} = 0. then acc else
       
@@ -97,7 +97,7 @@ let vec_to_term (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
 
 let vec_space_to_predicate
     (fundec: Cil_types.fundec)
-    (base:int Matrix_ast.F_poly.Monom.Map.t) 
+    (base:int Poly_affect.F_poly.Monom.Map.t) 
     (vec_list : Lacaml_D.vec list) 
     : predicate named =
 
@@ -160,7 +160,7 @@ let add_loop_annots kf stmt base vec_lists =
 
 (** Zarith *)
 
-let vec_to_term_zarith (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
+let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
 
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
     "Vector given : %a" Pilat_matrix.QMat.pp_vec vec in
@@ -169,7 +169,7 @@ let vec_to_term_zarith (base:int Matrix_ast.F_poly.Monom.Map.t) (vec : Pilat_mat
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
   let vec_array = Pilat_matrix.QMat.vec_to_array vec in 
-  F_poly.Monom.Map.fold
+  Poly_affect.F_poly.Monom.Map.fold
     (fun monom row acc -> 
       let row = row - 1 in
       assert (Z.equal Z.one (Q.den vec_array.(row)));
@@ -306,7 +306,7 @@ let test_never_zero (stmt : stmt) (term_list : term list) : term option =
 let get_inst_loc = function
   | Set (_, _, l)
   | Call (_, _, _, l)
-  | Asm (_,_,_,_,_,_,l)
+  | Asm (_,_,_,l)
   | Skip l
   | Code_annot (_, l) -> l
     
@@ -420,7 +420,7 @@ let term_list_to_simple_predicate t term_list fundec stmt =
 let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
-    (base:int Matrix_ast.F_poly.Monom.Map.t) 
+    (base:int Poly_affect.F_poly.Monom.Map.t) 
     (vec_list : Pilat_matrix.QMat.vec list) 
     : predicate named =
 

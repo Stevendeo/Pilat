@@ -1,11 +1,3 @@
-module type Field = 
-  sig 
-    include Poly.RING
-      
-    val div : t -> t -> t
-	    
-  end 
-
 module type M = sig
     
   type elt
@@ -52,7 +44,6 @@ module type M = sig
   val trace : t -> elt
 
   (** 5. Nullspace computation *)
-  (* Changes the input !! *)
   val nullspace : t -> vec list
 
   (** 6. Pretty printers *)
@@ -64,7 +55,7 @@ end
 
 
 module Make :
-  functor (F : Field) -> M with type elt = F.t
+  functor (F : Poly.RING) -> M with type elt = F.t
   
 module QMat : M with type elt = Q.t
   

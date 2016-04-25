@@ -30,11 +30,11 @@ module Imap = Map.Make(struct type t = int let compare = compare end)
 
 let rev_base base = 
 
-  Matrix_ast.F_poly.Monom.Map.fold
+  Poly_affect.F_poly.Monom.Map.fold
     (fun monom i intmap -> 
       Mat_option.debug ~level:5 "Basis %i : %a" 
 	i 
-	Matrix_ast.F_poly.Monom.pretty monom; 
+	Poly_affect.F_poly.Monom.pretty monom; 
       Imap.add i monom intmap
     )
     base
@@ -52,7 +52,7 @@ let print_vec rev_base vec =
 	Mat_option.debug ~dkey:dkey_stmt
 	  "+%f%a" 
 	  fl 
-	  Matrix_ast.F_poly.Monom.pretty 
+	 Poly_affect.F_poly.Monom.pretty 
 	  (Imap.find !i rev_base)
     ) vec
     
@@ -69,7 +69,7 @@ let print_vec_zarith rev_base vec =
 	Mat_option.debug ~dkey:dkey_stmt
 	  "+%a%a" 
 	  Q.pp_print fl 
-	  Matrix_ast.F_poly.Monom.pretty 
+	  Poly_affect.F_poly.Monom.pretty 
 	  (Imap.find !i rev_base)
     ) (QMat.vec_to_array vec)
 
@@ -115,7 +115,7 @@ object(self)
 	      (fun v acc -> 
 		
 	       
-		(v, (Matrix_ast.F_poly.monomial 1. [v,1])):: acc )
+		(v, (Poly_affect.F_poly.monomial 1. [v,1])):: acc )
 	      varinfos_used
 	      []
 	      
@@ -129,23 +129,23 @@ object(self)
 		    (basic_assigns@p_list) in 
 				
 		let acc_affect = affect :: acc_affect and  
-		    acc_base = Matrix_ast.F_poly.Monom.Set.union acc_base m_set in
+		    acc_base = Poly_affect.F_poly.Monom.Set.union acc_base m_set in
 		(acc_affect,acc_base))
-	      ([],Matrix_ast.F_poly.Monom.Set.empty)
+	      ([],Poly_affect.F_poly.Monom.Set.empty)
 	      poly_lists
 	  in
 	  
 	  let base = 
 	    let i = ref 0 in
-	    Matrix_ast.F_poly.Monom.Set.fold
+	    Poly_affect.F_poly.Monom.Set.fold
 	      (fun m map -> 
 		i := !i + 1;
 		Mat_option.debug ~dkey:dkey_base 
-		  "%i <-> %a" !i Matrix_ast.F_poly.Monom.pretty m;
-		Matrix_ast.F_poly.Monom.Map.add m !i map
+		  "%i <-> %a" !i Poly_affect.F_poly.Monom.pretty m;
+	        Poly_affect.F_poly.Monom.Map.add m !i map
 	      )
 	      bases_for_each_loop
-	      Matrix_ast.F_poly.Monom.Map.empty
+	      Poly_affect.F_poly.Monom.Map.empty
 	  in
 	  let rev_base = rev_base base in
  

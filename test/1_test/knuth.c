@@ -3,9 +3,9 @@
 /* algorithm searching for a divisor for factorization, by Knuth */
 
 int main(){
-  int n;
+  int n = 11 ;
 
-    int r,rp,q,d,s,t;
+    int r=1,rp=1,q=1,d=3,s=1,t=1;
 
     d=d*d;
     r=n % d;
