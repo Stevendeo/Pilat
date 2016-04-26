@@ -53,6 +53,8 @@ let emitter = Emitter.create
 
 (** Misc. *)
 
+let whole_rel_time = ref 0.
+
 let parsing_timer = ref 0.
 
 let invar_timer = ref 0.
@@ -65,4 +67,4 @@ let ltoq_timer = ref 0.
 
 let ev_timer = ref 0.
 
-let char_poly_timer = ref 0.
+let char_poly_timer = ref 0.  

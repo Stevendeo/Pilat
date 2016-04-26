@@ -72,8 +72,6 @@ let print_vec_zarith rev_base vec =
 	  Poly_affect.F_poly.Monom.pretty 
 	  (Imap.find !i rev_base)
     ) (QMat.vec_to_array vec)
-
-let time = ref 0.
     
 (** Visitor *)
     
@@ -195,10 +193,6 @@ object(self)
 			
 		    ) invar;
 
-
-
-
-
 		  Invariant_utils.intersection_invariants invar acc
 	      )
 	      first_invar
@@ -225,7 +219,7 @@ object(self)
 	    )
 	    whole_loop_invar;
 	  
-	  time := Sys.time() -. t0 +. !time;
+	  Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time ;
 
 	  Acsl_gen.add_loop_annots_zarith kf stmt base whole_loop_invar;
 	  DoChildren
@@ -266,7 +260,7 @@ let run () =
     file.globals;
 
   Mat_option.debug ~dkey:dkey_time 
-    "Time to compute the relations : %f" !time ;
+    "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
  
    Mat_option.debug ~dkey:dkey_time ~level:2
     "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly %f" 

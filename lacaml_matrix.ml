@@ -22,17 +22,18 @@ let eigen_val matrix =
       ~vr:(Some vr)
       (copy_mat matrix)
   in 
+  let res = ref [] in
+
   Lacaml_D.Vec.iteri
     (fun i b -> 
       if (b = 0.)
-      then Mat_option.feedback ~dkey:dkey_ev "Eigenvalue : %f" a.{i}
-      else Mat_option.feedback ~dkey:dkey_ev "Eigenvalue %f + i.%f is complex. Assuming equal to %f " a.{i} b a.{i}
+      then 
+	let () = Mat_option.feedback ~dkey:dkey_ev "Eigenvalue : %f" a.{i} in
+	if not (List.mem a.{i} !res) then res :=  a.{i} :: !res
+	else Mat_option.feedback ~dkey:dkey_ev "Eigenvalue %f + i.%f is complex." a.{i} b
       )
     b;
-  
-  let res = ref [] in
-  Lacaml_D.Vec.iteri
-    (fun i im -> if im = 0. && not (List.mem a.{i} !res) then res :=  a.{i} :: !res) b;
+
   Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t;
   
   !res
@@ -169,5 +170,4 @@ let nullspace_computation mat =
   let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
   Mat_option.debug ~dkey:dkey_null
     "Nullspace done"; 
-  
-  (*List.map (Pilat_matrix.lvec_to_qvec)*) res
+  res

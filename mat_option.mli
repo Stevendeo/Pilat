@@ -16,6 +16,8 @@ val emitter : Emitter.t
 
 (** Misc. *)
 
+val whole_rel_time : float ref
+
 val parsing_timer : float ref
 
 val invar_timer : float ref 
