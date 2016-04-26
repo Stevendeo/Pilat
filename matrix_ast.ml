@@ -10,7 +10,8 @@ let dkey_lowerizer = Mat_option.register_category "matast:lowerizer"
 let dkey_all_monom = Mat_option.register_category "matast:lowerizer:all_monom" 
 let dkey_loop_mat = Mat_option.register_category "matast:loop_mat"
 
-type poly_stmt = Poly_affect.t
+type monom_affect = Poly_affect.F_poly.Monom.t * Poly_affect.F_poly.t
+
 
 let all_possible_monomials e_deg_hashtbl =
   let module M_set = F_poly.Monom.Set in
@@ -284,7 +285,7 @@ let instr_to_poly_assign = function
 
 let register_poly = Stmt.Hashtbl.replace poly_hashtbl   
 
-let stmt_to_poly_assign s : poly_stmt option = 
+let stmt_to_poly_assign s : Poly_affect.t option = 
   begin
   try 
     Stmt.Hashtbl.find poly_hashtbl s 
@@ -305,7 +306,7 @@ let stmt_to_poly_assign s : poly_stmt option =
       | _ -> None
   end
 
-let block_to_poly_lists block : poly_stmt list list = 
+let block_to_poly_lists block : Poly_affect.t list list = 
   let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
   in
   let rec dfs stmt = 
@@ -369,70 +370,23 @@ let block_to_poly_lists block : poly_stmt list list =
 let lacaml_loop_matrix 
     (base:int F_poly.Monom.Map.t) 
     (all_modifs :(F_poly.Monom.t * F_poly.t) list)  = 
-
-  (*
-  let poly_affect_list (* We add here the variables used in the loop, but not modified *) = 
-    
-      (*let rec allvars poly_list = 
-	match poly_list with
-	  [] -> Varinfo.Set.empty
-	| (_,poly)::tl -> 
-	  let vars_in_poly = 
-	    F_poly.Monom.Set.fold
-	      (fun monom acc -> 
-		Varinfo.Set.union acc (Varinfo.Set.of_list (F_poly.to_var_set monom))  
-	      )
-	      (F_poly.get_monomials poly)
-	      Varinfo.Set.empty
-	  in
-	  Varinfo.Set.union (allvars tl) vars_in_poly
-      in 
-      let all_vars = allvars poly_affect_list in
-      *)
-    
-      Varinfo.Set.fold
-	(fun v acc -> (v, (F_poly.monomial 1. [v,1])) :: acc)
-	all_vars
-	poly_affect_list in
-
-  let all_modifs,all_monoms = add_monomial_modifications poly_affect_list in
-  let () = 
-    Mat_option.debug ~dkey:dkey_loop_mat ~level:3 
-      "Monomials studied :";
-    F_poly.Monom.Set.iter
-      (fun m -> 
-	Mat_option.debug ~dkey:dkey_loop_mat ~level:3 
-	"M = %a" F_poly.Monom.pretty m
-      )all_monoms
-      
-  in
-  let i = ref 0 in 
-  let base = 
-    F_poly.Monom.Set.fold
-      (fun m map -> 
-	i := !i + 1;
-	F_poly.Monom.Map.add m !i map
-      )
-      all_monoms
-      F_poly.Monom.Map.empty
-  in
-  base,*)
+  
   let mat_size = F_poly.Monom.Map.cardinal base in
   List.fold_left
     (fun acc (v,poly_affect) -> 
       let new_matrix = 
-      (snd
+	(snd
 	   (F_poly.to_lacal_mat 
-	   ~base 
-	   v 
-	   poly_affect)
-      ) in 
+	      ~base 
+	      v 
+	      poly_affect)
+	) in 
       
       Mat_option.debug ~dkey:dkey_loop_mat ~level:4
 	"New matrix for %a = %a :"
         F_poly.Monom.pretty v
 	F_poly.pp_print poly_affect;
-
+      
       Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
 	Lacaml_D.pp_mat new_matrix
 	Lacaml_D.pp_mat acc;
@@ -443,7 +397,7 @@ let lacaml_loop_matrix
     )
     (Lacaml_D.Mat.identity mat_size)
     all_modifs
-  
+    
 let loop_matrix = 
   lacaml_loop_matrix
 

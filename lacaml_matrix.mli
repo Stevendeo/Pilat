@@ -1,4 +1,9 @@
+(** Lacaml matrices module *)
+
+(** Lacaml matrix type *)
 type t = Lacaml_D.mat
+
+(** Lacaml vector type *)
 type vec = Lacaml_D.vec
 
 (** Computes the eigenvalues of a lacaml matrix.

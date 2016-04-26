@@ -90,6 +90,7 @@ object(self)
 	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
 	    stmt.sid in
 	
+	(** 1st step : Computation of the block as a list of list of polynomials affectations. *)
 	let polys_opt = 
 	try Some (Matrix_ast.block_to_poly_lists b)
 	with Matrix_ast.Not_solvable -> None 
