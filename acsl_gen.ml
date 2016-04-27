@@ -4,6 +4,7 @@ open Matrix_ast
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
+let dkey_zero = Mat_option.register_category "acsl_gen:iszero"  
 
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
@@ -12,9 +13,13 @@ let to_code_annot (pred:predicate named) =
   
   Logic_const.new_code_annotation (AInvariant ([],true,pred))
 
-let term_node_is_zero tnode = 
-  match tnode with
+let term_is_zero t = 
+  
+  Mat_option.debug ~dkey:dkey_zero  "Testing %a"
+    Printer.pp_term t ;
+  match t.term_node with
   | TConst (Integer (i,_)) -> i = Integer.zero
+  | TConst (LReal lr) -> lr.r_nearest <> 0.
   | _ -> false
 
 let monomial_to_mul_term m = 
@@ -41,7 +46,7 @@ let monomial_to_mul_term m =
       let tlval = Logic_const.term (TLval (TVar lvar,TNoOffset)) Linteger in
       let end_term =  __m_to_term tl in
       let res = 
-	if term_node_is_zero end_term.term_node 
+	if term_is_zero end_term 
 	then Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
 	else
 	  
@@ -178,8 +183,13 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
       
 	try
 	  let term_cst = 
-	    Logic_const.term (TConst (Integer (Integer.of_int (Q.to_int cst),(Some (Q.to_string cst))))) Linteger in
+	    Logic_const.term 
+	      (TConst 
+		 (Integer 
+		    (Integer.of_int 
+		       (Q.to_int cst),(Some (Q.to_string cst))))) Linteger in
 	  
+	 
 	  
 	  let monom_term = 
 	    
@@ -191,6 +201,9 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
 	      ) Linteger 
 	      
 	  in
+	  let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
+	    "Creates term : %a" Printer.pp_term monom_term in
+
 	  if acc = zero then monom_term else
 	    Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
 	with
@@ -215,6 +228,7 @@ let term_list_to_predicate term_list fundec =
   let term = 
     List.fold_left
       (fun acc term -> 
+        
 	let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
 	in
 	new_ghost_var.vghost <- true;     
@@ -249,10 +263,9 @@ let term_list_to_predicate term_list fundec =
    
   Logic_const.unamed pred
 
-exception No_zero_found of term
 (** Searches if a term is never equals to zero with Value. Fails if so. *)
 let value_search_of_non_zero term_list stmt=
-  List.iter
+  List.find
     (fun t -> 
       let e = 
 	!Db.Properties.Interp.term_to_exp ~result:None t in
@@ -262,11 +275,7 @@ let value_search_of_non_zero term_list stmt=
 	  (Db.Value.get_stmt_state stmt)
 	  e
       in
-      if (Cvalue.V.contains_zero vals)
-      then () 
-      else (** This is never equal to 0, we can return*)
-	raise (No_zero_found t)
-
+      (Cvalue.V.contains_zero vals)
     )
     term_list
 
@@ -283,33 +292,32 @@ let non_zero_search_from_scratch term_list =
 
     end
   in
-  List.iter
+  List.find
     (fun t ->
       try 
 	begin
-	  ignore (Cil.visitCilTerm (var_visitor :> Cil.cilVisitor) t);
-	  raise (No_zero_found t)
+	  if term_is_zero t then false else
+	    let () = ignore (Cil.visitCilTerm (var_visitor :> Cil.cilVisitor) t) in
+	  true
 	end
       with   
-	Var_found -> ()
+	Var_found -> false
     )
     term_list
+
+    
 (** Returns (Some t) if t is never equal to zero, None else*)
 let test_never_zero (stmt : stmt) (term_list : term list) : term option =
-
-  let if_no_zero_fails () = 
-      if Db.Value.is_computed ()
-      then
-	value_search_of_non_zero term_list stmt
-      else
-	(** Naive search : looking for a term without not-constant variables *)
-	non_zero_search_from_scratch term_list
+  try Some (
+    if Db.Value.is_computed ()
+    then
+      value_search_of_non_zero term_list stmt
+    else
+      non_zero_search_from_scratch term_list
+  )
 	
-  in
-
-    try if_no_zero_fails (); None 
-    with No_zero_found t -> Some t
-
+  with
+    Not_found -> None
 let get_inst_loc = function
   | Set (_, _, l)
   | Call (_, _, _, l)
@@ -362,6 +370,8 @@ let k_first_value lval term loc =
 
 (* Sum (term_list) = k*t  *)
 let term_list_to_simple_predicate t term_list fundec stmt = 
+  
+  assert (not (term_is_zero t));
   let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
   in
 
