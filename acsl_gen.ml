@@ -176,23 +176,30 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
       let cst = vec_array.(row) in
       if Q.equal Q.zero cst then acc else
       
-      let term_cst = 
-	Logic_const.term (TConst (Integer (Integer.of_int (Q.to_int cst),(Some (Q.to_string cst))))) Linteger in
-
-
-      let monom_term = 
-	
-	Logic_const.term
-	  (TBinOp
-	     (Mult,
- 	      term_cst,
-	      monomial_to_mul_term monom)
-	  ) Linteger 
-      
-      in
-      if acc = zero then monom_term else
-      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
-	
+	try
+	  let term_cst = 
+	    Logic_const.term (TConst (Integer (Integer.of_int (Q.to_int cst),(Some (Q.to_string cst))))) Linteger in
+	  
+	  
+	  let monom_term = 
+	    
+	    Logic_const.term
+	      (TBinOp
+		 (Mult,
+ 		  term_cst,
+		  monomial_to_mul_term monom)
+	      ) Linteger 
+	      
+	  in
+	  if acc = zero then monom_term else
+	    Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
+	with
+	  Z.Overflow -> 
+	    let () = Mat_option.feedback 
+	      "The constant %a was too big to be used for an invariant. Skip this term." 
+	      Q.pp_print cst
+	    in
+	    acc
     )
     base
     zero

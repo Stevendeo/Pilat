@@ -455,10 +455,11 @@ let eigenvalues mat =
   let max_number_of_roots = deg_poly - power
   in
   let all_divs (i:Z.t) : Z_Set.t = 
-
+    let max_ev = Z.of_int (Mat_option.Ev_leq.get ()) in
     let rec __all_divs cpt i = 
-           
+
       if  Z.gt (Z.shift_left cpt 1) i (* 2*p > i => p does not div i *)
+	|| Z.geq cpt max_ev
       then 
 	(Z_Set.singleton Z.one) 
 	 |> Z_Set.add Z.minus_one 
@@ -482,25 +483,25 @@ let eigenvalues mat =
 
   in
   
+  let root_candidates =
 
-
-  let divs_of_affine_coef = all_divs affine_constant in
-  let divs_of_main_coef = all_divs k in
-
-  Z_Set.iter
+    let divs_of_affine_coef = all_divs affine_constant in
+    let divs_of_main_coef = all_divs k in
+    
+    Z_Set.iter
       (fun q -> 
 	Mat_option.debug 
 	  ~dkey:dkey_ev 
 	  ~level:3 
 	  "Divisor of affine const : %a" Z.pp_print q) divs_of_affine_coef ; 
-  Z_Set.iter
+    Z_Set.iter
       (fun p -> 
 	Mat_option.debug 
 	  ~dkey:dkey_ev 
 	  ~level:3 
 	  "Divisor of main const : %a" Z.pp_print p) divs_of_main_coef ; 
-
-  let root_candidates = 
+    
+    
     Z_Set.fold
       (fun p acc -> 
 	

@@ -1,8 +1,16 @@
-(** The ring structure *)
+(** This module conains the signature of high level modules used to reprensent 
+    mathematical concepts, which are :
+
+    - The Ring structure
+    - The Polynomial structure. Polynomials can be with multiple variables.
+    - The Matrix structure
+*)
+
+(** 1. The ring structure *)
 
 module type Ring = sig
   type t
-(* type of elements o the ring *)
+(* type of elements of the ring *)
   val zero : t
   val one : t
   val add : t -> t -> t
@@ -14,7 +22,7 @@ module type Ring = sig
     
 end
 
-(** The polynomial structure *)
+(** 2. The polynomial structure *)
 module type Polynomial =
 sig
   
@@ -75,7 +83,7 @@ sig
 
 end
 
-(** The matrix structure *)
+(** 3. The matrix structure *)
 module type Matrix = sig
     
   type elt
@@ -84,14 +92,14 @@ module type Matrix = sig
   
   exception Dimension_error of int*int*int*int
 
-  (** 1. Matrix creation *)
+  (** Matrix creation *)
 
   val zero : int -> int -> t
   val create_mat : int -> int -> (int -> int -> elt) -> t
   val copy_mat : t -> t
   val identity : int  -> t
 
-  (** 2. Getters and setters *)
+  (** Getters and setters *)
 
   val get_row : t -> int -> t
   val get_col : t -> int -> t
@@ -108,12 +116,12 @@ module type Matrix = sig
   val set_coef : int -> int -> t -> elt -> unit
   val get_coef : int -> int -> t -> elt 
 
-  (** 3. Iterators *)
+  (** Iterators *)
 
   val map : (elt -> elt) -> t -> t
   val mapi : (int -> int -> elt -> elt) -> t -> t
 
-  (** 4. Operations *)
+  (** Operations *)
   val add : t -> t -> t
   val sub : t -> t -> t
   val transpose : t -> t
@@ -122,10 +130,10 @@ module type Matrix = sig
   val pow : t -> int -> t
   val trace : t -> elt
 
-  (** 5. Nullspace computation *)
+  (** Nullspace computation *)
   val nullspace : t -> vec list
 
-  (** 6. Pretty printers *)
+  (** Pretty printers *)
   val pp_print : Format.formatter -> t -> unit
   val pp_vec : Format.formatter -> vec -> unit
 

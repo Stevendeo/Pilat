@@ -10,11 +10,15 @@ module Output_C_File: Parameter_sig.String
 
 module Use_zarith: Parameter_sig.Bool
 
+module Ev_leq: Parameter_sig.Int
+
 (** Tools for ACSL generation *)
 
 val emitter : Emitter.t
 
 (** Misc. *)
+
+(** Timers *)
 
 val whole_rel_time : float ref
 

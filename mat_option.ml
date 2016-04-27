@@ -42,6 +42,15 @@ module Use_zarith =
       let help = "When on, uses zarith library." 
    end)
 
+module Ev_leq = 
+  Int
+    (struct
+        let option_name = "-pilat-ev"  
+	let help = "sets the maximal eigenvalue searched for when using zarith"
+	let arg_name = "n"
+	let default = 10
+     end)
+
 (** Tools for ACSL generation *)
 
 let emitter = Emitter.create 
@@ -52,6 +61,8 @@ let emitter = Emitter.create
   ~tuning:[]
 
 (** Misc. *)
+
+(** Timers *)
 
 let whole_rel_time = ref 0.
 

@@ -10,8 +10,6 @@ let dkey_lowerizer = Mat_option.register_category "matast:lowerizer"
 let dkey_all_monom = Mat_option.register_category "matast:lowerizer:all_monom" 
 let dkey_loop_mat = Mat_option.register_category "matast:loop_mat"
 
-type monom_affect = Poly_affect.F_poly.Monom.t * Poly_affect.F_poly.t
-
 
 let all_possible_monomials e_deg_hashtbl =
   let module M_set = F_poly.Monom.Set in
@@ -78,7 +76,7 @@ let all_possible_monomials e_deg_hashtbl =
   let () = M_set.iter 
     (fun m -> Mat_option.debug ~dkey:dkey_all_monom ~level:4  "B : %a" F_poly.Monom.pretty m) 
     basis in
-  (* delete fun m -> and m for a nice printing bug *)
+  (* delete "(fun m" -> and "m)" for a nice printing bug *)
   let res = compute_all basis
   in
   Mat_option.debug ~dkey:dkey_all_monom ~level:4 "All monomials :";
@@ -88,7 +86,8 @@ let all_possible_monomials e_deg_hashtbl =
   M_set.add (F_poly.mono_minimal []) (M_set.union res basis)
  
   
-let add_monomial_modifications (p_list:(varinfo * F_poly.t) list) : (F_poly.Monom.t * F_poly.t) list * F_poly.Monom.Set.t = 
+let add_monomial_modifications 
+    (p_list:(varinfo * F_poly.t) list) : (F_poly.Monom.t * F_poly.t) list * F_poly.Monom.Set.t = 
   let module M_set = F_poly.Monom.Set in
   let module M_map = F_poly.Monom.Map in
   let l_size = List.length p_list in
@@ -268,7 +267,7 @@ let rec exp_to_poly exp =
 	begin 
 	match e2.enode with
 	  Const c -> F_poly.mul (exp_to_poly e1) (F_poly.const (1./.(float_of_const c)))
-	| _ -> assert false
+	| _ -> Mat_option.abort "The expression %a is a forbidden division." Printer.pp_exp exp
       end	    
       | _ -> assert false
     end
@@ -329,7 +328,6 @@ let block_to_poly_lists block : Poly_affect.t list list =
 	;
 		
 	try
-	  
 
 	  let poly_opt = stmt_to_poly_assign stmt in
 

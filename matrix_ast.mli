@@ -7,23 +7,18 @@ open Poly_affect
 exception Not_solvable
 
 
-type monom_affect = Poly_affect.F_poly.Monom.t * Poly_affect.F_poly.t
-(** A monomial affectation is equivalent to considering a monomial is a variable modified
-    by the affectation. *)
-
-
 val block_to_poly_lists : Cil_types.block -> Poly_affect.t list list
 (** Returns a list of list of polynomial affectations. Each list correspond to a the 
     succession of affectations for each possible path in the loop.
     Raises Not_solvable if a statement of the loop is not solvable. *)
 
 val add_monomial_modifications : 
-  Poly_affect.t list -> monom_affect list * Poly_affect.F_poly.Monom.Set.t
+  Poly_affect.t list -> Poly_affect.monom_affect list * Poly_affect.F_poly.Monom.Set.t
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
 
 val loop_matrix : 
-  int F_poly.Monom.Map.t -> monom_affect list -> Lacaml_D.mat
+  int F_poly.Monom.Map.t -> Poly_affect.monom_affect list -> Lacaml_D.mat
 (** Computes the lacaml matrix assoctated to the linearized loop. The first argument is the 
     base for the matrix : each monomial is associated to a line / column of the matrix. 
 *)

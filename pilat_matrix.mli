@@ -1,6 +1,10 @@
 open Pilat_math
 
-(** Given a ring, creates a matrix module. *)
+(** 1. Matrices *)
+
+(** Given a ring, creates a matrix module.
+    Iterations are made line by line.
+*)
 module Make :
   functor (F : Ring) -> Matrix with type elt = F.t
   
@@ -13,11 +17,20 @@ module QPoly : Polynomial with type c = Q.t
 (** Set of rational numbers *)
 module Q_Set:Set.S with type elt = Q.t
 
+(** Matrix utilities *)
+
 (** Characteristic polynomial of a rational matrix *)
 val char_poly : QMat.t -> QPoly.t
 
 (** Rational eigenvalues of a matrix. Computation of the 
-    rational roots of the characteristic polynomial. *)
+    rational roots of the characteristic polynomial.
+      ^
+     /|\
+    /_o_\ 
+    
+    If the characteristic polynomial is to big, will only test
+    a subset of all possible eigenvalues.
+*)
 val eigenvalues : QMat.t -> Q_Set.t
 
 (** Float <-> Rational translaters *)
