@@ -15,9 +15,3 @@ int main(){
 
 }
 
-/* CAV96 - 
-
-SPL <- logic temp
-Livre concur ++ : Jean Michel Ranyal (Springer)
-
-*/

@@ -87,7 +87,7 @@ let all_possible_monomials e_deg_hashtbl =
  
   
 let add_monomial_modifications 
-    (p_list:(varinfo * F_poly.t) list) : (F_poly.Monom.t * F_poly.t) list * F_poly.Monom.Set.t = 
+    (p_list:Poly_affect.body) : (F_poly.Monom.t * F_poly.t) list * F_poly.Monom.Set.t = 
   let module M_set = F_poly.Monom.Set in
   let module M_map = F_poly.Monom.Map in
   let l_size = List.length p_list in
@@ -97,20 +97,23 @@ let add_monomial_modifications
   let effective_degree = Varinfo.Hashtbl.create l_size in
 
   let () = List.iter (* Registration of the monom used in the transformation of each var *)
-    (fun (v,p) -> 
-
-      let useful_monoms = 
-	M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.one) |> F_poly.deg) > 1)
-	  (F_poly.get_monomials p)
-      in
-      let old_bind = 
-	try 
-	  Varinfo.Hashtbl.find 
-	    var_monom_tbl 
-	    v 
-	with 
-	  Not_found -> M_set.empty
-      in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms))
+    (fun affect -> 
+      match affect with 
+	Affect (v,p) -> 
+	  let useful_monoms = 
+	    M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.one) |> F_poly.deg) > 1)
+	      (F_poly.get_monomials p)
+	  in
+	  let old_bind = 
+	    try 
+	      Varinfo.Hashtbl.find 
+		var_monom_tbl 
+		v 
+	    with 
+	      Not_found -> M_set.empty
+	  in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
+      | Loop _ -> assert false
+    )
     p_list 
   in
   
@@ -212,23 +215,27 @@ let add_monomial_modifications
       Varinfo.Map.empty
   in
   (List.fold_right
-    (fun (v,poly) acc  -> 
-      let monoms_modified = Varinfo.Map.find v modification_map
-      in 
+    (fun affect acc  -> 
+      match affect with
+	Affect (v,poly) -> 
       
-      M_set.fold
-	(fun monom acc2 -> 
-	  let semi_poly = F_poly.mono_poly 1. monom
-	  in
-	  let compo = (F_poly.compo semi_poly v poly) in
-	  Mat_option.debug ~dkey:dkey_lowerizer ~level:3
-	    "%a = %a"
-	    F_poly.Monom.pretty monom
-	    F_poly.pp_print compo;
-	  (monom,compo)::acc2
-	)
-	monoms_modified
-	acc
+	  let monoms_modified = Varinfo.Map.find v modification_map
+	  in 
+	  
+	  M_set.fold
+	    (fun monom acc2 -> 
+	      let semi_poly = F_poly.mono_poly 1. monom
+	      in
+	      let compo = (F_poly.compo semi_poly v poly) in
+	      Mat_option.debug ~dkey:dkey_lowerizer ~level:3
+		"%a = %a"
+		F_poly.Monom.pretty monom
+		F_poly.pp_print compo;
+	      (monom,compo)::acc2
+	    )
+	    monoms_modified
+	    acc
+      | Loop _ -> assert false
     )
     p_list
     []),s
@@ -274,10 +281,11 @@ let rec exp_to_poly exp =
   | CastE (_,e) -> exp_to_poly e
   | _ -> assert false
 
-let instr_to_poly_assign = function
+let instr_to_poly_assign : Cil_types.instr -> Poly_affect.t option = 
+  function
   | Set (l,e,_) -> begin
     match fst l with 
-      Var v -> Some (v,(exp_to_poly e))
+      Var v -> Some (Affect (v,(exp_to_poly e)))
     | _ -> assert false end
   | Skip _ -> None
   | _ -> assert false
@@ -300,12 +308,12 @@ let stmt_to_poly_assign s : Poly_affect.t option =
 	      Some p -> register_poly s (Some p); Some p
 	    | None -> register_poly s None; None
 	  end
-      | Loop _ -> assert false
+      | Loop _ -> Mat_option.abort "Nested loop are not allowed yet."
       | Break _ -> raise Loop_break
       | _ -> None
   end
 
-let block_to_poly_lists block : Poly_affect.t list list = 
+let block_to_poly_lists block : Poly_affect.body list = 
   let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
   in
   let rec dfs stmt = 
@@ -339,19 +347,21 @@ let block_to_poly_lists block : Poly_affect.t list list =
 	  in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:3
 	    "List of paths : %i" (List.length future_lists) ;
+	  let (++) elt l = List.map (fun li -> elt :: li) l
+	  in
 	  match poly_opt with 
 	    None -> 
 	      Mat_option.debug ~dkey:dkey_stmt ~level:3
 		"No polynom generated from this stmt"
 	      ;
 	      future_lists
-	  | Some p ->
+	  | Some (Affect (v,p) as aff) ->
 	    Mat_option.debug ~dkey:dkey_stmt 
 	      "Polynom generated : %a"
-	      F_poly.pp_print (snd p);
-	    let (++) elt l = List.map (fun li -> elt :: li) l
-	    in
-	    p ++ future_lists
+	      F_poly.pp_print p;
+
+	    aff ++ future_lists
+	  | Some (Loop _) -> assert false
 
 	with
 	  Loop_break -> []

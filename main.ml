@@ -1,6 +1,7 @@
 open Cil_types
 open Cil
 open Pilat_matrix
+open Poly_affect
 
 (*open Logic_const
 *)
@@ -114,7 +115,7 @@ object(self)
 	      (fun v acc -> 
 		
 	       
-		(v, (Poly_affect.F_poly.monomial 1. [v,1])):: acc )
+		Affect ((v, (Poly_affect.F_poly.monomial 1. [v,1]))):: acc )
 	      varinfos_used
 	      []
 	      

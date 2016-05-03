@@ -7,13 +7,13 @@ open Poly_affect
 exception Not_solvable
 
 
-val block_to_poly_lists : Cil_types.block -> Poly_affect.t list list
+val block_to_poly_lists : Cil_types.block -> Poly_affect.body list
 (** Returns a list of list of polynomial affectations. Each list correspond to a the 
     succession of affectations for each possible path in the loop.
     Raises Not_solvable if a statement of the loop is not solvable. *)
 
 val add_monomial_modifications : 
-  Poly_affect.t list -> Poly_affect.monom_affect list * Poly_affect.F_poly.Monom.Set.t
+  Poly_affect.body -> Poly_affect.monom_affect list * Poly_affect.F_poly.Monom.Set.t
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
 
