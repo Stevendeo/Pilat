@@ -234,7 +234,7 @@ let run () =
   then
   let () = 
     Mat_option.feedback
-      "Welcome to Frama-C Polynomial INvariant Generator"
+      "Welcome to Frama-C's Pilat invariant generator"
   in 
   let file = Ast.get () 
   in

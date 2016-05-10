@@ -23,5 +23,5 @@ val loop_matrix :
     base for the matrix : each monomial is associated to a line / column of the matrix. 
 *)
 
-val loop_qmat : int F_poly.Monom.Map.t -> (F_poly.Monom.t * F_poly.t) list -> QMat.t
+val loop_qmat : int F_poly.Monom.Map.t -> Poly_affect.monom_affect list -> QMat.t
 (** Same, but outputs a zarith matrix. *)

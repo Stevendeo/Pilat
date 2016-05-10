@@ -48,6 +48,8 @@ sig
   val mono_poly : c -> Monom.t -> t
   val mono_minimal : (v * int) list -> Monom.t
   val monomial : c -> (v * int) list -> t
+  val var_to_monom : v -> Monom.t
+
   val const : c -> t
     
   val to_var : Monom.t -> v list

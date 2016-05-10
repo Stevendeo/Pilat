@@ -1,7 +1,7 @@
 open Cil_types
-open Cil_datatype 
 open Pilat_matrix
 open Poly_affect 
+open Cil_datatype
 
 exception Not_solvable
 
@@ -87,7 +87,7 @@ let all_possible_monomials e_deg_hashtbl =
  
   
 let add_monomial_modifications 
-    (p_list:Poly_affect.body) : (F_poly.Monom.t * F_poly.t) list * F_poly.Monom.Set.t = 
+    (p_list:Poly_affect.body) : Poly_affect.monom_affect list * F_poly.Monom.Set.t = 
   let module M_set = F_poly.Monom.Set in
   let module M_map = F_poly.Monom.Map in
   let l_size = List.length p_list in
@@ -285,7 +285,8 @@ let instr_to_poly_assign : Cil_types.instr -> Poly_affect.t option =
   function
   | Set (l,e,_) -> begin
     match fst l with 
-      Var v -> Some (Affect (v,(exp_to_poly e)))
+      Var v -> 
+	Some (Affect (v,(exp_to_poly e)))
     | _ -> assert false end
   | Skip _ -> None
   | _ -> assert false
