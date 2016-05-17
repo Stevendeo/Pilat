@@ -1,0 +1,18 @@
+				-------
+				INSTALL
+				-------
+
+1) Requirements
+
+To use PILAT, we strongly recomment to install the Ocaml package manager OPAM.
+
+-- With OPAM --
+
+   a) opam install frama-c 
+   Pilat is part of the Frama-C framework.
+
+   b) opam install lacaml
+   This part is a little tricky
+
+   c) opam install zarith
+   

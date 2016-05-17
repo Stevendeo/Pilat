@@ -1,0 +1,12 @@
+				------
+				README
+				------
+
+This package contains PILAT, the Frama-C plugin for generating loop invariant.
+If you have no clue of what is Frama-C, please visit <http://frama-c.com>. 
+
+This tool is based on the results of the article "Polynomial invariants by 
+linear algebra", available at <>. 
+
+Please consult file INSTALL for details about the installation procedure of
+Frama-C.
