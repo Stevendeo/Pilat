@@ -5,14 +5,45 @@
 1) Requirements
 
 To use PILAT, we strongly recomment to install the Ocaml package manager OPAM.
-
+To install it from ubuntu, just type 'sudo apt-get install opam'.
+ 
 -- With OPAM --
 
    a) opam install frama-c 
    Pilat is part of the Frama-C framework.
 
    b) opam install lacaml
-   This part is a little tricky
+   This part is a little tricky, as you need to install two dependencies : BLAS
+   and LAPACK. These are the matrix libraries used in Pilat.
 
    c) opam install zarith
-   
+   This package is used for our matrix implementation.
+
+-- Without OPAM --
+
+   a) Get the latest version of Ocaml	
+
+   b) Download the Frama-C source on http://frama-c.com/ and unzip it.
+      Then go to the main directory and run : 
+	autoconf
+	./configure
+	make depend
+	make
+	sudo make install
+	 
+   c) For lacaml and zarith, you can find the sources in 
+      http://opam.ocaml.org/packages/
+      Just make sure to install the libraries at the same place than the folder
+      containing "ocamlc".
+
+2) Install
+
+To install Pilat, go to src/ and run :
+	autoconf
+	./configure
+	make depend
+	make
+	sudo make install
+
+Run frama-c -pilat-h for the complete list of options (and to check Pilat is 
+correctly installed)
