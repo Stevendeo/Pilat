@@ -40,8 +40,17 @@ let eigen_val matrix =
 
 (** 3. Nullspace computation for a zarith matrix *)
 
+let approx_float f = 
+  if abs_float f < 1E-10
+  then 0.
+  else f
+
 let revert_rows mat a b = 
   (*assert dim1 mat = dim2 mat *)
+  Mat_option.debug ~dkey:dkey_null ~level:5
+    "Switching line %i and %i in %a"
+   a b Lacaml_D.pp_mat mat
+  ;
   for i=1 to Lacaml_D.Mat.dim2 mat do 
     let tmp = mat.{a,i} in 
     mat.{a,i}<-mat.{b,i};
@@ -50,25 +59,37 @@ let revert_rows mat a b =
 
 let mult_row_plus_row mat a b k = (* sets the row a to a + k*b *)
   (* assert dim1 mat = dim2 mat *)
+
+  Mat_option.debug ~dkey:dkey_null ~level:5
+    "Replacing line %i by line %i + %f * line %i of %a"
+    a a k b Lacaml_D.pp_mat mat;
+
   for i=1 to Lacaml_D.Mat.dim2 mat do 
-    mat.{a,i}<- mat.{a,i} +. (k *. mat.{b,i}); 
+       
+    mat.{a,i}<- approx_float (mat.{a,i} +. (k *. mat.{b,i})); 
   done
 
-let mult_row mat a k = (* sets the row a to k*a *)
+let div_row mat a k = (* sets the row a to 1/k*a *)  
+  Mat_option.debug ~dkey:dkey_null ~level:5
+    "Replacing line %i by 1/%f * line %i in %a"
+    a k a Lacaml_D.pp_mat mat;
+
   for i=1 to Lacaml_D.Mat.dim2 mat do 
-    mat.{a,i}<-k *. mat.{a,i}; 
+    mat.{a,i}<- approx_float (mat.{a,i} /. k); 
   done
 
 let norm_col_down mat col piv = 
-  assert (abs_float (mat.{piv,col}) > 1E-20);
-  mult_row mat piv (1. /. mat.{piv, col});
+  assert (abs_float (mat.{piv,col}) > 1E-10);
+  div_row mat piv ( mat.{piv, col});
   
   for i=(piv+1) to Lacaml_D.Mat.dim1 mat do 
+    if mat.{i, col} != 0. then
     mult_row_plus_row mat i piv (-1. *. mat.{i, col})
   done
    
 let norm_col_up mat col piv = 
   for i=1 to piv - 1 do 
+    if mat.{i, col} != 0. then
     mult_row_plus_row mat i piv (-1. *. mat.{i, col})
   done 
 exception Done;;
@@ -76,7 +97,7 @@ exception Done;;
 let rref mat = (* Returns the list of the position of the columns that are not pivots *)
   let normalize_mat col piv = 
     for i = piv to Lacaml_D.Mat.dim1 mat do
-      if abs_float mat.{i, col} > 1E-20
+      if abs_float mat.{i, col} > 1E-10
       then 
 	begin 
 	  revert_rows mat piv i;
@@ -84,6 +105,7 @@ let rref mat = (* Returns the list of the position of the columns that are not p
 	  norm_col_up mat col piv;
 	  raise Done
 	end
+      
     done
   in
   let piv = ref 1 in

@@ -10,7 +10,7 @@ module Int = Datatype.Int
 type vec = Pilat_matrix.QMat.vec 
 type mat = Lacaml_D.mat
 
-(** 1. Nullspace computation with witnesses *)
+(** 1. Nullspace computation with time witness *)
 
 let nullspace_computation m = 
   Mat_option.debug ~dkey:dkey_null 
@@ -39,10 +39,12 @@ let invariant_computation_lacaml mat =
 	  Lacaml_D.pp_mat new_mat
 	
       in
+
       let res = 
 	List.map 
 	  (Pilat_matrix.lvec_to_qvec) 
 	  (Lacaml_matrix.nullspace_computation new_mat)
+
       in
 
       res :: acc

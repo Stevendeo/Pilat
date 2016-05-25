@@ -183,22 +183,59 @@ struct
       mat.m
     )
 
+let pp_vec fmt v =   
+
+  Format.fprintf fmt "(";
+  Array.iter
+    (fun elt -> 
+      Format.fprintf fmt "%a ," F.pp_print elt)
+    v;
+  Format.fprintf fmt ")\n"
+
+let pp_print fmt mat = 
+  
+  Format.fprintf fmt "(";  
+
+  Array.iter
+    (fun vec -> 
+      (pp_vec fmt vec)
+    )
+    mat.m;
+  Format.fprintf fmt ")\n" 
+
 (** 3. Nullspace computation *)
 
 let revert_rows mat a b = 
   (*assert dim1 mat = dim2 mat *)
+
+  Mat_option.debug ~dkey:dkey_null ~level:5
+    "Switching %a and %a"
+    pp_vec mat.m.(a) pp_vec mat.m.(b)
+  ;
+
   let tmp = mat.m.(a) in
   mat.m.(a) <- mat.m.(b);
   mat.m.(b) <- tmp
 
 let mult_row_plus_row mat a b k = (* sets the row a to a + k*b *)
   (* assert dim1 mat = dim2 mat *)
+
+  Mat_option.debug ~dkey:dkey_null ~level:5
+    "Replacing %a by %a + %a * %a"
+    pp_vec mat.m.(a) 
+    pp_vec mat.m.(a) F.pp_print k pp_vec mat.m.(b)
+  ;
+
    mat.m.(a) <-
   Array.mapi
     (fun i elt -> F.add elt (F.mul k mat.m.(b).(i)))
     mat.m.(a)
 
 let mult_row mat a k = (* sets the row a to k*a *)
+  Mat_option.debug ~dkey:dkey_null ~level:5
+    "Replacing %a by %a * %a"
+    pp_vec mat.m.(a) F.pp_print k pp_vec mat.m.(a);
+
   mat.m.(a) <-
   Array.map 
     (F.mul k)
@@ -316,26 +353,6 @@ let nullspace m =
   Mat_option.debug ~dkey:dkey_null
     "Nullspace done"; res
 
-
-let pp_vec fmt v =   
-
-  Format.fprintf fmt "(";
-  Array.iter
-    (fun elt -> 
-      Format.fprintf fmt "%a ," F.pp_print elt)
-    v;
-  Format.fprintf fmt ")\n"
-
-let pp_print fmt mat = 
-  
-  Format.fprintf fmt "(";  
-
-  Array.iter
-    (fun vec -> 
-      (pp_vec fmt vec)
-    )
-    mat.m;
-  Format.fprintf fmt ")\n"
    
 end
       
@@ -427,6 +444,11 @@ let eigenvalues mat =
     integ QPoly.empty_monom p
   in
   let poly = char_poly mat in 
+  
+  let () = Mat_option.debug ~dkey:dkey_ev ~level:2
+    "Char poly = %a" QPoly.pp_print poly
+
+  in
   let k = integrate_poly poly in
   
     let div_by_x poly = (* returns (coef,n) with coef*xn with the littlest n such that xn | poly *)
@@ -492,13 +514,13 @@ let eigenvalues mat =
       (fun q -> 
 	Mat_option.debug 
 	  ~dkey:dkey_ev 
-	  ~level:3 
+	  ~level:5
 	  "Divisor of affine const : %a" Z.pp_print q) divs_of_affine_coef ; 
     Z_Set.iter
       (fun p -> 
 	Mat_option.debug 
 	  ~dkey:dkey_ev 
-	  ~level:3 
+	  ~level:5
 	  "Divisor of main const : %a" Z.pp_print p) divs_of_main_coef ; 
     
     
@@ -517,10 +539,8 @@ let eigenvalues mat =
   let res = Q_Set.filter 
     (fun elt -> 
       let eval_poly = QPoly.eval poly Poly.X elt in
-      Mat_option.debug ~dkey:dkey_ev ~level:2
+      Mat_option.debug ~dkey:dkey_ev ~level:4
 	"Root candidate : %a. Returns %a" Q.pp_print elt QPoly.pp_print eval_poly;
-      
-      
       Q.equal (QPoly.coef eval_poly QPoly.empty_monom) Q.zero
     )
     root_candidates
@@ -528,4 +548,13 @@ let eigenvalues mat =
   let res = 
     if power = 0 then res 
     else Q_Set.add Q.zero res in
-  let () = Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t in res
+
+
+  let () = 
+    Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t;
+    Q_Set.iter 
+      (fun ev -> 
+	Mat_option.debug ~dkey:dkey_ev ~level:2 "Eigenvalue : %a" 
+	  Q.pp_print ev) res
+      
+  in res
