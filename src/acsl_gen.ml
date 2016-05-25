@@ -1,6 +1,7 @@
 (* Logic_const.new_code_annotation *)
 open Cil_types
 open Matrix_ast
+open Invariant_utils
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
@@ -9,9 +10,12 @@ let dkey_zero = Mat_option.register_category "acsl_gen:iszero"
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
-let to_code_annot (pred:predicate named) = 
+let to_code_annot (preds:predicate named list) = 
   
-  Logic_const.new_code_annotation (AInvariant ([],true,pred))
+  List.map 
+    (fun pred -> 
+      Logic_const.new_code_annotation (AInvariant ([],true,pred))
+    ) preds 
 
 let term_is_zero t = 
   
@@ -147,7 +151,7 @@ let vec_space_to_predicate
    
   Logic_const.unamed pred
 
-let add_loop_annots kf stmt base vec_lists = 
+(*let add_loop_annots kf stmt base vec_lists = 
   let fundec = match kf.fundec with
       Definition(f,_) -> f
     | Declaration _ -> assert false
@@ -161,7 +165,7 @@ let add_loop_annots kf stmt base vec_lists =
       
 
   in
-  List.iter (Annotations.add_code_annot Mat_option.emitter ~kf stmt) annots
+  List.iter (Annotations.add_code_annot Mat_option.emitter ~kf stmt) annots*)
 
 (** Zarith *)
 
@@ -216,52 +220,6 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
     )
     base
     zero
-
-
-(** Returns a predicate based on the term list. Each term ei comes from a vector ei of the base of
-    the invariant, so SUM(ki*ei) is the general invariant. *)
-let term_list_to_predicate term_list fundec = 
-
-  let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
-  in
-
-  let term = 
-    List.fold_left
-      (fun acc term -> 
-        
-	let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
-	in
-	new_ghost_var.vghost <- true;     
-	let lvar = Cil.cvar_to_lvar new_ghost_var in
-        let term_gvar = 
-	  Logic_const.term
-	    (TLval ((TVar lvar),TNoOffset)) Linteger 
-	in
-	let prod_term = 
-	  Logic_const.term
-	    (TBinOp
-	       (Mult,
- 		term_gvar,
-		term) 
-	    ) Linteger 
-	    
-	in
-	if acc = zero then prod_term else 
-	Logic_const.term
-	   (TBinOp (PlusA,acc,prod_term)) Linteger 
-	    
-      )
-      zero
-      term_list
-  in
-  let pred = 
-    Prel
-      (Req,
-       term,
-       zero)
-  in
-   
-  Logic_const.unamed pred
 
 (** Searches if a term is never equals to zero with Value. Fails if so. *)
 let value_search_of_non_zero term_list stmt=
@@ -367,7 +325,94 @@ let k_first_value lval term loc =
   
     Instr(Set (lval,exp,loc))
  
+let add_k_stmt new_ghost_var sum_term stmt =
+  let init_k = 
+    k_first_value 
+      (Var new_ghost_var,NoOffset) 
+      sum_term 
+      (get_stmt_loc stmt)
+  in
+  
+  Pilat_visitors.register_stmt stmt init_k
 
+
+
+(** Returns a predicate list based on the term list. 
+    SUM(ki*ei) is the general invariant, but : 
+    if the limit is convergent, then each ei is a convergent invariant
+    if the limit is divergent, then each ei is a divergent invariant
+    else, we use the general invariant *)
+
+let term_list_to_predicate term_list limit fundec stmt = 
+
+  match limit with
+    Altern | Zero -> (** general invariant *)
+      let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
+      in
+      let term = 
+	List.fold_left
+	  (fun acc term -> 
+	    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
+	    in
+	    new_ghost_var.vghost <- true;     
+	    let lvar = Cil.cvar_to_lvar new_ghost_var in
+            let term_gvar = 
+	      Logic_const.term
+		(TLval ((TVar lvar),TNoOffset)) Linteger 
+	    in
+	    let prod_term = 
+	      Logic_const.term
+		(TBinOp
+		   (Mult,
+ 		    term_gvar,
+		    term) 
+		) Linteger 
+		
+	    in
+	    if acc = zero then prod_term else 
+	      Logic_const.term
+		(TBinOp (PlusA,acc,prod_term)) Linteger 
+		
+	  )
+	  zero
+	  term_list
+      in
+      let pred = 
+	Prel
+	  (Req,
+	   term,
+	   zero)
+      in
+      
+      [Logic_const.unamed pred]
+  | _ -> 
+    let operator = 
+      match limit with
+      | Convergent -> Rle
+      | Divergent -> Rge
+      | _ -> assert false
+    in
+    List.map
+      (fun term -> 
+	let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TFloat (FFloat,[]))
+	in
+	new_ghost_var.vghost <- true;     
+	let lvar = Cil.cvar_to_lvar new_ghost_var in
+        let term_gvar = 
+	  Logic_const.term
+	    (TLval ((TVar lvar),TNoOffset)) Lreal
+	in
+	let () = add_k_stmt new_ghost_var term stmt
+	in
+	
+	let pred = 
+	Prel
+	  (operator,
+	   term,
+	   term_gvar)
+	in Logic_const.unamed pred
+      ) term_list
+      	
 (* Sum (term_list) = k*t  *)
 let term_list_to_simple_predicate t term_list fundec stmt = 
   
@@ -410,17 +455,8 @@ let term_list_to_simple_predicate t term_list fundec stmt =
 	) Linteger
     in
     
-    let () =     
-      let init_k = 
-	k_first_value 
-	  (Var new_ghost_var,NoOffset) 
-	  sum_term 
-	  (get_stmt_loc stmt)
-      in
-
-      Pilat_visitors.register_stmt stmt init_k
+    let () = add_k_stmt new_ghost_var sum_term stmt
     in
-    
     term
       
   in
@@ -438,20 +474,22 @@ let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
     (base:int Poly_affect.F_poly.Monom.Map.t) 
-    (vec_list : Pilat_matrix.QMat.vec list) 
-    : predicate named =
+    (invar : Invariant_utils.invar) 
+    : predicate named list =
 
+  let limit,vec_list = invar in
+  
   let term_list = 
     List.map
       (vec_to_term_zarith base) vec_list in
 
-  (** If a term is always different to 0, then a stronger result is possible *)
+  (* If a term is always different to 0, then a stronger result is possible *)
 
   match test_never_zero stmt term_list with
     None -> 
-      term_list_to_predicate term_list fundec
+      term_list_to_predicate term_list limit fundec stmt
   | Some t -> 
-    term_list_to_simple_predicate t term_list fundec stmt
+    [term_list_to_simple_predicate t term_list fundec stmt]
 
 let add_loop_annots_zarith kf stmt base vec_lists = 
   let fundec = match kf.fundec with
@@ -459,10 +497,11 @@ let add_loop_annots_zarith kf stmt base vec_lists =
     | Declaration _ -> assert false
   in
   let annots =   
-    List.map 
-      (fun vecs -> 
-	to_code_annot (vec_space_to_predicate_zarith fundec stmt base vecs)
+    List.fold_left 
+      (fun acc invar -> 
+	(to_code_annot (vec_space_to_predicate_zarith fundec stmt base invar)) @ acc
       )
+      []
       vec_lists
       
   in

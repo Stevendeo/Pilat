@@ -47,9 +47,9 @@ let print_vec rev_base vec =
   Lacaml_D.Vec.iter
     (fun fl ->
       i := !i + 1;
-      if abs_float fl < 1E-10
+      (*if abs_float fl < 1E-10
       then () 
-      else 
+      else*) 
 	Mat_option.debug ~dkey:dkey_stmt
 	  "+%f%a" 
 	  fl 
@@ -159,10 +159,14 @@ object(self)
 	  let first_invar = Invariant_utils.invariant_computation m1 in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
 	  List.iteri
-	    (fun i invars -> 
+	    (fun i (limit,invars) -> 
+	      
+	      
 	      let () = 
 		Mat_option.debug ~dkey:dkey_stmt
-		  "Invariant %i :" (i + 1) in
+		  "Invariant %s %i :" 
+		  (Invariant_utils.lim_to_string limit) 
+		  (i + 1) in
 	      List.iter
 		(fun invar ->  
 		  print_vec_zarith rev_base invar;
@@ -183,10 +187,10 @@ object(self)
 
 		  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
 		  List.iteri
-		    (fun i invars -> 
+		    (fun i (limit,invars) -> 
 		      let () = 
 			Mat_option.debug ~dkey:dkey_stmt
-			  "Invariant %i :" (i + 1) in
+			  "Invariant %s %i :" (Invariant_utils.lim_to_string limit)  (i + 1) in
 		      List.iter
 			(fun invar ->  
 			  print_vec_zarith rev_base invar;
@@ -202,16 +206,17 @@ object(self)
 	  in
 	  let whole_loop_invar = 
 	  List.map
-	    (List.map Invariant_utils.integrate_vec) whole_loop_invar in
+	    (fun (limit,vlist) -> 
+	      limit,(List.map Invariant_utils.integrate_vec vlist)) whole_loop_invar in
 	  let () = 
 	    Mat_option.debug ~dkey:dkey_stmt
 	      "Invariants generated :"
 	  in
 	  List.iteri
-	    (fun i invars -> 
+	    (fun i (limit,invars) -> 
 	      let () = 
 		Mat_option.debug ~dkey:dkey_stmt
-		  "Invariant %i :" (i + 1) in
+		  "Invariant %s %i :"  (Invariant_utils.lim_to_string limit) (i + 1) in
 	      List.iter
 		(fun invar ->  
 		  print_vec_zarith rev_base invar;

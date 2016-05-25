@@ -10,6 +10,41 @@ module Int = Datatype.Int
 type vec = Pilat_matrix.QMat.vec 
 type mat = Lacaml_D.mat
 
+type limit = 
+  Convergent 
+| Divergent 
+| Altern
+| One
+| Zero
+
+type invar = limit * vec list
+
+(** 0. Limit utility *)
+
+let ev_limit (ev:Q.t) : limit = 
+  let ev = Q.abs ev in
+  if ev = Q.zero then Zero
+  else if ev = Q.one
+  then One
+  else if Q.leq ev Q.one then Convergent
+  else Divergent
+
+let join_limits l1 l2 = 
+  match l1,l2 with
+    One,l | l,One -> l
+  | Altern,_ | _,Altern -> Altern
+  | Zero,_ | _,Zero -> Zero
+  | Convergent,Convergent | Divergent,Divergent -> l1
+  | Convergent,Divergent | Divergent,Convergent -> Altern
+
+let lim_to_string l = 
+  match l with
+    Zero -> "zero"
+  | One -> "one"
+  | Altern -> "altern"
+  | Convergent -> "convergent"
+  | Divergent -> "divergent"
+
 (** 1. Nullspace computation with time witness *)
 
 let nullspace_computation m = 
@@ -47,12 +82,12 @@ let invariant_computation_lacaml mat =
 
       in
 
-      res :: acc
+      ((ev_limit (Q.of_float ev)),res) :: acc
     )
     []
     eigen_vals
 
-let invariant_computation_pilat mat : QMat.vec list list = 
+let invariant_computation_pilat mat : invar list = 
   let open QMat in  
   let mat = Pilat_matrix.lacaml_to_qmat mat in
 
@@ -68,7 +103,8 @@ let invariant_computation_pilat mat : QMat.vec list list =
     Q_Set.fold      
       (fun ev acc -> 
 	let new_mat = sub (transpose mat) (scal_mul identity ev) in 
-        (nullspace_computation new_mat) :: acc
+	
+        ((ev_limit ev),(nullspace_computation new_mat)) :: acc
       )
       eigenvalues
       []  
@@ -189,7 +225,7 @@ let intersection_invariants_lacaml ll1 ll2 =
 	    Lacaml_D.pp_vec v)
       v_list in
  List.fold_left
-      (fun acc l1 -> 
+      (fun acc (lim1,l1) -> 
 	Mat_option.debug ~dkey:dkey_inter ~level:5
 	  "Intersection of";
 	
@@ -197,7 +233,7 @@ let intersection_invariants_lacaml ll1 ll2 =
 	
 	
 	List.fold_left
-	  (fun acc2 l2 -> 
+	  (fun acc2 (lim2,l2) -> 
 	    Mat_option.debug ~dkey:dkey_inter ~level:5
 	      "with";
 	    print_vec_list l2;
@@ -207,7 +243,7 @@ let intersection_invariants_lacaml ll1 ll2 =
 	      begin
 		Mat_option.debug ~dkey:dkey_inter ~level:5
 		  "Returns nothing !";
-		acc2
+	        acc2
 	      end
 	    else 
 	      let res = (Array.to_list new_base) in
@@ -215,7 +251,7 @@ let intersection_invariants_lacaml ll1 ll2 =
 		Mat_option.debug ~dkey:dkey_inter ~level:5
 		  "Returns ";
 		print_vec_list res;
-		res :: acc2
+		((join_limits lim1 lim2),res) :: acc2
 	      end
 	  )
 	  acc 
@@ -349,12 +385,10 @@ let intersection_invariants_pilat ll1 ll2 =
       v_list in
   
   List.fold_left
-    (fun acc l1 -> 
+    (fun acc (lim1,l1) -> 
 
-      
-      
       List.fold_left
-	(fun acc2 l2 -> 
+	(fun acc2 (lim2,l2) -> 
 	  Mat_option.debug ~dkey:dkey_zinter ~level:5
 	    "Intersection of";
 	  print_vec_list l1;
@@ -375,7 +409,7 @@ let intersection_invariants_pilat ll1 ll2 =
 	      Mat_option.debug ~dkey:dkey_zinter ~level:5
 		"Returns ";
 	      print_vec_list res;
-	      res :: acc2
+	      ((join_limits lim1 lim2),res) :: acc2
 	    end
 	)
 	acc 
@@ -397,12 +431,12 @@ let intersection_invariants vll1 vll2 =
     (* Not optimal, to change *)
       let qll_to_lll vll = 
 	List.map
-	  (fun vl -> List.map Pilat_matrix.qvec_to_lvec vl )
+	  (fun (lim,vl) -> lim,(List.map Pilat_matrix.qvec_to_lvec vl ))
 	  vll
       in
       let lll_to_qll vll = 
 	List.map
-	  (fun vl -> List.map Pilat_matrix.lvec_to_qvec vl
+	  (fun (lim,vl) -> lim,(List.map Pilat_matrix.lvec_to_qvec vl)
 	  ) vll
       in
       lll_to_qll 
