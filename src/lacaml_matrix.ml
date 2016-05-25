@@ -41,9 +41,18 @@ let eigen_val matrix =
 (** 3. Nullspace computation for a zarith matrix *)
 
 let approx_float f = 
-  if abs_float f < 1E-10
+  (*if abs_float f < 1E-10
   then 0.
-  else f
+  else f *)
+  
+  let c = ceil f in 
+  if c -. f < 1E-10
+  then c
+  else let fl = floor f in 
+       if f -. fl <1E-10
+       then fl
+       else f
+    
 
 let revert_rows mat a b = 
   (*assert dim1 mat = dim2 mat *)
@@ -192,4 +201,10 @@ let nullspace_computation mat =
   let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
   Mat_option.debug ~dkey:dkey_null
     "Nullspace done"; 
+  List.iter
+    (fun v -> 
+      Mat_option.debug ~dkey:dkey_null ~level:3
+	"%a\n"
+	Lacaml_D.pp_vec v
+    ) res; 
   res
