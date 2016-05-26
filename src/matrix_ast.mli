@@ -1,7 +1,4 @@
-open Poly
-open Cil_types
 open Pilat_matrix
-open Cil_datatype
 open Poly_affect 
 
 exception Not_solvable

@@ -1,6 +1,5 @@
 (* Logic_const.new_code_annotation *)
 open Cil_types
-open Matrix_ast
 open Invariant_utils
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
@@ -69,103 +68,6 @@ let monomial_to_mul_term m =
     Printer.pp_term res ;
   res
 
-let vec_to_term (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Lacaml_D.vec) =
-  let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
-  in
-  Poly_affect.F_poly.Monom.Map.fold
-    (fun monom row acc -> 
-      if vec.{row} = 0. then acc else
-      
-      let logic_cst = 
-	{ r_literal = string_of_float vec.{row};
-	  r_nearest = vec.{row} ;
-	  r_upper = vec.{row} ;    
-	  r_lower = vec.{row} ;
-	}
-      in
-
-      let term_cst = Logic_const.term (TConst (LReal logic_cst)) Linteger  in
-
-
-      let monom_term = 
-	
-	Logic_const.term
-	  (TBinOp
-	     (Mult,
- 	      term_cst,
-	      monomial_to_mul_term monom)
-	  ) Linteger 
-	  
-      in
-      if acc = zero then monom_term else
-      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
-	
-    )
-    base
-    zero
-
-let vec_space_to_predicate
-    (fundec: Cil_types.fundec)
-    (base:int Poly_affect.F_poly.Monom.Map.t) 
-    (vec_list : Lacaml_D.vec list) 
-    : predicate named =
-
-  let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
-  in
-  let term = 
-    List.fold_left
-      (fun acc vec -> 
-	let term = vec_to_term base vec 
-	in
-	let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
-	in
-	new_ghost_var.vghost <- true;     
-	let lvar = Cil.cvar_to_lvar new_ghost_var in
-        let term_gvar = 
-	  Logic_const.term
-	    (TLval ((TVar lvar),TNoOffset)) Linteger 
-	in
-	let prod_term = 
-	  Logic_const.term
-	    (TBinOp
-	       (Mult,
- 		term_gvar,
-		term) 
-	    ) Linteger 
-	    
-	in
-	if acc = zero then prod_term else 
-	Logic_const.term
-	   (TBinOp (PlusA,acc,prod_term)) Linteger 
-	    
-      )
-      zero
-      vec_list
-  in
-  let pred = 
-    Prel
-      (Req,
-       term,
-       zero)
-  in
-   
-  Logic_const.unamed pred
-
-(*let add_loop_annots kf stmt base vec_lists = 
-  let fundec = match kf.fundec with
-      Definition(f,_) -> f
-    | Declaration _ -> assert false
-  in
-  let annots =   
-    List.map 
-      (fun vec -> 
-	to_code_annot (vec_space_to_predicate fundec base vec)
-      )
-      vec_lists
-      
-
-  in
-  List.iter (Annotations.add_code_annot Mat_option.emitter ~kf stmt) annots*)
 
 (** Zarith *)
 
@@ -246,7 +148,7 @@ let non_zero_search_from_scratch term_list =
   let var_visitor = 
     object
       inherit Visitor.frama_c_inplace
-      method! vvrbl v = raise Var_found
+      method! vvrbl _ = raise Var_found
 
     end
   in
@@ -506,5 +408,10 @@ let add_loop_annots_zarith kf stmt base vec_lists =
       
   in
 
-  List.iter (Annotations.add_code_annot Mat_option.emitter ~kf stmt) annots
-
+  List.iter (
+    fun annot -> 
+      let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot in () (*
+      let ip = Property.ip_of_code_annot_single kf stmt annot in 
+      Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True*)
+  )annots
+      

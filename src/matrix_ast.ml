@@ -1,5 +1,4 @@
 open Cil_types
-open Pilat_matrix
 open Poly_affect 
 open Cil_datatype
 
@@ -309,7 +308,7 @@ let stmt_to_poly_assign s : Poly_affect.t option =
 	      Some p -> register_poly s (Some p); Some p
 	    | None -> register_poly s None; None
 	  end
-      | Loop _ -> Mat_option.abort "Nested loop are not allowed yet."
+      | Cil_types.Loop _ -> Mat_option.abort "Nested loop are not allowed yet."
       | Break _ -> raise Loop_break
       | _ -> None
   end
@@ -356,7 +355,7 @@ let block_to_poly_lists block : Poly_affect.body list =
 		"No polynom generated from this stmt"
 	      ;
 	      future_lists
-	  | Some (Affect (v,p) as aff) ->
+	  | Some (Affect (_,p) as aff) ->
 	    Mat_option.debug ~dkey:dkey_stmt 
 	      "Polynom generated : %a"
 	      F_poly.pp_print p;

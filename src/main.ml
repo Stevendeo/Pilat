@@ -83,7 +83,7 @@ object(self)
   method! vstmt_aux stmt =
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
-    | Loop (_,b,_,_,_) -> 
+    | Cil_types.Loop (_,b,_,_,_) -> 
       let t0 = Sys.time() in
       begin (* Loop *)
 	

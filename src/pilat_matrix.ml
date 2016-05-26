@@ -474,8 +474,8 @@ let eigenvalues mat =
     "Divisible by 0 %i times. Affine constant : %a"
     power Z.pp_print affine_constant in
 
-  let max_number_of_roots = deg_poly - power
-  in
+  (*let max_number_of_roots = deg_poly - power
+  in*)
   let all_divs (i:Z.t) : Z_Set.t = 
     let max_ev = Z.of_int (Mat_option.Ev_leq.get ()) in
     let rec __all_divs cpt i = 

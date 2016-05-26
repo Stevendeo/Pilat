@@ -1,5 +1,4 @@
 open Pilat_math
-open Pilat_matrix
 
 type var =  Cil_datatype.Varinfo.t
 

@@ -65,7 +65,7 @@ object
 		| hd :: tl -> 
 		  if Stmt.equal hd ref_stmt
 		  then fundec.sbody.bstmts <- ((List.rev left) @ (new_stmt:: right))
-		  else fundec_stmt_zipper ((List.hd right)::left) (List.tl right)
+		  else fundec_stmt_zipper ((List.hd right)::left) tl
 	      in
 	      
 	      fundec_stmt_zipper [] fundec.sbody.bstmts 
