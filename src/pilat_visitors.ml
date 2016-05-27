@@ -38,7 +38,7 @@ let register_stmt loop_stmt init =
   Stmt.Hashtbl.replace stmt_init_table loop_stmt (init :: old_bind)
 
 class fundec_updater prj = 
-object
+object(self)
   inherit (Visitor.frama_c_copy prj)
   method! vfunc fundec = 
     List.iter 
@@ -51,13 +51,18 @@ object
 	      
 	      let new_stmt = Cil.mkStmtCfg ~before:false ~new_stmtkind ~ref_stmt 
 	      in
-	      
+	      let () = (** Stmt registration *)
+		Kernel_function.register_stmt 
+		(Extlib.the self#current_kf) 
+		new_stmt 
+		(Kernel_function.find_all_enclosing_blocks ref_stmt)
+	     in
 	      let () = 
 		Mat_option.debug ~dkey:dkey_fundec "Adding %a to the CFG before %a" 
 		  Printer.pp_stmt new_stmt
 		  Printer.pp_stmt ref_stmt
 	      in
-	      
+	      fundec.sallstmts <- new_stmt :: fundec.sallstmts;
 	      new_stmt.ghost <- true;
 	      let rec fundec_stmt_zipper left right = 
 		match right with
@@ -75,6 +80,7 @@ object
 	  Not_found -> ()
       )
       fundec.sallstmts;
+    
     ChangeDoChildrenPost (fundec,(fun i -> i))
      
 end

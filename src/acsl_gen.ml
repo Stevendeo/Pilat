@@ -73,52 +73,89 @@ let monomial_to_mul_term m =
 
 let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
 
+  let z_use = Mat_option.Use_zarith.get () in
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
     "Vector given : %a" Pilat_matrix.QMat.pp_vec vec in
-    
-
+  let vec = 
+    if z_use
+    then Invariant_utils.integrate_vec vec 
+    else vec 
+  in
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
   let vec_array = Pilat_matrix.QMat.vec_to_array vec in 
   Poly_affect.F_poly.Monom.Map.fold
     (fun monom row acc -> 
       let row = row - 1 in
-      assert (Z.equal Z.one (Q.den vec_array.(row)));
-      let cst = vec_array.(row) in
+      
+      let cst = 
+	
+	vec_array.(row) 
+      
+      in
       if Q.equal Q.zero cst then acc else
       
-	try
-	  let term_cst = 
-	    Logic_const.term 
-	      (TConst 
-		 (Integer 
-		    (Integer.of_int 
-		       (Q.to_int cst),(Some (Q.to_string cst))))) Linteger in
-	  
-	 
-	  
-	  let monom_term = 
-	    
-	    Logic_const.term
-	      (TBinOp
-		 (Mult,
- 		  term_cst,
-		  monomial_to_mul_term monom)
-	      ) Linteger 
-	      
-	  in
-	  let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
-	    "Creates term : %a" Printer.pp_term monom_term in
-
-	  if acc = zero then monom_term else
-	    Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
-	with
-	  Z.Overflow -> 
-	    let () = Mat_option.feedback 
-	      "The constant %a was too big to be used for an invariant. Skip this term." 
-	      Q.pp_print cst
+	
+	  if z_use then 
+	    try
+	      assert (Z.equal Z.one (Q.den vec_array.(row)));
+	    let term_cst = 
+	      Logic_const.term 
+		(TConst 
+		   (Integer 
+		      (Integer.of_int 
+			 (Q.to_int cst),(Some (Q.to_string cst))))) Linteger 
 	    in
-	    acc
+	    let monom_term = 
+	      
+	      Logic_const.term
+		(TBinOp
+		   (Mult,
+ 		    term_cst,
+		    monomial_to_mul_term monom)
+		) Linteger 
+		
+	    in
+	    let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
+	      "Creates term : %a" Printer.pp_term monom_term in
+	    
+	    if acc = zero then monom_term else
+	      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
+    
+	    with
+	      Z.Overflow -> 
+		let () = Mat_option.feedback 
+		  "The constant %a was too big to be used for an invariant. Skip this term." 
+		  Q.pp_print cst
+		in
+		acc
+		  
+	  else
+	    let cst = ((Z.to_float (Q.num cst)) /. (Z.to_float (Q.den cst))) in
+	    let lreal:Cil_types.logic_real = 
+	      {
+		r_literal = string_of_float cst;
+		r_nearest = cst;
+		r_upper = cst; 
+		r_lower = cst;		  
+	      }  in
+	    
+	    let term_cst = 
+	      Logic_const.term 
+		(TConst (LReal lreal)) Lreal in
+	    
+	    let monom_term = 
+	      
+	      Logic_const.term
+		(TBinOp
+		   (Mult,
+ 		    term_cst,
+		    monomial_to_mul_term monom)
+		) Lreal
+		
+	    in
+	    if acc = zero then monom_term else
+	      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Lreal
     )
     base
     zero
@@ -410,8 +447,9 @@ let add_loop_annots_zarith kf stmt base vec_lists =
 
   List.iter (
     fun annot -> 
-      let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot in () (*
+      let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot 
+      in 
       let ip = Property.ip_of_code_annot_single kf stmt annot in 
-      Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True*)
+      Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
   )annots
       

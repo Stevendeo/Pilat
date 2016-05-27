@@ -41,21 +41,20 @@ let rev_base base =
     base
     Imap.empty 
 
-let print_vec rev_base vec = 
+let print_vec_lacaml rev_base vec = 
 
   let i = ref 0 in
-  Lacaml_D.Vec.iter
+  Array.iter
     (fun fl ->
-      i := !i + 1;
-      (*if abs_float fl < 1E-10
+      i := !i + 1;if Q.equal fl Q.zero
       then () 
-      else*) 
+      else 
 	Mat_option.debug ~dkey:dkey_stmt
 	  "+%f%a" 
-	  fl 
+	   ((Z.to_float (Q.num fl)) /. (Z.to_float (Q.den fl)))
 	 Poly_affect.F_poly.Monom.pretty 
 	  (Imap.find !i rev_base)
-    ) vec
+    ) (QMat.vec_to_array vec)
     
 let print_vec_zarith rev_base vec = 
 
@@ -74,6 +73,11 @@ let print_vec_zarith rev_base vec =
 	  (Imap.find !i rev_base)
     ) (QMat.vec_to_array vec)
     
+let print_vec = 
+  if Mat_option.Use_zarith.get () 
+  then print_vec_zarith
+  else print_vec_lacaml
+
 (** Visitor *)
     
 let loop_analyzer () = 
@@ -193,7 +197,7 @@ object(self)
 			  "Invariant %s %i :" (Invariant_utils.lim_to_string limit)  (i + 1) in
 		      List.iter
 			(fun invar ->  
-			  print_vec_zarith rev_base invar;
+			  print_vec rev_base invar;
 			  Mat_option.debug ~dkey:dkey_stmt "__\n";
 			)invars
 			
@@ -204,10 +208,14 @@ object(self)
 	      first_invar
 	      (List.tl affects)
 	  in
-	  let whole_loop_invar = 
-	  List.map
-	    (fun (limit,vlist) -> 
-	      limit,(List.map Invariant_utils.integrate_vec vlist)) whole_loop_invar in
+	  (*let whole_loop_invar = 
+	    if Mat_option.Use_zarith.get () 
+	    then
+	      List.map
+		(fun (limit,vlist) -> 
+		  limit,(List.map Invariant_utils.integrate_vec vlist)) whole_loop_invar
+	    else whole_loop_invar
+	  in
 	  let () = 
 	    Mat_option.debug ~dkey:dkey_stmt
 	      "Invariants generated :"
@@ -219,12 +227,12 @@ object(self)
 		  "Invariant %s %i :"  (Invariant_utils.lim_to_string limit) (i + 1) in
 	      List.iter
 		(fun invar ->  
-		  print_vec_zarith rev_base invar;
+		  print_vec rev_base invar;
 		  Mat_option.debug ~dkey:dkey_stmt "__\n";
 		)invars
 		
 	    )
-	    whole_loop_invar;
+	    whole_loop_invar;*)
 	  
 	  Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time ;
 
@@ -285,5 +293,7 @@ let run () =
       close_out cout;
       Mat_option.feedback "C file generation      : done\n";
     ) ()
+    
+    
   
 let () = Db.Main.extend run
