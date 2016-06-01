@@ -274,8 +274,6 @@ let add_k_stmt new_ghost_var sum_term stmt =
   
   Pilat_visitors.register_stmt stmt init_k
 
-
-
 (** Returns a predicate list based on the term list. 
     SUM(ki*ei) is the general invariant, but : 
     if the limit is convergent, then each ei is a convergent invariant
@@ -445,11 +443,13 @@ let add_loop_annots_zarith kf stmt base vec_lists =
       
   in
 
-  List.iter (
+  Pilat_visitors.register_annot stmt annots
+
+  (*List.iter (
     fun annot -> 
       let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot 
       in 
       let ip = Property.ip_of_code_annot_single kf stmt annot in 
       Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
   )annots
-      
+  *)  

@@ -208,31 +208,6 @@ object(self)
 	      first_invar
 	      (List.tl affects)
 	  in
-	  (*let whole_loop_invar = 
-	    if Mat_option.Use_zarith.get () 
-	    then
-	      List.map
-		(fun (limit,vlist) -> 
-		  limit,(List.map Invariant_utils.integrate_vec vlist)) whole_loop_invar
-	    else whole_loop_invar
-	  in
-	  let () = 
-	    Mat_option.debug ~dkey:dkey_stmt
-	      "Invariants generated :"
-	  in
-	  List.iteri
-	    (fun i (limit,invars) -> 
-	      let () = 
-		Mat_option.debug ~dkey:dkey_stmt
-		  "Invariant %s %i :"  (Invariant_utils.lim_to_string limit) (i + 1) in
-	      List.iter
-		(fun invar ->  
-		  print_vec rev_base invar;
-		  Mat_option.debug ~dkey:dkey_stmt "__\n";
-		)invars
-		
-	    )
-	    whole_loop_invar;*)
 	  
 	  Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time ;
 
@@ -293,7 +268,6 @@ let run () =
       close_out cout;
       Mat_option.feedback "C file generation      : done\n";
     ) ()
-    
-    
-  
+
+
 let () = Db.Main.extend run
