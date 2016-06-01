@@ -12,11 +12,15 @@ module Use_zarith: Parameter_sig.Bool
 
 module Ev_leq: Parameter_sig.Int
 
+module Var_focus : Parameter_sig.String
+
 (** Tools for ACSL generation *)
 
 val emitter : Emitter.t
 
 (** Misc. *)
+
+val var_list : unit -> Cil_types.varinfo list
 
 (** Timers *)
 

@@ -14,7 +14,7 @@ module Enabled = False
 module Degree = Int
   (struct 2
     let option_name = "-pilat-degree"
-    let help = "sets the degree of the invariants seeked"
+    let help = "sets the maximum degree of the invariants"
     let arg_name = "n"
     let default = 2
    end)
@@ -51,6 +51,15 @@ module Ev_leq =
 	let default = 10
      end)
 
+module Var_focus = 
+  Empty_string
+    (struct
+      let option_name = "-pilat-vars"
+      let arg_name = "x:y:..."
+      let help = "specifies which variables will be analyzed. "
+     
+     end)
+
 (** Tools for ACSL generation *)
 
 let emitter = Emitter.create 
@@ -61,6 +70,26 @@ let emitter = Emitter.create
   ~tuning:[]
 
 (** Misc. *)
+
+let var_list () = 
+  let str = Var_focus.get () in
+  let list = Str.split (Str.regexp ":") str
+  in
+  List.fold_left
+    (fun acc str_v ->
+      try 
+	Globals.Vars.find_from_astinfo str_v Cil_types.VGlobal :: acc
+      with
+	Not_found ->
+	  try
+	    (Globals.Vars.find_from_astinfo 
+	      str_v
+	      (Cil_types.VLocal (Globals.Functions.find_by_name "main")) :: acc)
+	  with
+	    Not_found -> 
+	      (feedback "Variable %s not found") str_v; acc)
+    []
+    list
 
 (** Timers *)
 
