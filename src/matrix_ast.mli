@@ -1,12 +1,13 @@
 open Pilat_matrix
 open Poly_affect 
-
+open Cil_datatype
 exception Not_solvable
 
 
-val block_to_poly_lists : Cil_types.block -> Poly_affect.body list
+val block_to_poly_lists : Varinfo.Set.t -> Cil_types.block -> Poly_affect.body list
 (** Returns a list of list of polynomial affectations. Each list correspond to a the 
-    succession of affectations for each possible path in the loop.
+    succession of affectations for each possible path in the loop, while omitting 
+    variable absent of the set in argument
     Raises Not_solvable if a statement of the loop is not solvable. *)
 
 val add_monomial_modifications : 

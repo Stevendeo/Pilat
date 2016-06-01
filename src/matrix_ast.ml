@@ -280,19 +280,21 @@ let rec exp_to_poly exp =
   | CastE (_,e) -> exp_to_poly e
   | _ -> assert false
 
-let instr_to_poly_assign : Cil_types.instr -> Poly_affect.t option = 
+let instr_to_poly_assign varinfo_used : Cil_types.instr -> Poly_affect.t option = 
   function
   | Set (l,e,_) -> begin
     match fst l with 
       Var v -> 
-	Some (Affect (v,(exp_to_poly e)))
+	if Cil_datatype.Varinfo.Set.mem v varinfo_used 
+	then Some (Affect (v,(exp_to_poly e)))
+	else None 
     | _ -> assert false end
   | Skip _ -> None
   | _ -> assert false
 
 let register_poly = Stmt.Hashtbl.replace poly_hashtbl   
 
-let stmt_to_poly_assign s : Poly_affect.t option = 
+let stmt_to_poly_assign varinfo_used s : Poly_affect.t option = 
   begin
   try 
     Stmt.Hashtbl.find poly_hashtbl s 
@@ -304,7 +306,7 @@ let stmt_to_poly_assign s : Poly_affect.t option =
 	    "Instruction"
 	  in
 	  begin
-	    match instr_to_poly_assign i with 
+	    match instr_to_poly_assign varinfo_used i with 
 	      Some p -> register_poly s (Some p); Some p
 	    | None -> register_poly s None; None
 	  end
@@ -313,7 +315,7 @@ let stmt_to_poly_assign s : Poly_affect.t option =
       | _ -> None
   end
 
-let block_to_poly_lists block : Poly_affect.body list = 
+let block_to_poly_lists varinfo_used block : Poly_affect.body list = 
   let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
   in
   let rec dfs stmt = 
@@ -337,7 +339,7 @@ let block_to_poly_lists block : Poly_affect.body list =
 		
 	try
 
-	  let poly_opt = stmt_to_poly_assign stmt in
+	  let poly_opt = stmt_to_poly_assign varinfo_used stmt in
 
 	  let future_lists = 
 	    List.fold_left
@@ -380,32 +382,36 @@ let lacaml_loop_matrix
     (all_modifs :(F_poly.Monom.t * F_poly.t) list)  = 
   
   let mat_size = F_poly.Monom.Map.cardinal base in
-  List.fold_left
-    (fun acc (v,poly_affect) -> 
-      let new_matrix = 
-	(snd
-	   (F_poly.to_lacal_mat 
-	      ~base 
-	      v 
-	      poly_affect)
-	) in 
-      
-      Mat_option.debug ~dkey:dkey_loop_mat ~level:4
-	"New matrix for %a = %a :"
-        F_poly.Monom.pretty v
-	F_poly.pp_print poly_affect;
-      
-      Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
-	Lacaml_D.pp_mat new_matrix
-	Lacaml_D.pp_mat acc;
-      
-      Lacaml_D.gemm 
-	new_matrix
-	acc 
-    )
-    (Lacaml_D.Mat.identity mat_size)
-    all_modifs
-    
+  try 
+    List.fold_left
+      (fun acc (v,poly_affect) -> 
+	let new_matrix = 
+	  (snd
+	     (F_poly.to_lacal_mat 
+		~base 
+		v 
+		poly_affect)
+	  ) in 
+	
+	Mat_option.debug ~dkey:dkey_loop_mat ~level:4
+	  "New matrix for %a = %a :"
+          F_poly.Monom.pretty v
+	  F_poly.pp_print poly_affect;
+	
+	Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
+	  Lacaml_D.pp_mat new_matrix
+	  Lacaml_D.pp_mat acc;
+	
+	Lacaml_D.gemm 
+	  new_matrix
+	  acc 
+      )
+      (Lacaml_D.Mat.identity mat_size)
+      all_modifs
+  with
+    Poly_affect.Incomplete_base -> 
+      Mat_option.abort "The matrix base is incomplete, you need to add more variables"
+
 let loop_matrix = 
   lacaml_loop_matrix
 

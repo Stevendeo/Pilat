@@ -95,9 +95,20 @@ object(self)
 	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
 	    stmt.sid in
 	
+	let varinfos_used = Pilat_visitors.varinfo_registerer b in
+	Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
+	
+	Cil_datatype.Varinfo.Set.iter
+	  (fun v -> 
+	    Mat_option.debug 
+	      ~dkey:dkey_stmt 
+	      ~level:3 
+	      "Var %a" 
+	      Printer.pp_varinfo v) varinfos_used ;
+
 	(** 1st step : Computation of the block as a list of list of polynomials affectations. *)
 	let polys_opt = 
-	try Some (Matrix_ast.block_to_poly_lists b)
+	try Some (Matrix_ast.block_to_poly_lists varinfos_used b)
 	with Matrix_ast.Not_solvable -> None 
 	in
 	
@@ -109,16 +120,22 @@ object(self)
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 	  
 	  let varinfos_used = Pilat_visitors.varinfo_registerer b in
-	  Mat_option.debug ~dkey:dkey_stmt ~level: 2 "Used varinfos computed";
+	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 	  
+	  Cil_datatype.Varinfo.Set.iter
+	    (fun v -> 
+	      Mat_option.debug 
+		~dkey:dkey_stmt 
+		~level:3 
+		"%a" 
+		Printer.pp_varinfo v) varinfos_used ;
+
 	  let basic_assigns = 
 	    (* In order to compute the transformations for all variables in each 
 	       loop, even if a variable doesn't appear on all loops, we need to 
 	       add identity assignment *)
 	    Cil_datatype.Varinfo.Set.fold
-	      (fun v acc -> 
-		
-	       
+	      (fun v acc ->
 		Affect ((v, (Poly_affect.F_poly.monomial 1. [v,1]))):: acc )
 	      varinfos_used
 	      []

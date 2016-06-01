@@ -8,9 +8,13 @@ let dkey_stmt = Mat_option.register_category "pilat_vis:stmt"
 let varinfo_registerer block = 
   let vinfos = ref Cil_datatype.Varinfo.Set.empty in
   
+  let focused_vinfo = Mat_option.var_list ()
+  in
   let visitor = 
 object(self)
       inherit Visitor.frama_c_inplace
+      
+	
       method! vvrbl v = 
 	match self#current_stmt with 
 	  None -> DoChildren (* This case might be useless *)
@@ -25,7 +29,11 @@ object(self)
   let () = 
     ignore (Cil.visitCilBlock (visitor :> cilVisitor) block)
   in
-  !vinfos
+  if Varinfo.Set.is_empty focused_vinfo
+  then
+    !vinfos
+  else
+    Varinfo.Set.inter !vinfos focused_vinfo
 
 let stmt_init_table = Stmt.Hashtbl.create 42
 

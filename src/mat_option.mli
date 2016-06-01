@@ -20,7 +20,7 @@ val emitter : Emitter.t
 
 (** Misc. *)
 
-val var_list : unit -> Cil_types.varinfo list
+val var_list : unit -> Cil_datatype.Varinfo.Set.t
 
 (** Timers *)
 

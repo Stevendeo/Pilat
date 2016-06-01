@@ -78,17 +78,20 @@ let var_list () =
   List.fold_left
     (fun acc str_v ->
       try 
-	Globals.Vars.find_from_astinfo str_v Cil_types.VGlobal :: acc
+	Cil_datatype.Varinfo.Set.add (Globals.Vars.find_from_astinfo str_v Cil_types.VGlobal) acc
       with
 	Not_found ->
 	  try
-	    (Globals.Vars.find_from_astinfo 
-	      str_v
-	      (Cil_types.VLocal (Globals.Functions.find_by_name "main")) :: acc)
+	    Cil_datatype.Varinfo.Set.add 
+	      (Globals.Vars.find_from_astinfo 
+		 str_v
+		 (Cil_types.VLocal (Globals.Functions.find_by_name "main")))
+		acc
+	      
 	  with
 	    Not_found -> 
 	      (feedback "Variable %s not found") str_v; acc)
-    []
+    Cil_datatype.Varinfo.Set.empty
     list
 
 (** Timers *)

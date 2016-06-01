@@ -1,5 +1,7 @@
 open Pilat_math
 
+exception Incomplete_base
+
 type var =  Cil_datatype.Varinfo.t
 
 module Ring = 
@@ -60,8 +62,8 @@ struct
 	Monom.Set.iter
 	  (fun m -> 
 	      let col_monom = 
-		Monom.Map.find m base_monom 
-
+		try Monom.Map.find m base_monom 
+		with Not_found -> raise Incomplete_base
 	      in
 	      let coef = coef p m in
 	      mat.{row,col_monom}<-coef
