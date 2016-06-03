@@ -218,9 +218,18 @@ let test_never_zero (stmt : stmt) (term_list : term list) : term option =
 let get_inst_loc = function
   | Set (_, _, l)
   | Call (_, _, _, l)
-  | Asm (_,_,_,l)
   | Skip l
   | Code_annot (_, l) -> l
+  (* Between Frama-C Magnesium and Aluminium, the number of fields 
+     of Asm went from 7 to 4. For the tool to be well typed, the following have
+     to be done.
+     If you want to treat Asm without failure, then you can use : 
+
+     | Asm(_,_,_,_,_,_,l) -> l (Frama-C <= Magnesium)
+     | Asm(_,_,_,l) -> l (Frama-C Aluminium)
+     
+  *)
+  | Asm _ -> assert false
     
 let rec get_stmt_loc s = match s.skind with
   | Instr i -> get_inst_loc i
