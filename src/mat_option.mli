@@ -14,6 +14,8 @@ module Ev_leq: Parameter_sig.Int
 
 module Var_focus : Parameter_sig.String
 
+module Prove : Parameter_sig.Bool
+
 (** Tools for ACSL generation *)
 
 val emitter : Emitter.t

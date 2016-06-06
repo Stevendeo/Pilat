@@ -39,7 +39,7 @@ module Use_zarith =
   True
     (struct
       let option_name = "-pilat-z"
-      let help = "When on, uses zarith library." 
+      let help = "when on, uses zarith library. Recommended if searching for integer relations but depreciated when searching for floating point relations." 
    end)
 
 module Ev_leq = 
@@ -58,6 +58,13 @@ module Var_focus =
       let arg_name = "x:y:..."
       let help = "specifies which variables will be analyzed. "
      
+     end)
+
+module Prove = 
+  False
+    (struct 
+      let option_name = "-pilat-prove"
+      let help = "when on, tries to prove already existing loop invariants"
      end)
 
 (** Tools for ACSL generation *)
