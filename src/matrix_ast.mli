@@ -4,6 +4,8 @@ open Cil_datatype
 exception Not_solvable
 
 
+val exp_to_poly : Cil_types.exp -> F_poly.t
+
 val block_to_poly_lists : Varinfo.Set.t -> Cil_types.block -> Poly_affect.body list
 (** Returns a list of list of polynomial affectations. Each list correspond to a the 
     succession of affectations for each possible path in the loop, while omitting 

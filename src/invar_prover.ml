@@ -1,18 +1,133 @@
 open Cil_types
+open Poly_affect
 
-let poly_of_term left_term right_term = 
+exception Bad_invariant
 
+let poly_of_cst = function
+  | Integer (i,_) -> i |> Integer.to_float |> F_poly.const
+  | LStr _ | LWStr _ | LChr _ -> raise Bad_invariant
+    
+  (* We can do a better job by searching for the best real for which it is
+     an invariant. For now, we will just try on the nearest float. *)
+  | LReal lr -> F_poly.const lr.r_nearest
+  | LEnum enumitem -> Matrix_ast.exp_to_poly enumitem.eival
 
+let poly_of_termlval (term_lhost,t_offset) = 
+  let () = 
+    match t_offset with 
+      TNoOffset -> ()
+    | TField _ | TModel _ | TIndex _ -> 
+      let () = 
+	Mat_option.feedback 
+	  "Logic term %a cannot be treated."
+	  Printer.pp_term_lval (term_lhost,t_offset)
+	;
+      in
+      raise Bad_invariant
+  in
+  match term_lhost with 
+    TResult _ | TMem _ -> raise Bad_invariant
+  | TVar {lv_name = s; lv_origin = None} ->
+    let () = 
+      Mat_option.feedback 
+	"%s is not a real C variable." s
+    in
+    raise Bad_invariant
+  | TVar {lv_origin = Some v} -> F_poly.monomial 1. [v,1]
+
+let cast_poly typ p = 
+  match typ with
+  | TInt _ -> (* Cast floats to int *)
+    F_poly.Monom.Set.fold
+      (fun m acc -> 
+	let coef = F_poly.coef p m in 
+	let casted = 
+	  if coef < 0. then ceil coef
+	  else floor coef 
+	in
+	F_poly.add acc (F_poly.mono_poly casted m)
+      )
+      (F_poly.get_monomials p)
+      F_poly.zero
+  | TFloat _ -> p
+  | _ -> raise Bad_invariant
+	
+    
+let rec poly_of_term t = match t.term_node with
+  | TConst lc -> poly_of_cst lc
+  | TLval tl -> poly_of_termlval tl
+  | TSizeOf _ | TSizeOfE _ | TSizeOfStr _ | TAlignOf _ | TAlignOfE _ -> 
+    raise Bad_invariant
+  | TUnOp (Neg,t) -> F_poly.sub (F_poly.zero) (poly_of_term t)
+  | TUnOp _ -> raise Bad_invariant
+  | TBinOp (PlusA,t1,t2) -> 
+    F_poly.add (poly_of_term t1) (poly_of_term t2)
+  | TBinOp (MinusA,t1,t2) -> 
+    F_poly.sub (poly_of_term t1) (poly_of_term t2)
+  | TBinOp _ -> raise Bad_invariant
+  | TCastE (typ,t) -> t |> poly_of_term |> (cast_poly typ)
+  | _ -> raise Bad_invariant
+    
 let poly_of_pred (pred:predicate) = 
   match pred with
     Prel (_,tl,tr) -> 
-      poly_of_term tl tr
+      F_poly.sub (poly_of_term tl) (poly_of_term tr)
   | _ -> assert false
   
-(*
-let invariant_to_poly (annot:code_annotation) = 
+let predicate_to_vector (base:int F_poly.Monom.Map.t) (pred:predicate) =  
+  let poly = poly_of_pred pred in 
+  let p_monoms  = F_poly.get_monomials poly in 
+  let res = Lacaml_D.Vec.init (F_poly.Monom.Map.cardinal base) (fun _ -> 0.) in
+  F_poly.Monom.Set.iter
+    (fun m -> 
+      try 
+	let pos = F_poly.Monom.Map.find m base in
+	res.{pos}<-F_poly.coef poly m
+      with Not_found -> 
+	let () = Mat_option.feedback 
+	  "Monomial %a not in the base in argument."
+	  F_poly.pp_print (F_poly.mono_poly 1. m)
+	in
+	raise Bad_invariant
+    ) p_monoms; res
+
+(* This exception is raised to stop the iteration of the next function when we can conclude
+   this is not an invariant. If it is not raised, then it is an invariant. *)
+exception Not_an_invariant
+let prove_invariant (mat:Lacaml_D.Mat.t) (base:int F_poly.Monom.Map.t) (pred:predicate) = 
+  let vec = predicate_to_vector base pred in
+
+  let matt = Lacaml_D.Mat.transpose_copy mat in
   
-  match annot.annot_content with
-    AInvariant (_,_,pred) -> pred_to_poly pred.content
-  | _ -> None
-*)
+  let mtvec = Lacaml_D.gemv matt vec in 
+   
+  let index = ref 0 in
+  try
+    ignore( 
+      Lacaml_D.Vec.fold
+	(fun acc c_mtvec -> (* acc will store the possible eigenvalue *)
+	  index := !index + 1;
+	  let c_vec = vec.{!index} in
+	  
+	  if c_mtvec = 0. then
+	    begin
+	      if c_vec = 0. then acc (* 0*ev = 0, we don't know the ev *)
+	      else Some 0. (* c_vec * ev = 0 => ev = 0. *)
+	    end
+	  else 
+	    let ev = c_vec /. c_mtvec in 
+	      (* Floating point division : maybe use zarith instead ? *)
+	    match acc with
+	      None -> Some ev (* We had no information about the eigenvalue before *)
+	    | (Some e) -> 
+	      if e = ev 
+	      then acc (* Vectors seem to be colinear, with coefficient ev *) 
+	      else raise Not_an_invariant (* Vectors are not colinear *)
+	)
+	None
+	mtvec
+    );true 
+  with Not_an_invariant -> false
+    
+    
+	  
