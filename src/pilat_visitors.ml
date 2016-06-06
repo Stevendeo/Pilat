@@ -1,5 +1,4 @@
 open Cil_types
-open Cil_datatype
 open Cil
 
 let dkey_stmt = Mat_option.register_category "pilat_vis:stmt"
@@ -20,7 +19,7 @@ object(self)
 	  None -> DoChildren (* This case might be useless *)
 	| Some {skind = If _ } -> DoChildren
 	| _ -> 
-	  let () = vinfos := Varinfo.Set.add v !vinfos
+	  let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
 	  in
 	  SkipChildren      
 
@@ -29,31 +28,31 @@ object(self)
   let () = 
     ignore (Cil.visitCilBlock (visitor :> cilVisitor) block)
   in
-  if Varinfo.Set.is_empty focused_vinfo
+  if Cil_datatype.Varinfo.Set.is_empty focused_vinfo
   then
     !vinfos
   else
-    Varinfo.Set.inter !vinfos focused_vinfo
+    Cil_datatype.Varinfo.Set.inter !vinfos focused_vinfo
 
-let stmt_init_table = Stmt.Hashtbl.create 42
+let stmt_init_table = Cil_datatype.Stmt.Hashtbl.create 42
 
-let loop_annot_table = Stmt.Hashtbl.create 42
+let loop_annot_table = Cil_datatype.Stmt.Hashtbl.create 42
 
 let register_stmt loop_stmt init =
   let old_bind = 
     try 
-      Stmt.Hashtbl.find stmt_init_table loop_stmt 
+      Cil_datatype.Stmt.Hashtbl.find stmt_init_table loop_stmt 
     with 
       Not_found -> [] in 
-  Stmt.Hashtbl.replace stmt_init_table loop_stmt (init :: old_bind)
+  Cil_datatype.Stmt.Hashtbl.replace stmt_init_table loop_stmt (init :: old_bind)
 
 let register_annot loop_stmt annots = 
     let old_bind = 
     try 
-      Stmt.Hashtbl.find loop_annot_table loop_stmt 
+      Cil_datatype.Stmt.Hashtbl.find loop_annot_table loop_stmt 
     with 
       Not_found -> [] in 
-  Stmt.Hashtbl.replace loop_annot_table loop_stmt (annots@old_bind)
+  Cil_datatype.Stmt.Hashtbl.replace loop_annot_table loop_stmt (annots@old_bind)
 
 class fundec_updater prj = 
 object(self)
@@ -72,6 +71,11 @@ object(self)
 
   (* TODO : There is still a problem, after the stmt is added to the cfg the cfg is unusable
      for other tools *) 
+
+  method! vfunc _ =
+    DoChildrenPost (fun f -> let () = File.must_recompute_cfg f in f)
+    
+      
   method! vstmt_aux s = 
     let kf = (Extlib.the self#current_kf) in
     let fundec = match kf.fundec with
@@ -80,8 +84,8 @@ object(self)
 
     let () = (* Adding annotations *)
       try 
-	let annots = Stmt.Hashtbl.find loop_annot_table s in
-	let () = Stmt.Hashtbl.remove loop_annot_table s in
+	let annots = Cil_datatype.Stmt.Hashtbl.find loop_annot_table s in
+	let () = Cil_datatype.Stmt.Hashtbl.remove loop_annot_table s in
 	List.iter (
 	  fun annot -> 
 	    let () = Annotations.add_code_annot Mat_option.emitter ~kf s annot 
@@ -93,10 +97,10 @@ object(self)
       with Not_found (* Stmt.Hashtbl.find loop_annot_table s *) -> ()
     in
     try 
-      let new_stmtkinds = Stmt.Hashtbl.find stmt_init_table s 
+      let new_stmtkinds = Cil_datatype.Stmt.Hashtbl.find stmt_init_table s 
       in
       
-      let () = Stmt.Hashtbl.remove stmt_init_table s in
+      let () = Cil_datatype.Stmt.Hashtbl.remove stmt_init_table s in
       
       let s_list = 
 	List.map
@@ -128,7 +132,7 @@ object(self)
 	match right with
 	  [] -> assert false
 	| hd :: tl -> 
-	  if Stmt.equal hd s
+	  if Cil_datatype.Stmt.equal hd s
 	  then fundec.sbody.bstmts <- ((List.rev left) @ (s_list@right))
 	  else fundec_stmt_zipper ((List.hd right)::left) tl
       in
