@@ -68,7 +68,23 @@ let rec poly_of_term t = match t.term_node with
     F_poly.mul (poly_of_term t1) (poly_of_term t2)
   | TBinOp _ -> raise Bad_invariant
   | TCastE (typ,t) -> t |> poly_of_term |> (cast_poly typ)
-  | TCoerce (t,_) -> poly_of_term t
+  | TAddrOf _ -> 
+    let () = Mat_option.feedback "%a : adresses not supported" 
+      Printer.pp_term t 
+    in raise Bad_invariant
+  | TStartOf _ -> 
+    let () = Mat_option.feedback "%a : arrays not supported" 
+      Printer.pp_term t 
+    in raise Bad_invariant
+  | Tapp _ -> 
+    let () = Mat_option.feedback "%a : logic functions not supported" 
+      Printer.pp_term t 
+    in raise Bad_invariant
+  | Tlambda _ -> 
+    let () = Mat_option.feedback "%a : lambda abstractions not supported" 
+      Printer.pp_term t 
+    in raise Bad_invariant
+  | TCoerce (t,_) | TLogic_coerce (_,t) -> poly_of_term t
   | _ -> 
     let () = Mat_option.feedback "%a term not supported" 
       Printer.pp_term t 
