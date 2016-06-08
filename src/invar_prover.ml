@@ -120,7 +120,7 @@ exception Not_an_invariant
 let prove_invariant (mat:Lacaml_D.Mat.t) (base:int F_poly.Monom.Map.t) (pred:predicate) = 
 
   let t0 = Sys.time () in
-  
+  try 
   let vec = predicate_to_vector base pred in
 
   let matt = Lacaml_D.Mat.transpose_copy mat in
@@ -157,13 +157,14 @@ let prove_invariant (mat:Lacaml_D.Mat.t) (base:int F_poly.Monom.Map.t) (pred:pre
     with 
       
     | Not_an_invariant -> Property_status.False_if_reachable
-    | Bad_invariant -> Property_status.Dont_know
-      
   in
-  
   Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t0; res
     
-  
+  with 
+  | Bad_invariant -> 
+    Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t0; 
+    Property_status.Dont_know 
+      
 let prove_annot mat map annot = 
   match annot.annot_content with
     AInvariant (_,_,p) -> 
