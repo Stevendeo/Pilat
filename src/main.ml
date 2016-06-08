@@ -88,9 +88,12 @@ object(self)
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
     | Cil_types.Loop (_,b,_,_,_) -> 
+      
+      
       let t0 = Sys.time() in
-      begin (* Loop *)
-	
+
+      
+      begin (* Loop treatment *)
 	let () = 	
 	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
 	    stmt.sid in
@@ -169,41 +172,60 @@ object(self)
 	      Poly_affect.F_poly.Monom.Map.empty
 	  in
 	  let rev_base = rev_base base in
- 
-     
-	  let first_poly = List.hd affects in 
-	  let m1 = Matrix_ast.loop_matrix base first_poly in
-	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "First matrix computed";
-	  Mat_option.debug ~dkey:dkey_stmt ~level:3 "%a" Lacaml_D.pp_mat m1;
 
-
-	  let first_invar = Invariant_utils.invariant_computation m1 in
-	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
-	  List.iteri
-	    (fun i (limit,invars) -> 
-	      
-	      
-	      let () = 
-		Mat_option.debug ~dkey:dkey_stmt
-		  "Invariant %s %i :" 
-		  (Invariant_utils.lim_to_string limit) 
-		  (i + 1) in
-	      List.iter
-		(fun invar ->  
-		  print_vec_zarith rev_base invar;
-		  Mat_option.debug ~dkey:dkey_stmt "__\n";
-		)invars
+	  let matrices = 
+	    List.map
+	      (Matrix_ast.loop_matrix base)
+	      affects in
+	  if Mat_option.Prove.get () 
+	  then
+	    let () = Mat_option.feedback "Proving invariants" in
+	    let open Property_status in
+	    List.iter
+	      (fun annot ->
+		let status = 
+		  List.fold_left 
+		    (fun acc mat -> 
+		      match acc with
+			False_and_reachable | False_if_reachable -> acc
+		    | Dont_know | True -> 
+		      begin
+			match Invar_prover.prove_annot mat base annot with
+			  True -> acc
+			| res -> res
+		      end
+		    )
+		    True
+		    matrices
+		in
 		
-	    ) first_invar;
-	  
-	  let whole_loop_invar = 
+		let () = 
+		  Mat_option.feedback
+		    "Invariant %a status : %s"
+		    Printer.pp_code_annotation annot
+		    (match status with
+		    True -> "True"
+		    | Dont_know -> "?"
+		    | _ -> "False") in
+		
+		let emitter = Annotations.emitter_of_code_annot annot stmt 
+		and ip = Property.ip_of_code_annot_single kf stmt annot
+		in
+		Property_status.emit emitter ~hyps:[] ip status
+	      )
+	      (Annotations.code_annot stmt); DoChildren
+	  else
+	    let () = Mat_option.feedback "Invariant generation" in
+	    
+	    let whole_loop_invar = 
 	    List.fold_left
-	      (fun acc p_list -> 
-		if acc = [] then [] 
-		else
-		  let m2 = Matrix_ast.loop_matrix base p_list in 	  
-		  Mat_option.debug ~dkey:dkey_stmt ~level:3 "New mat : %a" Lacaml_D.pp_mat m2;
- 		  let invar = (Invariant_utils.invariant_computation m2)
+	      (fun acc mat -> 
+		if acc = Some [] then Some [] 
+		else	  
+		  let () = 
+		    Mat_option.debug ~dkey:dkey_stmt ~level:3 "New mat : %a" Lacaml_D.pp_mat mat
+		  in
+ 		  let invar = (Invariant_utils.invariant_computation mat)
 		  in 
 
 		  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
@@ -219,17 +241,21 @@ object(self)
 			)invars
 			
 		    ) invar;
-
-		  Invariant_utils.intersection_invariants invar acc
+		   match acc with
+		     None -> Some invar
+		   | Some l ->  
+		     Some (Invariant_utils.intersection_invariants invar l) 		  
+		  
 	      )
-	      first_invar
-	      (List.tl affects)
+	      None
+	      matrices
 	  in
 	  
 	  Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time ;
-
-	  Acsl_gen.add_loop_annots_zarith kf stmt base whole_loop_invar;
-	  DoChildren
+	  match whole_loop_invar with 
+	    None -> DoChildren 
+	  | Some i ->  Acsl_gen.add_loop_annots_zarith kf stmt base i; DoChildren
+	  
       end (* Loop *)
     | _ -> DoChildren 
 end

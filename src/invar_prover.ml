@@ -21,7 +21,7 @@ let poly_of_termlval (term_lhost,t_offset) =
 	Mat_option.feedback 
 	  "Logic term %a cannot be treated."
 	  Printer.pp_term_lval (term_lhost,t_offset)
-	;
+	
       in
       raise Bad_invariant
   in
@@ -64,10 +64,17 @@ let rec poly_of_term t = match t.term_node with
     F_poly.add (poly_of_term t1) (poly_of_term t2)
   | TBinOp (MinusA,t1,t2) -> 
     F_poly.sub (poly_of_term t1) (poly_of_term t2)
+  | TBinOp (Mult,t1,t2) -> 
+    F_poly.mul (poly_of_term t1) (poly_of_term t2)
   | TBinOp _ -> raise Bad_invariant
   | TCastE (typ,t) -> t |> poly_of_term |> (cast_poly typ)
-  | _ -> raise Bad_invariant
-    
+  | TCoerce (t,_) -> poly_of_term t
+  | _ -> 
+    let () = Mat_option.feedback "%a term not supported" 
+      Printer.pp_term t 
+    in raise Bad_invariant
+  
+
 let poly_of_pred (pred:predicate) = 
   match pred with
     Prel (_,tl,tr) -> 
@@ -95,39 +102,54 @@ let predicate_to_vector (base:int F_poly.Monom.Map.t) (pred:predicate) =
    this is not an invariant. If it is not raised, then it is an invariant. *)
 exception Not_an_invariant
 let prove_invariant (mat:Lacaml_D.Mat.t) (base:int F_poly.Monom.Map.t) (pred:predicate) = 
+
+  let t0 = Sys.time () in
+  
   let vec = predicate_to_vector base pred in
 
   let matt = Lacaml_D.Mat.transpose_copy mat in
   
   let mtvec = Lacaml_D.gemv matt vec in 
    
-  let index = ref 0 in
-  try
-    ignore( 
-      Lacaml_D.Vec.fold
-	(fun acc c_mtvec -> (* acc will store the possible eigenvalue *)
-	  index := !index + 1;
-	  let c_vec = vec.{!index} in
-	  
-	  if c_mtvec = 0. then
-	    begin
-	      if c_vec = 0. then acc (* 0*ev = 0, we don't know the ev *)
-	      else Some 0. (* c_vec * ev = 0 => ev = 0. *)
-	    end
-	  else 
-	    let ev = c_vec /. c_mtvec in 
-	      (* Floating point division : maybe use zarith instead ? *)
-	    match acc with
-	      None -> Some ev (* We had no information about the eigenvalue before *)
-	    | (Some e) -> 
-	      if e = ev 
-	      then acc (* Vectors seem to be colinear, with coefficient ev *) 
-	      else raise Not_an_invariant (* Vectors are not colinear *)
-	)
-	None
-	mtvec
-    );true 
-  with Not_an_invariant -> false
+  let index = ref 0 in 
+  let res = 
+    try
+      ignore( 
+	Lacaml_D.Vec.fold
+	  (fun acc c_mtvec -> (* acc will store the possible eigenvalue *)
+	    index := !index + 1;
+	    let c_vec = vec.{!index} in
+	    
+	    if c_mtvec = 0. then
+	      begin
+		if c_vec = 0. then acc (* 0*ev = 0, we don't know the ev *)
+		else Some 0. (* c_vec * ev = 0 => ev = 0. *)
+	      end
+	    else 
+	      let ev = c_vec /. c_mtvec in 
+	    (* Floating point division : maybe use zarith instead ? *)
+	      match acc with
+		None -> Some ev (* We had no information about the eigenvalue before *)
+	      | (Some e) -> 
+		if e = ev 
+		then acc (* Vectors seem to be colinear, with coefficient ev *) 
+		else raise Not_an_invariant (* Vectors are not colinear *)
+	  )
+	  None
+	  mtvec
+      );Property_status.True 
+    with 
+      
+    | Not_an_invariant -> Property_status.False_if_reachable
+    | Bad_invariant -> Property_status.Dont_know
+      
+  in
+  
+  Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t0; res
     
-    
-	  
+  
+let prove_annot mat map annot = 
+  match annot.annot_content with
+    AInvariant (_,_,p) -> 
+      prove_invariant mat map p.content
+  | _ -> raise Bad_invariant

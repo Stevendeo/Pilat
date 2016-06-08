@@ -38,6 +38,7 @@ let stmt_init_table = Cil_datatype.Stmt.Hashtbl.create 42
 
 let loop_annot_table = Cil_datatype.Stmt.Hashtbl.create 42
 
+
 let register_stmt loop_stmt init =
   let old_bind = 
     try 
@@ -46,13 +47,15 @@ let register_stmt loop_stmt init =
       Not_found -> [] in 
   Cil_datatype.Stmt.Hashtbl.replace stmt_init_table loop_stmt (init :: old_bind)
 
-let register_annot loop_stmt annots = 
+let register_annot_list table loop_stmt annots = 
     let old_bind = 
     try 
-      Cil_datatype.Stmt.Hashtbl.find loop_annot_table loop_stmt 
+      Cil_datatype.Stmt.Hashtbl.find table loop_stmt 
     with 
       Not_found -> [] in 
-  Cil_datatype.Stmt.Hashtbl.replace loop_annot_table loop_stmt (annots@old_bind)
+  Cil_datatype.Stmt.Hashtbl.replace table loop_stmt (annots@old_bind)
+
+let register_annot = register_annot_list loop_annot_table
 
 class fundec_updater prj = 
 object(self)

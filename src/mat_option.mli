@@ -41,3 +41,5 @@ val ltoq_timer : float ref
 val ev_timer : float ref
 
 val char_poly_timer : float ref
+
+val proof_timer : float ref

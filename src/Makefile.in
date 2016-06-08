@@ -15,6 +15,7 @@ PLUGIN_CMO 	:= mat_option\
 		poly_affect\
 		invariant_utils\
 		matrix_ast\
+		invar_prover\
 		acsl_gen\
 		main
 

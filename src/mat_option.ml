@@ -118,3 +118,5 @@ let ltoq_timer = ref 0.
 let ev_timer = ref 0.
 
 let char_poly_timer = ref 0.  
+
+let proof_timer = ref 0.
