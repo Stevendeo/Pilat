@@ -336,6 +336,7 @@ let term_list_to_predicate term_list limit fundec stmt =
       match limit with
       | Convergent -> Rle
       | Divergent -> Rge
+      | One -> Req
       | _ -> assert false
     in
     List.map
@@ -430,13 +431,13 @@ let vec_space_to_predicate_zarith
       (vec_to_term_zarith base) vec_list in
 
   (* If a term is always different to 0, then a stronger result is possible *)
-
+(*
   match test_never_zero stmt term_list with
-    None -> 
+    None -> *)
       term_list_to_predicate term_list limit fundec stmt
-  | Some t -> 
+  (*| Some t -> 
     [term_list_to_simple_predicate t term_list fundec stmt]
-
+  *)
 let add_loop_annots_zarith kf stmt base vec_lists = 
   let fundec = match kf.fundec with
       Definition(f,_) -> f
