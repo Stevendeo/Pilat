@@ -292,12 +292,13 @@ let instr_to_poly_assign varinfo_used : Cil_types.instr -> Poly_affect.t option 
   | Skip _ -> None
   | _ -> assert false
 
-let register_poly = Stmt.Hashtbl.replace poly_hashtbl   
+let register_poly : Cil_types.stmt -> Poly_affect.t option -> unit = 
+  Stmt.Hashtbl.replace poly_hashtbl   
 
-let stmt_to_poly_assign varinfo_used s : Poly_affect.t option = 
+let rec stmt_to_poly_assign varinfo_used s : Poly_affect.t option = 
   begin
   try 
-    Stmt.Hashtbl.find poly_hashtbl s 
+    Stmt.Hashtbl.find poly_hashtbl s
   with 
     Not_found -> 
       match s.skind with
@@ -306,16 +307,21 @@ let stmt_to_poly_assign varinfo_used s : Poly_affect.t option =
 	    "Instruction"
 	  in
 	  begin
-	    match instr_to_poly_assign varinfo_used i with 
-	      Some p -> register_poly s (Some p); Some p
-	    | None -> register_poly s None; None
+	    let instr = instr_to_poly_assign varinfo_used i in
+	    register_poly s instr; instr
+
 	  end
-      | Cil_types.Loop _ -> Mat_option.abort "Nested loop are not allowed yet."
+      | Cil_types.Loop (_,b,_,_,_) -> 
+	let res = 
+	    Some(Loop (block_to_poly_lists varinfo_used b))
+	in
+	register_poly s res; res
+
       | Break _ -> raise Loop_break
       | _ -> None
   end
 
-let block_to_poly_lists varinfo_used block : Poly_affect.body list = 
+and block_to_poly_lists varinfo_used block : Poly_affect.body list = 
   let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
   in
   let rec dfs stmt = 
@@ -339,7 +345,7 @@ let block_to_poly_lists varinfo_used block : Poly_affect.body list =
 		
 	try
 
-	  let poly_opt = stmt_to_poly_assign varinfo_used stmt in
+	  let poly_list = stmt_to_poly_assign varinfo_used stmt in
 
 	  let future_lists = 
 	    List.fold_left
@@ -349,9 +355,10 @@ let block_to_poly_lists varinfo_used block : Poly_affect.body list =
 	  in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:3
 	    "List of paths : %i" (List.length future_lists) ;
-	  let (++) elt l = List.map (fun li -> elt :: li) l
+	  let (++) elt l = List.map (fun li -> elt :: li) l (* Adds an element to all the lists *)
 	  in
-	  match poly_opt with 
+	  	  
+	  match poly_list with 
 	    None -> 
 	      Mat_option.debug ~dkey:dkey_stmt ~level:3
 		"No polynom generated from this stmt"
@@ -363,7 +370,9 @@ let block_to_poly_lists varinfo_used block : Poly_affect.body list =
 	      F_poly.pp_print p;
 
 	    aff ++ future_lists
-	  | Some (Loop _) -> assert false
+	  
+	  | Some (Poly_affect.Loop b_list) -> assert false
+	    
 
 	with
 	  Loop_break -> []

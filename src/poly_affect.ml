@@ -77,7 +77,7 @@ end
 type t = 
   
   Affect of F_poly.v * F_poly.t
-| Loop of body
+| Loop of body list
 
 and body = t list
 
