@@ -4,7 +4,6 @@ int main(){
     {
       xn1 = xn1 + xn;
       xn = xn1 - xn;
-
     }
   return 0;
 

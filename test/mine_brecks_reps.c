@@ -1,19 +1,14 @@
-/*#include <time.h>
-#include <limits.h>
-float non_det(){
-  return ((float) ((float)rand() / INT_MAX) /10);
-
-}*/
+#include <time.h>
 
 int main(){
-  float x=1,y=1;
+  float x=float_interval(-1,1),y=float_interval(-1,1);
   int N = 1000;
   float k;
   while(N > 0){
     N--;
-    /*k = non_det();*/
-    x = 0.68 * (x-y) /*+ k*/;
-    y = 2*0.68*y + x /*+ k*/;
+    k = float_interval(-0.1,0.1);
+    x = 0.68 * (x-y) + k;
+    y = 2*0.68*y + x ;
 
   }
 
