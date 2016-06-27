@@ -13,12 +13,12 @@ val block_to_poly_lists : Varinfo.Set.t -> Cil_types.block -> Poly_affect.body l
     Raises Not_solvable if a statement of the loop is not solvable. *)
 
 val add_monomial_modifications : 
-  Poly_affect.body -> Poly_affect.lin_body list * Poly_affect.F_poly.Monom.Set.t
+  Poly_affect.body -> Poly_affect.lin_body * Poly_affect.F_poly.Monom.Set.t
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
 
 val loop_matrix : 
-  int F_poly.Monom.Map.t -> Poly_affect.monom_affect list -> Lacaml_D.mat
+  int F_poly.Monom.Map.t -> Poly_affect.lin_body -> Lacaml_D.mat
 (** Computes the lacaml matrix assoctated to the linearized loop. The first argument is the 
     base for the matrix : each monomial is associated to a line / column of the matrix. 
 *)

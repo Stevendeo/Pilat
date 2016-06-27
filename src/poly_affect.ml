@@ -88,5 +88,4 @@ type monom_affect =
 
 and lin_body = monom_affect list
 
-type if_cond = bool * Cil_types.exp
 

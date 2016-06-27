@@ -86,7 +86,7 @@ let all_possible_monomials e_deg_hashtbl =
  
   
 let add_monomial_modifications 
-    (p_list:Poly_affect.body) : Poly_affect.monom_affect list * F_poly.Monom.Set.t = 
+    (p_list:Poly_affect.body) : Poly_affect.lin_body * F_poly.Monom.Set.t = 
   let module M_set = F_poly.Monom.Set in
   let module M_map = F_poly.Monom.Map in
   let l_size = List.length p_list in
@@ -214,31 +214,35 @@ let add_monomial_modifications
       s
       Varinfo.Map.empty
   in
-  (List.fold_right
-    (fun affect acc  -> 
-      match affect with
-	Affect (v,poly) -> 
-      
-	  let monoms_modified = Varinfo.Map.find v modification_map
-	  in 
-	  
-	  M_set.fold
-	    (fun monom acc2 -> 
-	      let semi_poly = F_poly.mono_poly 1. monom
-	      in
-	      let compo = (F_poly.compo semi_poly v poly) in
-	      Mat_option.debug ~dkey:dkey_lowerizer ~level:3
-		"%a = %a"
-		F_poly.Monom.pretty monom
-		F_poly.pp_print compo;
-	      (monom,compo)::acc2
-	    )
-	    monoms_modified
-	    acc
-      | Loop _ -> assert false
-    )
-    p_list
-    []),s
+  let rec linearize affect_list = 
+    (List.fold_right
+       (fun affect acc  -> 
+	 match affect with
+	   Affect (v,poly) -> 
+	     
+	     let monoms_modified = Varinfo.Map.find v modification_map
+	     in 
+	     
+	     M_set.fold
+	       (fun monom acc2 -> 
+		 let semi_poly = F_poly.mono_poly 1. monom
+		 in
+		 let compo = (F_poly.compo semi_poly v poly) in
+		 Mat_option.debug ~dkey:dkey_lowerizer ~level:3
+		   "%a = %a"
+		   F_poly.Monom.pretty monom
+		   F_poly.pp_print compo;
+		 LinAffect(monom,compo)::acc2
+	       )
+	       monoms_modified
+	       acc
+	 | Loop l -> LinLoop (List.map linearize l) :: acc
+       )
+       affect_list
+       [])
+  in
+  
+  (linearize p_list),s
    
 (** 2. CIL2Poly  *)
 
@@ -372,7 +376,7 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 
 	    aff ++ future_lists
 	  
-	  | Some (Poly_affect.Loop b_list) -> assert false
+	  | Some (Poly_affect.Loop _) -> assert false
 	    
 
 	with
@@ -388,13 +392,16 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 (** 3. Matrix from poly *)
  
 let lacaml_loop_matrix 
-    (base:int F_poly.Monom.Map.t) 
-    (all_modifs :(F_poly.Monom.t * F_poly.t) list)  = 
+    (base : int F_poly.Monom.Map.t) 
+    (all_modifs : Poly_affect.lin_body)  = 
   
   let mat_size = F_poly.Monom.Map.cardinal base in
   try 
     List.fold_left
-      (fun acc (v,poly_affect) -> 
+      (fun acc affect -> 
+	match affect with
+	  LinAffect (v,poly_affect) ->
+	
 	let new_matrix = 
 	  (snd
 	     (F_poly.to_lacal_mat 
@@ -415,6 +422,7 @@ let lacaml_loop_matrix
 	Lacaml_D.gemm 
 	  new_matrix
 	  acc 
+	| LinLoop _ -> assert false
       )
       (Lacaml_D.Mat.identity mat_size)
       all_modifs
