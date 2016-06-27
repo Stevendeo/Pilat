@@ -183,7 +183,6 @@ let add_monomial_modifications
   then Mat_option.abort "The effective degree of the loop is %i, this is the minimal degree for finding invariants. Change the invariant degree to %i." min_degree min_degree;
     
  
-  
   let () = Varinfo.Hashtbl.iter 
     (fun v i -> 
       Mat_option.debug ~dkey:dkey_lowerizer ~level:5

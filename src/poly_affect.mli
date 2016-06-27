@@ -34,10 +34,12 @@ type t =
 
 and body = t list
 
-(** A monomial affectation is equivalent to considering a monomial is a variable modified
+(** A monomial affectation is equivalent to consider a monomial is a variable modified
     by the affectation. *)
-type monom_affect = F_poly.Monom.t * F_poly.t
-
+type monom_affect = 
+  
+  LinAffect of F_poly.Monom.t * F_poly.t
+| LinLoop of 
 
 (* vvv -- Undefined -- vvv *)
 type if_cond = bool * Cil_types.exp

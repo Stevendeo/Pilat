@@ -81,7 +81,12 @@ type t =
 
 and body = t list
 
-type monom_affect = F_poly.Monom.t * F_poly.t
+type monom_affect = 
+  
+  LinAffect of F_poly.Monom.t * F_poly.t
+| LinLoop of lin_body list
+
+and lin_body = monom_affect list
 
 type if_cond = bool * Cil_types.exp
 
