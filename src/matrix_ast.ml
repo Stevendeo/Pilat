@@ -94,28 +94,30 @@ let add_monomial_modifications
   in
   
   let effective_degree = Varinfo.Hashtbl.create l_size in
-
-  let () = List.iter (* Registration of the monom used in the transformation of each var *)
-    (fun affect -> 
-      match affect with 
-	Affect (v,p) -> 
-	  let useful_monoms = 
-	    M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.one) |> F_poly.deg) > 1)
-	      (F_poly.get_monomials p)
-	  in
-	  let old_bind = 
-	    try 
-	      Varinfo.Hashtbl.find 
-		var_monom_tbl 
-		v 
-	    with 
-	      Not_found -> M_set.empty
-	  in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
-      | Loop _ -> assert false
-    )
-    p_list 
-  in
   
+  let rec reg_monomials affect_list = 
+    List.iter (* Registration of the monomials used in the transformation of each var *)
+      (fun affect -> 
+	match affect with 
+	  Affect (v,p) -> 
+	    let useful_monoms = 
+	      M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.one) |> F_poly.deg) > 1)
+		(F_poly.get_monomials p)
+	    in
+	    let old_bind = 
+	      try 
+		Varinfo.Hashtbl.find 
+		  var_monom_tbl 
+		  v 
+	      with 
+		Not_found -> M_set.empty
+	    in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
+	| Loop l -> List.iter reg_monomials l
+      )
+      affect_list 
+  in
+  let () = reg_monomials p_list in
+
   Varinfo.Hashtbl.iter
     (fun v _ -> Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
       "Table contains variable %a with id %i" Varinfo.pretty v v.vid)

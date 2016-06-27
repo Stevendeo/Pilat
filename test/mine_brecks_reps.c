@@ -6,7 +6,7 @@ int main(){
   float k;
   while(N > 0){
     N--;
-    k = float_interval(-0.1,0.1);
+    k = 0;
     x = 0.68 * (x-y) + k;
     y = 2*0.68*y + x ;
 
