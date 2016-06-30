@@ -423,7 +423,6 @@ and lacaml_loop_matrix
   
   in 
   let mat_size = F_poly.Monom.Map.cardinal base in
-  let rec make_matrix base modif_list = 
     try 
       List.fold_left
 	(fun (acc : Lacaml_D.mat list) affect -> 
@@ -471,8 +470,7 @@ and lacaml_loop_matrix
     with
       Poly_affect.Incomplete_base -> 
 	Mat_option.abort "The matrix base is incomplete, you need to add more variables"
-  in
-  make_matrix base all_modifs
+  
 
 let loop_matrix = 
   lacaml_loop_matrix
