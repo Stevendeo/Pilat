@@ -391,48 +391,62 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 
 (** 3. Matrix from poly *)
  
-let lacaml_loop_matrix 
+let rec matrices_for_a_loop base all_modifs = 
+  
+  let matrices = lacaml_loop_matrix base all_modifs in
+  []
+
+and lacaml_loop_matrix 
     (base : int F_poly.Monom.Map.t) 
     (all_modifs : Poly_affect.lin_body)  = 
   
+  (** Multiplies a matrix to each entries of a list. *)
+  let (++) (mat : Lacaml_D.mat) (mat_list:Lacaml_D.mat list) = 
+    List.map (Lacaml_D.gemm mat) mat_list 
+  
+  in 
   let mat_size = F_poly.Monom.Map.cardinal base in
-  try 
-    List.fold_left
-      (fun acc affect -> 
-	match affect with
-	  LinAffect (v,poly_affect) ->
-	
-	let new_matrix = 
-	  (snd
-	     (F_poly.to_lacal_mat 
-		~base 
-		v 
-		poly_affect)
-	  ) in 
-	
-	Mat_option.debug ~dkey:dkey_loop_mat ~level:4
-	  "New matrix for %a = %a :"
-          F_poly.Monom.pretty v
-	  F_poly.pp_print poly_affect;
-	
-	Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
-	  Lacaml_D.pp_mat new_matrix
-	  Lacaml_D.pp_mat acc;
-	
-	Lacaml_D.gemm 
-	  new_matrix
-	  acc 
-	| LinLoop _ -> assert false
-      )
-      (Lacaml_D.Mat.identity mat_size)
-      all_modifs
-  with
-    Poly_affect.Incomplete_base -> 
-      Mat_option.abort "The matrix base is incomplete, you need to add more variables"
+  let rec make_matrix base modif_list = 
+    try 
+      List.fold_left
+	(fun (acc : Lacaml_D.mat list) affect -> 
+	  match affect with
+	    LinAffect (v,poly_affect) ->
+	      
+	      let new_matrix = 
+		(snd
+		   (F_poly.to_lacal_mat 
+		      ~base 
+		      v 
+		      poly_affect)
+		) in 
+	      
+	      Mat_option.debug ~dkey:dkey_loop_mat ~level:4
+		"New matrices for %a = %a :"
+		F_poly.Monom.pretty v
+		F_poly.pp_print poly_affect;
+	      
+	      List.iter
+		(fun acc_mat -> 
+		  Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
+		    Lacaml_D.pp_mat new_matrix
+		    Lacaml_D.pp_mat acc_mat) acc;
+	      
+	      new_matrix ++ acc 
+	  | LinLoop b_list -> 
+	    let matrices_for_each_path = List.map (matrices_for_a_loop base) b_list in []
+	)
+	[(Lacaml_D.Mat.identity mat_size)]
+	all_modifs
+    with
+      Poly_affect.Incomplete_base -> 
+	Mat_option.abort "The matrix base is incomplete, you need to add more variables"
+  in
+  make_matrix base all_modifs
 
 let loop_matrix = 
   lacaml_loop_matrix
 
 let loop_qmat v m = 
   let m = loop_matrix v m in
-  Pilat_matrix.lacaml_to_qmat m
+  List.map (Pilat_matrix.lacaml_to_qmat) m

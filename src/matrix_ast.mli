@@ -18,10 +18,10 @@ val add_monomial_modifications :
     set of all monomials used. *)
 
 val loop_matrix : 
-  int F_poly.Monom.Map.t -> Poly_affect.lin_body -> Lacaml_D.mat
+  int F_poly.Monom.Map.t -> Poly_affect.lin_body -> Lacaml_D.mat list
 (** Computes the lacaml matrix assoctated to the linearized loop. The first argument is the 
     base for the matrix : each monomial is associated to a line / column of the matrix. 
 *)
 
-val loop_qmat : int F_poly.Monom.Map.t -> Poly_affect.monom_affect list -> QMat.t
+val loop_qmat : int F_poly.Monom.Map.t -> Poly_affect.monom_affect list -> QMat.t list
 (** Same, but outputs a zarith matrix. *)
