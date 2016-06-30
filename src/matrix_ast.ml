@@ -376,7 +376,7 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 
 	    aff ++ future_lists
 	  
-	  | Some (Poly_affect.Loop _) -> assert false
+	  | Some (Poly_affect.Loop _ as loop) -> loop ++ future_lists
 	    
 
 	with
