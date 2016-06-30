@@ -119,7 +119,7 @@ object(self)
 	  None -> 
 	    Mat_option.debug ~dkey:dkey_stmt "The loop is not solvable"; DoChildren
 
-	| Some poly_lists -> 
+	| Some body_list -> 
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 	  
 	  let varinfos_used = Pilat_visitors.varinfo_registerer b in
@@ -139,27 +139,21 @@ object(self)
 	       add identity assignment *)
 	    Cil_datatype.Varinfo.Set.fold
 	      (fun v acc ->
-		Affect ((v, (Poly_affect.F_poly.monomial 1. [v,1]))):: acc )
+		let v_monom = (Poly_affect.F_poly.monomial 1. [v,1]) in
+		Affect (v,v_monom):: acc )
 	      varinfos_used
 	      []
-	      
-	    
+	      	    
 	  in
-	  let affects,bases_for_each_loop = 
-	    List.fold_left
-	      (fun (acc_affect,acc_base) p_list -> 
-		let affect,m_set = 
-		  Matrix_ast.add_monomial_modifications 
-		    (basic_assigns@p_list) in 
-				
-		let acc_affect = affect :: acc_affect and  
-		    acc_base = Poly_affect.F_poly.Monom.Set.union acc_base m_set in
-		(acc_affect,acc_base))
-	      ([],Poly_affect.F_poly.Monom.Set.empty)
-	      poly_lists
+	  let body_list = 
+	    List.map
+	      (fun body -> basic_assigns @ body)
+	      body_list
 	  in
+	  let lin_affects,monom_used = 
+	    Matrix_ast.add_monomial_modifications body_list in
 	  
-	  let base = 
+          let base = 
 	    let i = ref 0 in
 	    Poly_affect.F_poly.Monom.Set.fold
 	      (fun m map -> 
@@ -168,15 +162,16 @@ object(self)
 		  "%i <-> %a" !i Poly_affect.F_poly.Monom.pretty m;
 	        Poly_affect.F_poly.Monom.Map.add m !i map
 	      )
-	      bases_for_each_loop
+	      monom_used
 	      Poly_affect.F_poly.Monom.Map.empty
 	  in
 	  let rev_base = rev_base base in
 
 	  let matrices = 
-	    List.map
+	    List.flatten 
+	      (List.map
 	      (Matrix_ast.loop_matrix base)
-	      affects in
+	      lin_affects) in
 	  if Mat_option.Prove.get () 
 	  then
 	    let () = Mat_option.feedback "Proving invariants" in
