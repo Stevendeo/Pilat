@@ -394,7 +394,24 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 let rec matrices_for_a_loop base all_modifs = 
   
   let matrices = lacaml_loop_matrix base all_modifs in
-  []
+
+  (** In order to consider all the behaviors of the loop, we need to 
+      consider as many matrices as they are monomials assigned in a body. 
+      An over approximation is to consider all the variables in 
+      the loop. *)
+  let number_of_iterations = F_poly.Monom.Map.cardinal base 
+  in
+  List.fold_left
+    (fun acc loop_mat -> 
+      let rec matrices_to_succ_powers acc mat i = 
+	match i with
+	  0 -> acc
+	| _ -> mat :: (matrices_to_succ_powers acc (Lacaml_D.gemm mat loop_mat) (i-1))
+      in
+      matrices_to_succ_powers acc loop_mat number_of_iterations
+    )
+    []
+    matrices
 
 and lacaml_loop_matrix 
     (base : int F_poly.Monom.Map.t) 
@@ -434,7 +451,20 @@ and lacaml_loop_matrix
 	      
 	      new_matrix ++ acc 
 	  | LinLoop b_list -> 
-	    let matrices_for_each_path = List.map (matrices_for_a_loop base) b_list in []
+	    let matrices_for_each_path = 
+	      List.fold_left
+		(fun acc body -> (matrices_for_a_loop base body) @ acc)
+		[]
+		b_list
+		
+	    in 
+	    List.fold_left
+	      (fun acc2 new_mat -> (new_mat ++ acc) @ acc2
+	      )
+	      acc (* If [], then we don't consider the case where the loop is not taken. *)
+	      matrices_for_each_path
+	      
+										    
 	)
 	[(Lacaml_D.Mat.identity mat_size)]
 	all_modifs
