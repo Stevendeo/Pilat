@@ -86,7 +86,7 @@ let all_possible_monomials e_deg_hashtbl =
  
   
 let add_monomial_modifications 
-    (p_list:Poly_affect.body) : Poly_affect.lin_body * F_poly.Monom.Set.t = 
+    (p_list:Poly_affect.body list) : Poly_affect.lin_body list * F_poly.Monom.Set.t = 
   let module M_set = F_poly.Monom.Set in
   let module M_map = F_poly.Monom.Map in
   let l_size = List.length p_list in
@@ -116,7 +116,7 @@ let add_monomial_modifications
       )
       affect_list 
   in
-  let () = reg_monomials p_list in
+  let () = List.iter reg_monomials p_list in
 
   Varinfo.Hashtbl.iter
     (fun v _ -> Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
@@ -242,7 +242,7 @@ let add_monomial_modifications
        [])
   in
   
-  (linearize p_list),s
+  (List.map linearize p_list),s
    
 (** 2. CIL2Poly  *)
 

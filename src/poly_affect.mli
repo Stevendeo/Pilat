@@ -34,7 +34,7 @@ type t =
 
 and body = t list
 
-(** A monomial affectation is equivalent to consider a monomial is a variable modified
+(** A monomial affectation is equivalent to consider that a monomial is a variable modified
     by the affectation. *)
 type monom_affect = 
   
