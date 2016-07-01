@@ -317,6 +317,10 @@ let rec stmt_to_poly_assign varinfo_used s : Poly_affect.t option =
 
 	  end
       | Cil_types.Loop (_,b,_,_,_) -> 
+	let () = 
+	  Mat_option.debug ~dkey:dkey_stmt
+	    "Inner loop"
+	  in
 	let res = 
 	    Some(Loop (block_to_poly_lists varinfo_used b))
 	in
@@ -327,8 +331,26 @@ let rec stmt_to_poly_assign varinfo_used s : Poly_affect.t option =
   end
 
 and block_to_poly_lists varinfo_used block : Poly_affect.body list = 
-  let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
+
+  (* The first statement of a block loop is not the entry of the loop. We take the next one. *)
+  let first_block_stmt = (List.hd (List.tl block.bstmts)) in
+  let () = Mat_option.debug ~dkey:dkey_stmt ~level:2
+      "First stmt of the loop : %a." 
+      Stmt.pretty first_block_stmt;
+    List.iter
+      (fun s -> 
+	Mat_option.debug ~dkey:dkey_stmt ~level:3
+	  "Its successors : %a" 
+	  Stmt.pretty s;)
+      first_block_stmt.succs
   in
+  
+  let head = List.hd first_block_stmt.preds (* It must be the entry of the loop *)
+  in
+  Mat_option.debug ~dkey:dkey_stmt ~level:2
+      "Loop head : %a" 
+      Stmt.pretty head
+    ;
   let rec dfs stmt = 
     Mat_option.debug ~dkey:dkey_stmt ~level:2
       "Stmt %a studied" 
@@ -351,12 +373,20 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 	try
 
 	  let poly_list = stmt_to_poly_assign varinfo_used stmt in
-
+	  let next_stmt =  
+	    match stmt.skind with
+	      Cil_types.Loop (_,_,_,_,break) -> 
+		begin
+		  try (Extlib.the break) with
+		    Invalid_argument _ (* Extlib.the *) -> Mat_option.abort "Bad CFG preparation."
+		end
+	    | _ -> stmt in
+		
 	  let future_lists = 
 	    List.fold_left
 	      (fun acc succ -> (dfs succ) @ acc)
 	      []
-	      stmt.succs
+	      next_stmt.succs
 	  in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:3
 	    "List of paths : %i" (List.length future_lists) ;
@@ -366,8 +396,7 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 	  match poly_list with 
 	    None -> 
 	      Mat_option.debug ~dkey:dkey_stmt ~level:3
-		"No polynom generated from this stmt"
-	      ;
+		"No polynom generated from stmt %a" Printer.pp_stmt stmt	      ;
 	      future_lists
 	  | Some (Affect (_,p) as aff) ->
 	    Mat_option.debug ~dkey:dkey_stmt 

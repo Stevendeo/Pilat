@@ -84,6 +84,9 @@ let loop_analyzer () =
 object(self)
   inherit Visitor.frama_c_inplace
     
+  method! vfunc fundec = 
+    Cfg.prepareCFG fundec; DoChildren
+
   method! vstmt_aux stmt =
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
@@ -95,8 +98,14 @@ object(self)
       
       begin (* Loop treatment *)
 	let () = 	
-	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
-	    stmt.sid in
+	  Mat_option.debug ~dkey:dkey_stmt "Loop %a studied"
+	    Cil_datatype.Stmt.pretty stmt;
+	  List.iter
+	    (fun s -> 
+	      Mat_option.debug ~dkey:dkey_stmt ~level:5 "Stmt in loop = %a"
+		Cil_datatype.Stmt.pretty s;)
+	    b.bstmts
+	in
 	
 	let varinfos_used = Pilat_visitors.varinfo_registerer b in
 	Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
@@ -273,7 +282,6 @@ let run () =
     let vis = loop_analyzer () in
     Cil.visitCilFile (vis :> Cil.cilVisitor) file
   in
-
   let prj = 
     File.create_project_from_visitor 
       "new_pilat_project" 

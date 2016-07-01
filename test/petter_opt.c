@@ -15,7 +15,7 @@ int petter(int N){
       b = 2*b;
       a = a/2;
       }
-      x += z
+      x += z;
       
       y++;
     }
