@@ -84,9 +84,9 @@ let loop_analyzer () =
 object(self)
   inherit Visitor.frama_c_inplace
     
-  method! vfunc fundec = 
+  (*method! vfunc fundec = 
     Cfg.prepareCFG fundec; DoChildren
-
+  *)
   method! vstmt_aux stmt =
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
@@ -271,7 +271,9 @@ let run () =
     Mat_option.feedback
       "Welcome to Frama-C's Pilat invariant generator"
   in 
-  let file = Ast.get () 
+  let file = Ast.get () in
+  let () = Cfg.clearFileCFG file ; Cfg.computeFileCFG file 
+
   in
   let filename = 
     let fname = Mat_option.Output_C_File.get () in 

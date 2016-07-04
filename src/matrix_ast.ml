@@ -246,7 +246,7 @@ let add_monomial_modifications
    
 (** 2. CIL2Poly  *)
 
-exception Loop_break 
+exception Loop_break of stmt
 
 let poly_hashtbl = Stmt.Hashtbl.create 12
 
@@ -300,6 +300,9 @@ let instr_to_poly_assign varinfo_used : Cil_types.instr -> Poly_affect.t option 
 let register_poly : Cil_types.stmt -> Poly_affect.t option -> unit = 
   Stmt.Hashtbl.replace poly_hashtbl   
 
+(* Loop stmt -> Loop break *)
+let loop_break_tbl = Stmt.Hashtbl.create 3
+
 let rec stmt_to_poly_assign varinfo_used s : Poly_affect.t option = 
   begin
   try 
@@ -326,14 +329,14 @@ let rec stmt_to_poly_assign varinfo_used s : Poly_affect.t option =
 	in
 	register_poly s res; res
 
-      | Break _ -> raise Loop_break
+      | Break _ -> raise (Loop_break s)
       | _ -> None
   end
 
 and block_to_poly_lists varinfo_used block : Poly_affect.body list = 
 
-  (* The first statement of a block loop is not the entry of the loop. We take the next one. *)
-  let first_block_stmt = (List.hd (List.tl block.bstmts)) in
+  (* The first statement of a block loop is the entry of the loop. *)
+  let first_block_stmt = (List.hd block.bstmts) in
   let () = Mat_option.debug ~dkey:dkey_stmt ~level:2
       "First stmt of the loop : %a." 
       Stmt.pretty first_block_stmt;
@@ -378,7 +381,16 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 	      Cil_types.Loop (_,_,_,_,break) -> 
 		begin
 		  try (Extlib.the break) with
-		    Invalid_argument _ (* Extlib.the *) -> Mat_option.abort "Bad CFG preparation."
+		    Invalid_argument _ (* Extlib.the *) -> 
+		      let () =  
+			Mat_option.feedback "CFG error, loop are not prepared. Use of memoizers"
+		      in
+		      try 
+			Stmt.Hashtbl.find loop_break_tbl stmt 
+		      with 
+			Not_found -> 
+			  Mat_option.abort "Nested loop that does not end not supported"
+			
 		end
 	    | _ -> stmt in
 		
@@ -409,7 +421,8 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
 	    
 
 	with
-	  Loop_break -> []
+	  Loop_break b -> 
+	    let () = Stmt.Hashtbl.add loop_break_tbl head b in []
       end 
   in
     

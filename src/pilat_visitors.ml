@@ -101,8 +101,8 @@ object(self)
 	    let stmt = Cil.mkStmtCfg ~ref_stmt:s ~before:false ~new_stmtkind in
 	    stmt.ghost <- true;
 	    let () = Mat_option.debug ~dkey:dkey_stmt 
-	      "Adding stmt %a to the cfg before %a" 
-	      Printer.pp_stmt stmt Printer.pp_stmt s
+	      "Adding stmt %a of id %i to the cfg before %a" 
+	      Printer.pp_stmt stmt stmt.sid Printer.pp_stmt s
 	      
 	    in stmt)
 	  new_stmtkinds
@@ -117,20 +117,37 @@ object(self)
 	  (Block
 	     {battrs = [];
 	      blocals = [];
-	      bstmts =  (s_list@[s])
+	      bstmts =  (s_list @[s])
 	     }
 	  )
       in
+      
       let rec fundec_stmt_zipper left right = 
 	match right with
-	  [] -> assert false
+	  [] -> raise Not_found
 	| hd :: tl -> 
+	  let () = 
+	    Mat_option.debug ~dkey:dkey_stmt ~level:5
+	      "Does %i = %i ? %b"
+	      hd.sid s.sid (hd.sid = s.sid) in
 	  if Cil_datatype.Stmt.equal hd s
 	  then fundec.sbody.bstmts <- ((List.rev left) @ (s_list@right))
 	  else fundec_stmt_zipper ((List.hd right)::left) tl
       in
-      
-      let () = fundec_stmt_zipper [] fundec.sbody.bstmts 
+      let () = 
+	Mat_option.debug ~dkey:dkey_stmt ~level:3
+	  "Search of %a.%i in" Cil_datatype.Stmt.pretty s s.sid;
+	List.iter 
+	  (fun s -> 
+	    Mat_option.debug ~dkey:dkey_stmt ~level:3
+	      "-- %a.%i\n" Cil_datatype.Stmt.pretty s s.sid)
+	  fundec.sbody.bstmts in
+      let () = 
+	try 
+	  fundec_stmt_zipper [] fundec.sbody.bstmts 
+	with Not_found -> 
+	  Mat_option.feedback 
+	    "Statement %a not in fundec. Problem in CFG ?" Cil_datatype.Stmt.pretty s
       in
       ChangeDoChildrenPost (new_block, fun i -> i)
   
