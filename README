@@ -11,3 +11,44 @@ linear algebra", available at
 
 Please consult file INSTALL for details about the installation procedure of
 Frama-C.
+
+				 -----
+				 USAGE
+				 -----
+
+Pilat is a part of the Frama-C platform, i.e. it is one of its options.
+To activate it, just type :
+
+frama-c your_file.c -pilat
+
+This will generate a new .c file with the degree 2 invariant written in ACSL,
+the specification language used by Frama-C plugins. You can select any degree
+by using the option -pilat-degree.
+
+Most options of the form '-pilat-option-name' and without any parameter
+have an opposite with the name '-pilat-no-option-name'.
+
+Most options of the form '-option-name' and without any parameter
+have an opposite with the name '-no-option-name'.
+
+Options taking a string as argument should preferably be written
+-option-name="argument".
+
+***** LIST OF AVAILABLE OPTIONS:
+
+-pilat              when on, generates polynomial invariants for each
+                    solvable loop of the program (opposite option is
+                    -no-pilat)
+-pilat-const-name <str>  sets the name of the constants used in invariants
+                    (default__PILAT__)
+-pilat-degree <n>   sets the maximum degree of the invariants
+-pilat-ev <n>       sets the maximal eigenvalue searched for when using
+                    zarith
+-pilat-output <s>   specifies generated file name for annotated C code
+-pilat-prove        when on, tries to prove already existing loop invariants
+                    (opposite option is -pilat-no-prove)
+-pilat-vars <x:y:...>  specifies which variables will be analyzed.
+-pilat-z            when on, uses zarith library. Recommended if searching
+                    for integer relations but depreciated when searching for
+                    floating point relations. (set by default, opposite
+                    option is -pilat-no-z) 
