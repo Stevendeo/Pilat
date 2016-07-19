@@ -13,14 +13,15 @@ To install it from ubuntu, just type 'sudo apt-get install opam'.
    Pilat is part of the Frama-C framework. 
 
    !! The latest frama-c version of opam might be incompatible with Pilat.
-   !! In this case, install frama-c from the sources as described previously
+   !! In this case, install frama-c from the sources as described 
 
    b) opam install lacaml
-   This part is a little tricky, as you need to install the LAPACK dependency. 
-   This is the matrix library used in Pilat.
+   This part is a little tricky, as you may need to install the LAPACK 
+   dependency. This is the matrix library used in Pilat when dealing with 
+   floating point numbers.
 
    c) opam install zarith
-   This package is used for our matrix implementation.
+   This package is used for our rational matrix library implementation.
 
 -- Without OPAM --
 
