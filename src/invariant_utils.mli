@@ -20,7 +20,9 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type vec = Pilat_matrix.QMat.vec 
+type float_vec = Lacaml_D.vec
+type q_vec = Pilat_matrix.QMat.vec 
+
 type mat = Lacaml_D.mat 
 
 
@@ -40,18 +42,18 @@ type limit =
 | One
 | Zero
 
-type invar = limit * vec list
-
+type 'a invar = limit * ('a list)
 
 val lim_to_string : limit -> string
 
+val invariant_computation_lacaml : mat -> float_vec invar
 
 (** Returns the rational eigenspaces union of the floating matrix 
     as a list of bases. *)
-val invariant_computation : mat -> invar list
+val invariant_computation : mat -> q_vec invar list
 
 (** Intersects two union of vectorial spaces. *)
-val intersection_invariants :  invar list -> invar list -> invar list
+val intersection_invariants :  q_vec invar list -> q_vec invar list -> q_vec invar list
 
 (** After the integration, there is no fraction left on the vector expression. *)
-val integrate_vec : vec -> vec
+val integrate_vec : q_vec -> q_vec

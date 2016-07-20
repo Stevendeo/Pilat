@@ -94,17 +94,10 @@ let invariant_computation_lacaml mat =
 	Mat_option.debug ~dkey:dkey_inv ~level:2 
 	  "Computation of the kernel of %a"
 	  Lacaml_D.pp_mat new_mat
-	
+        
       in
 
-      let res = 
-	List.map 
-	  (Pilat_matrix.lvec_to_qvec) 
-	  (Lacaml_matrix.nullspace_computation new_mat)
-
-      in
-
-      ((ev_limit (Q.of_float ev)),res) :: acc
+      ((ev_limit (Q.of_float ev)),(Lacaml_matrix.nullspace_computation new_mat)) :: acc
     )
     []
     eigen_vals
@@ -139,7 +132,17 @@ let invariant_computation mat =
   let res =   
     if Mat_option.Use_zarith.get () 
     then invariant_computation_pilat mat
-    else invariant_computation_lacaml mat
+    else 
+      let res = invariant_computation_lacaml mat
+      in
+      List.map
+	(fun (lim,v_list) -> 
+	  lim,
+	  List.map
+	    (Pilat_matrix.lvec_to_qvec) 
+	    v_list
+	)
+	res
   in
   let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t
   in res

@@ -589,7 +589,7 @@ let eigenvalues mat =
 (** 3. Polynomial matrices implementation. 
     This is how we will deal with non deterministic loop *)
 
-module N_id = State_builder.SharedCounter(struct let name = "sid_counter" end)
+module N_id = State_builder.SharedCounter(struct let name = "nid_counter" end)
 
 module N_var =
   struct 
@@ -612,7 +612,7 @@ module N_var =
       
     let new_var () = "n" ^ (string_of_int (N_id.next ()))
 end
-module P : Polynomial with type c = Float.t = 
+module P : Polynomial with type c = Float.t and type v = N_var.t = 
   Poly.Make(Float)(N_var)
 
 module PMat : Matrix with type elt = P.t = Make (P)
