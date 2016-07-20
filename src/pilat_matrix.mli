@@ -67,7 +67,7 @@ val qmat_to_lacaml : QMat.t -> Lacaml_D.Mat.t
 
 (** 3. Polynomial matrices implementation. 
     This is how we will deal with non deterministic loop *)
-(*
-module P : Polynomial with type c = 
-module PMat : Matrix with type elt = 
-*)
+
+module P : Polynomial with type c = Float.t
+module PMat : Matrix with type elt = P.t
+

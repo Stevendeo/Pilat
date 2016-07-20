@@ -25,6 +25,8 @@ open Pilat_math
 let dkey_ev = Mat_option.register_category "pilat_matrix:eigenvalue"
 let dkey_null = Mat_option.register_category "pilat_matrix:nullspace"
 
+(** 1. Matrix functor *)
+
 module Make (F:Ring) : Matrix with type elt = F.t = 
 struct
   
@@ -378,6 +380,9 @@ let nullspace m =
    
 end
       
+
+(** 2. Rational matrix implementation *)
+
 module QMat = Make(Q)
 
 module QPoly = struct include Poly.XMake(Q) end 
@@ -580,3 +585,29 @@ let eigenvalues mat =
 	  Q.pp_print ev) res
       
   in res
+
+(** 3. Polynomial matrices implementation. 
+    This is how we will deal with non deterministic loop *)
+
+module P_string = 
+  Datatype.Make_with_collections
+    (struct
+      include String
+      let name = "P_string"
+      let reprs = ["Foo"]
+      let compare = String.compare
+      let equal = (=)
+      let copy = Datatype.undefined
+      let internal_pretty_code = Datatype.undefined
+      let structural_descr = Structural_descr.t_abstract
+      let mem_project = Datatype.never_any_project
+      let hash = Hashtbl.hash
+      let rehash = Datatype.identity
+      let pretty = Datatype.undefined
+      let varname s = "str " ^ s
+     end)
+
+module P : Polynomial with type c = Float.t = 
+  Poly.Make(Float)(P_string)
+
+module PMat : Matrix with type elt = P.t = Make (P)

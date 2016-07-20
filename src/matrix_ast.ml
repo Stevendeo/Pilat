@@ -122,7 +122,7 @@ let add_monomial_modifications
       match affect with 
 	Affect (v,p) -> 
 	  let useful_monoms = 
-	    M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.one) |> F_poly.deg) > 1)
+	    M_set.filter (fun m -> (m |> (F_poly.mono_poly Float.one) |> F_poly.deg) > 1)
 	      (F_poly.get_monomials p)
 	  in
 	  let old_bind = 

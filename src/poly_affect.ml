@@ -26,18 +26,16 @@ exception Incomplete_base
 
 type var =  Cil_datatype.Varinfo.t
 
-module Ring = Float
-
 module type Extended_Poly = 
 sig 
   include Polynomial
   val to_lacal_mat : ?base:int Monom.Map.t -> Monom.t -> t -> int Monom.Map.t * Lacaml_D.mat
 end
 
-module F_poly: Extended_Poly with type c = Ring.t and type v = var = 
+module F_poly: Extended_Poly with type c = Float.t and type v = var = 
   
 struct 
-  include Poly.Make(Ring)(Cil_datatype.Varinfo)
+  include Poly.Make(Float)(Cil_datatype.Varinfo)
   let to_lacal_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * Lacaml_D.mat = 
       let base_monom = 
 	if Monom.Map.is_empty base
@@ -61,7 +59,7 @@ struct
       let ext_poly = 
 	if has_monomial p monom_var 
 	then p
-	else (add (mono_poly Ring.zero monom_var) p)
+	else (add (mono_poly Float.zero monom_var) p)
       (* p + 0*v, so the next iteration sets to zero the unit of the identity *)
 	    
       in

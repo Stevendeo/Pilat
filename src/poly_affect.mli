@@ -27,9 +27,6 @@ exception Incomplete_base
 
 type var =  Varinfo.t
 
-module Ring : Ring with type t = float
-(** Ring of floats *)
-
 module type Extended_Poly = 
 sig 
   include Polynomial
@@ -46,7 +43,7 @@ end
 
 (** Multivariables float polynomials  *)
 module F_poly : 
-  Extended_Poly with type c = Ring.t and type v = var
+  Extended_Poly with type c = Float.t and type v = var
 
 (** Polynomial affectation *)
 type t = 
