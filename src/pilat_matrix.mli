@@ -67,7 +67,12 @@ val qmat_to_lacaml : QMat.t -> Lacaml_D.Mat.t
 
 (** 3. Polynomial matrices implementation. 
     This is how we will deal with non deterministic loop *)
+module N_var : 
+sig
+  type t
+  val new_var : unit -> t
+end
 
-module P : Polynomial with type c = Float.t
+module P : Polynomial with type c = Float.t and type v = N_var.t
 module PMat : Matrix with type elt = P.t
 
