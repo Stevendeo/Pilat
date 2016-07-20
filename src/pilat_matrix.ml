@@ -616,3 +616,17 @@ module P : Polynomial with type c = Float.t =
   Poly.Make(Float)(N_var)
 
 module PMat : Matrix with type elt = P.t = Make (P)
+
+let pmat_eval_to_zero m = 
+  let dim = PMat.get_dim_col m in
+  let res = Lacaml_D.Mat.create dim dim in
+  ignore (
+    PMat.mapi (* TODO : PMat.iteri would be better *)
+      (fun i j poly -> 
+	let affine_coef = P.coef poly P.empty_monom in
+	let () = res.{i,j} <- affine_coef in 
+	poly)
+      m);
+  
+  res
+    
