@@ -356,8 +356,8 @@ let term_list_to_predicate term_list limit fundec stmt =
   | _ -> 
     let operator = 
       match limit with
-      | Convergent -> Rle
-      | Divergent -> Rge
+      | Convergent _ -> Rle
+      | Divergent _ -> Rge
       | One -> Req
       | _ -> assert false
     in
@@ -443,7 +443,7 @@ let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
     (base:int Poly_affect.F_poly.Monom.Map.t) 
-    (invar : Invariant_utils.invar) 
+    (invar : q_vec invar) 
     : predicate named list =
 
   let limit,vec_list = invar in

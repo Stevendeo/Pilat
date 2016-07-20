@@ -36,8 +36,8 @@ type mat = Lacaml_D.mat
 *)
 
 type limit = 
-  Convergent 
-| Divergent 
+  Convergent of Q.t
+| Divergent of Q.t
 | Altern
 | One
 | Zero
@@ -46,7 +46,7 @@ type 'a invar = limit * ('a list)
 
 val lim_to_string : limit -> string
 
-val invariant_computation_lacaml : mat -> float_vec invar
+val invariant_computation_lacaml : mat -> float_vec invar list
 
 (** Returns the rational eigenspaces union of the floating matrix 
     as a list of bases. *)

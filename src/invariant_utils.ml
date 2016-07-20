@@ -29,17 +29,20 @@ let dkey_zinter = Mat_option.register_category "invar:zarith:inter"
 
 module Int = Datatype.Int 
 
-type vec = Pilat_matrix.QMat.vec 
-type mat = Lacaml_D.mat
+type float_vec = Lacaml_D.vec
+type q_vec = Pilat_matrix.QMat.vec 
+
+type mat = Lacaml_D.mat 
+
 
 type limit = 
-  Convergent 
-| Divergent 
+  Convergent of Q.t
+| Divergent of Q.t
 | Altern
 | One
 | Zero
 
-type invar = limit * vec list
+type 'a invar = limit * ('a list)
 
 (** 0. Limit utility *)
 
@@ -48,24 +51,25 @@ let ev_limit (ev:Q.t) : limit =
   if ev = Q.zero then Zero
   else if ev = Q.one
   then One
-  else if Q.leq ev Q.one then Convergent
-  else Divergent
+  else if Q.leq ev Q.one then Convergent ev
+  else Divergent ev
 
 let join_limits l1 l2 = 
   match l1,l2 with
     One,l | l,One -> l
   | Altern,_ | _,Altern -> Altern
   | Zero,_ | _,Zero -> Zero
-  | Convergent,Convergent | Divergent,Divergent -> l1
-  | Convergent,Divergent | Divergent,Convergent -> Altern
+  | Convergent a,Convergent b -> Convergent (Q.mul a b)
+  | Divergent a,Divergent b-> Divergent (Q.mul a b)
+  | Convergent _,Divergent _ | Divergent _,Convergent _ -> Altern
 
 let lim_to_string l = 
   match l with
     Zero -> "zero"
   | One -> "one"
   | Altern -> "altern"
-  | Convergent -> "convergent"
-  | Divergent -> "divergent"
+  | Convergent a -> "convergent by " ^ (Q.to_string a)
+  | Divergent a -> "divergent by " ^ (Q.to_string a)
 
 (** 1. Nullspace computation with time witness *)
 
@@ -80,7 +84,7 @@ let nullspace_computation m =
  
 (** Invariant computation *)
 
-let invariant_computation_lacaml mat = 
+let invariant_computation_lacaml mat : float_vec invar list = 
 
   let eigen_vals = Lacaml_matrix.eigen_val mat in
   let mat_dim = Lacaml_D.Mat.dim1 mat in
@@ -102,7 +106,7 @@ let invariant_computation_lacaml mat =
     []
     eigen_vals
 
-let invariant_computation_pilat mat : invar list = 
+let invariant_computation_pilat mat : q_vec invar list = 
   let open QMat in  
   let mat = Pilat_matrix.lacaml_to_qmat mat in
 
@@ -123,8 +127,6 @@ let invariant_computation_pilat mat : invar list =
       )
       eigenvalues
       []  
-
-
 
 let invariant_computation mat = 
   
