@@ -42,6 +42,7 @@ struct
   
   let error m1 m2 = raise (Dimension_error (m1.rows,m1.cols,m2.rows,m2.cols))
       
+  let error_vec v1 v2 =  raise (Dimension_error (1,Array.length v1,1,Array.length v2))
   (* 1. Matrix creation *)
 
   let zero rows cols : t = 
@@ -145,6 +146,15 @@ struct
 	  )
 	  m1.m
     } 
+
+  let add_vec v1 v2 =    
+    if Array.length v1 <> Array.length v2
+    then error_vec v1 v2 
+    else
+      Array.mapi
+	(fun i elt -> F.add elt v2.(i)) v1
+      
+      
   let sub m1 m2 = 
     if m1.rows <> m2.rows || m1.cols <> m2.cols
     then error m1 m2
@@ -160,6 +170,13 @@ struct
 	  m1.m
     }
 
+ let sub_vec v1 v2 =    
+    if Array.length v1 <> Array.length v2
+    then error_vec v1 v2 
+    else
+      Array.mapi
+	(fun i elt -> F.sub elt v2.(i)) v1
+      
   let transpose mat = 
     let d1 = Array.length mat.m in
     if d1 = 0 then mat
@@ -168,7 +185,8 @@ struct
       create_mat d2 d1 (fun i j -> mat.m.(j).(i))
 
   let scal_mul m k = map (F.mul k) m
-    
+
+  let scal_mul_vec m k = Array.map (F.mul k) m 
 
   let mul m1 m2 = 
     if m1.cols <> m2.rows
@@ -190,6 +208,15 @@ struct
       
     create_mat m1.rows m2.cols scal
  
+  let scal_prod v1 v2 =       
+    if Array.length v1 <> Array.length v2
+    then error_vec v1 v2 else
+      let res = ref F.zero in
+      let () = 
+      Array.iteri
+	(fun i elt -> res := F.add !res (F.mul elt v2.(i)) ) v1
+      in !res
+
   let rec pow mat n = 
     match n with 
       0 -> identity n
@@ -206,6 +233,15 @@ struct
       (0,F.zero)
       mat.m
     )
+
+  let mul_vec mat vec = 
+    if mat.cols <> Array.length vec
+    then raise (Dimension_error (mat.rows,mat.cols,Array.length vec,1))
+    else
+      let vecs_array = to_array mat in 
+      Array.map
+	(fun line -> scal_prod line vec)
+	vecs_array
 
 let pp_vec fmt v =   
 

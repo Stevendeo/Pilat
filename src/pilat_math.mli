@@ -146,13 +146,23 @@ module type Matrix = sig
 
   (** Operations *)
   val add : t -> t -> t
+  val add_vec : vec -> vec -> vec
+
   val sub : t -> t -> t
+  val sub_vec : vec -> vec -> vec
+
   val transpose : t -> t
+
   val scal_mul : t -> elt -> t
-  val mul : t -> t -> t
+  val scal_mul_vec : vec -> elt -> vec
+
+  val mul : t -> t -> t 
+  val scal_prod : vec -> vec -> elt
+
   val pow : t -> int -> t
   val trace : t -> elt
 
+  val mul_vec : t -> vec -> vec
   (** Nullspace computation *)
   val nullspace : t -> vec list
 
