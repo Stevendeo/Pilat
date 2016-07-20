@@ -22,15 +22,18 @@
 
 open Pilat_math
 
-(** 1. Matrices *)
+(** 1. Matrix functor *)
 
 (** Given a ring, creates a matrix module.
-    Iterations are made line by line.
-*)
+    Iterations are made line by line. *)
 module Make :
   functor (F : Ring) -> Matrix with type elt = F.t
   
-(** Matrix with rational coefficients *)
+
+(** 2. Rational matrix implementation *)
+
+(** Matrix with rational coefficients
+    The module Q is from the Zarith library *)
 module QMat : Matrix with type elt = Q.t
   
 (** Polynomial with rational coefficients *)
@@ -61,3 +64,10 @@ val qvec_to_lvec : QMat.vec -> Lacaml_D.vec
 
 val lacaml_to_qmat : Lacaml_D.Mat.t -> QMat.t
 val qmat_to_lacaml : QMat.t -> Lacaml_D.Mat.t
+
+(** 3. Polynomial matrices implementation. 
+    This is how we will deal with non deterministic loop *)
+(*
+module P : Polynomial with type c = 
+module PMat : Matrix with type elt = 
+*)

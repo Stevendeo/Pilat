@@ -26,19 +26,7 @@ exception Incomplete_base
 
 type var =  Cil_datatype.Varinfo.t
 
-module Ring = 
-struct 
-  type t = float
-  let zero = 0.
-  let one = 1.
-  let add = (+.)
-  let mul = ( *. )
-  let sub = (-.)
-  let div = (/.)
-  let equal = (=)
-  let pp_print fmt i = 
-    Format.fprintf fmt "%.3f" i 
-end
+module Ring = Float
 
 module type Extended_Poly = 
 sig 

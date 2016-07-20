@@ -61,9 +61,8 @@ sig
 
   val zero : t
   val one : t
-    (* unit for the polynomial product.
-       It is superfluous, since it is a special case of monomial;
-       however this makes polynomials match the interface of rings *)
+    (* unit for the polynomial product. It is superfluous however this 
+       makes polynomials match the interface of rings *)
     
   val empty_monom : Monom.t
     

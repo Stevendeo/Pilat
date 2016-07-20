@@ -8,6 +8,7 @@ PLUGIN_NAME	:= Pilat
 PLUGIN_CMI 	:= pilat_math
 
 PLUGIN_CMO 	:= mat_option\
+		float\
 		pilat_visitors\
 		poly\
 		lacaml_matrix\
