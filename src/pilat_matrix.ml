@@ -630,3 +630,9 @@ let pmat_eval_to_zero m =
   
   res
     
+let fvec_to_pvec f_vec : PMat.vec = 
+  PMat.vec_from_array
+    (Array.map
+       P.const    
+       (Lacaml_D.Vec.to_array f_vec)
+    )

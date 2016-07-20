@@ -78,3 +78,4 @@ module P : Polynomial with type c = Float.t and type v = N_var.t
 module PMat : Matrix with type elt = P.t
 
 val pmat_eval_to_zero : PMat.t -> Lacaml_D.Mat.t
+val fvec_to_pvec : Lacaml_D.Vec.t -> PMat.vec 
