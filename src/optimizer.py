@@ -22,16 +22,22 @@
 
 from sage.all import *
 
+# This is an heuristic over the possible error of the minimize/maximize 
+# functions
+error_allowed = 0.05
+
 def print_debug(level,s) :
     if debug >= level : 
         print s
 
 def minimize(f,constr,k): 
     min = minimize_constrained(f,constr,[k,k,0])
+  #  min= minimize_constrained(f,constr,min)
     return minimize_constrained(f,constr,min)
 
 def maximize(mf,constr,k): 
     max = minimize_constrained(mf,constr,[k,k,0])
+  #  max = minimize_constrained(mf,constr,max)
     return minimize_constrained(mf,constr,max)
     
 def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c) : 
@@ -57,7 +63,7 @@ def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c) :
     print_debug (1,"Does " + str(f(min)) + " > " + str(k*(-1-ev)) + " and " 
            + str(f(max)) + " < " + str(k*(1-ev)))
     
-    if (f(min) > (-1-ev) * k) and (f(max) < (1-ev)*k):
+    if (f(min) - error_allowed > (-1-ev) * k) and (f(max) + error_allowed < (1-ev)*k):
         print_debug (1,"Yes !")
         up_k = k
         
