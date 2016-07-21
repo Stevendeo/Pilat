@@ -71,7 +71,7 @@ val qmat_to_lacaml : QMat.t -> Lacaml_D.Mat.t
 module N_var : 
 sig
   type t
-  val new_var : unit -> t
+  val new_var : float -> float -> t
 end
 
 module P : Polynomial with type c = Float.t and type v = N_var.t

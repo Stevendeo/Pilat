@@ -627,14 +627,28 @@ let eigenvalues mat =
 
 module N_id = State_builder.SharedCounter(struct let name = "nid_counter" end)
 
+type n_var = 	
+  {
+    name:string;
+    min:float;
+    max:float
+  }
+    
 module N_var =
   struct 
     include Datatype.Make_with_collections
     (struct
-      include String
+      type t = n_var
       let name = "P_string"
-      let reprs = ["Foo"]
-      let compare = String.compare
+      let reprs = [{name = "n";min = -0.1; max = 0.1}]
+      let compare n1 n2 = 
+	let max = Pervasives.compare n1.max n2.max  in
+	if max <> 0 then max 
+	else 	
+	  let min = Pervasives.compare n1.min n2.min  in
+	  if min <> 0 then min
+	  else String.compare n1.name n2.name
+	
       let equal = (=)
       let copy = Datatype.undefined
       let internal_pretty_code = Datatype.undefined
@@ -643,10 +657,13 @@ module N_var =
       let hash = Hashtbl.hash
       let rehash = Datatype.identity
       let pretty = Datatype.undefined
-      let varname s = "str " ^ s
+      let varname s = "str " ^ s.name
      end)
       
-    let new_var () = "n" ^ (string_of_int (N_id.next ()))
+    let new_var min max = 
+      { name = "n" ^ (string_of_int (N_id.next ()));
+	min = min;
+	max = max}
 end
 module P : Polynomial with type c = Float.t and type v = N_var.t = 
   Poly.Make(Float)(N_var)
