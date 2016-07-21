@@ -27,11 +27,13 @@ def print_debug(level,s) :
         print s
 
 def minimize(f,constr,k): 
-    return minimize_constrained(f,constr,[k,k,0])
+    min = minimize_constrained(f,constr,[k,k,0])
+    return minimize_constrained(f,constr,min)
 
 def maximize(mf,constr,k): 
-    return -1*minimize_constrained(mf,constr,[k,k,0])
-
+    max = minimize_constrained(mf,constr,[k,k,0])
+    return minimize_constrained(mf,constr,max)
+    
 def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c) : 
     
     print_debug(1,"k tested : " + str(k))
@@ -44,10 +46,14 @@ def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c) :
     print_debug (2,min)
     print_debug (3,"poly(min) = ")
     print_debug (3,poly(min))
+    print_debug (3,"f(min) = ")
+    print_debug (3,f(min))
     print_debug (2,"max = ")
     print_debug (2,max)
     print_debug (3,"poly(max) = ")
     print_debug (3,poly(max))
+    print_debug (3,"f(max) = ")
+    print_debug (3,f(max))
     print_debug (1,"Does " + str(f(min)) + " > " + str(k*(-1-ev)) + " and " 
            + str(f(max)) + " < " + str(k*(1-ev)))
     
