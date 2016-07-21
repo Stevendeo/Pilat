@@ -21,6 +21,7 @@
 (**************************************************************************)
 
 open Pilat_matrix 
+open Invariant_utils 
 
 let get_objective_from_convergent_invar tr_pmat ev invar = 
   let pinvar = fvec_to_pvec invar in 
@@ -38,17 +39,23 @@ let get_objectives pmat =
   let mat_zero = pmat_eval_to_zero pmat in 
   
   
-  let get_invariants = 
+  let invariants = 
     Invariant_utils.invariant_computation_lacaml mat_zero
   in
   
-  let objectives = 
-    List.fold_left
-      (fun acc (lim,invars) -> 
-	match lim with
-	  Convergent q ->
-	    let ev_float = 
-	      (Z.to_float (Q.num q)) /. (Z.to_float (Q.den q))
-	    in
-	    List.fold_left
-	      (fun invar
+  List.fold_left
+    (fun acc (lim,invars) -> 
+      match lim with
+	Convergent q ->
+	  let ev_float = 
+	    (Z.to_float (Q.num q)) /. (Z.to_float (Q.den q))
+	  in
+	  (List.map
+	     (get_objective_from_convergent_invar transposed_pmat ev_float)
+	     invars) 
+	  @ acc
+      | _ -> acc
+    )
+    []
+    invariants
+    
