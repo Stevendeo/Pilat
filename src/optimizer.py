@@ -26,18 +26,28 @@ def print_debug(level,s) :
     if debug >= level : 
         print s
 
+def minimize(f,constr,k): 
+    return minimize_constrained(f,constr,[k,k,0])
+
+def maximize(mf,constr,k): 
+    return -1*minimize_constrained(mf,constr,[k,k,0])
+
 def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c) : 
     
     print_debug(1,"k tested : " + str(k))
     polypk = lambda x : poly(x) + k
     constr = list(non_det_c)
     constr.append(polypk)
-    min = minimize_constrained(f,constr,[k,k,0])
-    max = -1 * minimize_constrained(mf,constr,[k,k,0])
+    min = minimize(f,constr,k)
+    max = maximize(mf, constr,k)
     print_debug (2,"min = ")
     print_debug (2,min)
+    print_debug (3,"poly(min) = ")
+    print_debug (3,poly(min))
     print_debug (2,"max = ")
     print_debug (2,max)
+    print_debug (3,"poly(max) = ")
+    print_debug (3,poly(max))
     print_debug (1,"Does " + str(f(min)) + " > " + str(k*(-1-ev)) + " and " 
            + str(f(max)) + " < " + str(k*(1-ev)))
     
@@ -72,6 +82,10 @@ def find_k(ev, f, poly,non_det_c,max_k,N) :
 
 import sys
 
+
+# Exemple of use : 
+# sage optimizer.py 0 0.9248 23 10 "-2.72*x[2]*(x[0]-x[1]) - 2*x[2]*x[2]" "- x[0]*x[0] - x[1]*x[1]" "x[2]+0.1" "- x[2] + 0.1"
+
 # debug is the level of verbosity of the script
 debug = eval(sys.argv[1])
 
@@ -102,5 +116,3 @@ while(i<len(sys.argv)):
 k=find_k(ev,objective,poly,non_det_c,max_k,N)
 
 print k
-
-
