@@ -25,9 +25,73 @@ let dkey_ev = Mat_option.register_category "lacaml:ev"
 
 type t = Lacaml_D.mat
 type vec = Lacaml_D.vec
+type elt = float
 
-(** 1. Utilities *)
-let copy_mat m = m |> Lacaml_D.Mat.to_col_vecs |> Lacaml_D.Mat.of_col_vecs
+exception Dimension_error of int*int*int*int
+    
+let error m1 m2 = 
+  raise (Dimension_error 
+	   (Lacaml_D.Mat.dim1 m1, 
+	    Lacaml_D.Mat.dim2 m1, 
+	    Lacaml_D.Mat.dim1 m2, 
+	    Lacaml_D.Mat.dim2 m2))
+
+let zero = Lacaml_D.Mat.make0
+let create_mat = Lacaml_D.Mat.init_rows
+let copy_mat m = Lacaml_D.lacpy m
+let identity = Lacaml_D.Mat.identity
+
+let get_row m i = 
+  Lacaml_D.Mat.from_row_vec 
+    (Lacaml_D.Vec.of_array (m |> Lacaml_D.Mat.to_array).(i))  
+
+let get_col m i = 
+  Lacaml_D.Mat.from_col_vec 
+    (Lacaml_D.Vec.init i
+       (fun j -> m.{j+1,i+1})
+    )
+    
+let get_col_in_line m i = 
+    (Lacaml_D.Vec.init i
+       (fun j -> m.{j+1,i+1})
+    )
+
+let get_dim_row = Lacaml_D.Mat.dim1
+let get_dim_col = Lacaml_D.Mat.dim2
+
+let vec_to_array = Lacaml_D.Vec.to_array
+let vec_from_array = Lacaml_D.Vec.of_array
+
+let to_array m = Lacaml_D.Mat.to_array m
+let from_array m =  Lacaml_D.Mat.of_col_vecs m
+
+let set_coef i j m elt = m.{i+1,j+1} <- elt
+let get_coef i j m = m.{i+1,j+1}
+
+let map f m = Lacaml_D.Mat.map f m
+let mapi = assert false
+
+let add m n = 
+  let res = copy_mat n in Lacaml_D.Mat.axpy m res ~alpha:1.; res
+
+let add_vec v w = Lacaml_D.Vec.add v w
+
+let sub m n = 
+  let res = copy_mat n in Lacaml_D.Mat.axpy m res ~alpha:(-1.); res
+
+let sub_vec v w = Lacaml_D.Vec.sub v w 
+
+let transpose m = Lacaml_D.Mat.transpose_copy m
+
+let scal_mul m a = map (fun elt -> a *. elt) m
+let scal_mul_vec v a = Lacaml_D.Vec.map (fun elt -> a *. elt) v
+
+let mul m n = Lacaml_D.gemm m n 
+let scal_prod v w = Lacaml_D.Vec.sum (Lacaml_D.Vec.mul v w)
+
+let pow = assert false
+let trace = assert false
+let mul_vec m v = Lacaml_D.gemv m v
 
 (** 2. Eigenvalues of a lacaml matrix *)
 let eigen_val matrix = 
@@ -215,7 +279,7 @@ let lacaml_nullspace_computation mat =
     no_pivs;
   vecs
 
-let nullspace_computation mat = 
+let nullspace mat = 
     Mat_option.debug ~dkey:dkey_null
     "Nullspace computation";
   let t = Sys.time () in
@@ -230,3 +294,6 @@ let nullspace_computation mat =
 	Lacaml_D.pp_vec v
     ) res; 
   res
+
+let pp_print = Lacaml_D.pp_mat
+let pp_vec = Lacaml_D.pp_vec

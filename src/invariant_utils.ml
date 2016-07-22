@@ -101,7 +101,7 @@ let invariant_computation_lacaml mat : float_vec invar list =
         
       in
 
-      ((ev_limit (Q.of_float ev)),(Lacaml_matrix.nullspace_computation new_mat)) :: acc
+      ((ev_limit (Q.of_float ev)),(Lacaml_matrix.nullspace new_mat)) :: acc
     )
     []
     eigen_vals
@@ -167,7 +167,7 @@ let intersection_bases_lacaml b1 b2 =
     Lacaml_D.Mat.of_col_vecs array_vecs
     
   in
-  let null_space = Lacaml_matrix.nullspace_computation mat
+  let null_space = Lacaml_matrix.nullspace mat
   in
   let b1_length = List.length b1 in
   let b2_length = List.length b2 in
