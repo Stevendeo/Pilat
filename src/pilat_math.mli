@@ -127,6 +127,7 @@ module type Matrix = sig
   (* All function asking for coordonates is always row first. Index start at 0. *)
   val zero : int -> int -> t
   val create_mat : int -> int -> (int -> int -> elt) -> t
+  val create_vec : int -> (int -> elt) -> vec 
   val copy_mat : t -> t
   val identity : int  -> t
 
@@ -147,7 +148,11 @@ module type Matrix = sig
   val set_coef : int -> int -> t -> elt -> unit
   val get_coef : int -> int -> t -> elt 
 
+  val set_coef_vec : int -> vec -> elt -> unit
+  val get_coef_vec : int -> vec -> elt
   (** Iterators *)
+
+  val fold_vec : ('a -> elt -> 'a) -> 'a -> vec -> 'a
 
   val map : (elt -> elt) -> t -> t
   val mapi : (int -> int -> elt -> elt) -> t -> t

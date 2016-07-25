@@ -126,12 +126,12 @@ module Make (A : Poly_affect.S with type P.v = Cil_datatype.Varinfo.t) =
     let predicate_to_vector (base:int A.P.Monom.Map.t) (pred:predicate) =  
       let poly = poly_of_pred pred in 
       let p_monoms  = A.P.get_monomials poly in 
-      let res = Lacaml_D.Vec.init (A.P.Monom.Map.cardinal base) (fun _ -> 0.) in
+      let res = A.M.create_vec (A.P.Monom.Map.cardinal base) (fun _ -> A.P.R.zero) in
       A.P.Monom.Set.iter
 	(fun m -> 
 	  try 
 	    let pos = A.P.Monom.Map.find m base in
-	    res.{pos} <- A.P.coef poly m
+	    A.M.set_coef_vec pos res (A.P.coef poly m)
 	  with Not_found -> 
 	    let () = Mat_option.feedback 
 	      "Monomial %a not in the base in argument."
@@ -143,32 +143,32 @@ module Make (A : Poly_affect.S with type P.v = Cil_datatype.Varinfo.t) =
 (* This exception is raised to stop the iteration of the next function when we can conclude
    this is not an invariant. If it is not raised, then it is an invariant. *)
     exception Not_an_invariant
-    let prove_invariant (mat:Lacaml_D.Mat.t) (base:int A.P.Monom.Map.t) (pred:predicate) = 
+    let prove_invariant (mat:A.M.t) (base:int A.P.Monom.Map.t) (pred:predicate) = 
 
       let t0 = Sys.time () in
       try 
 	let vec = predicate_to_vector base pred in
 
-	let matt = Lacaml_D.Mat.transpose_copy mat in
+	let matt = A.M.transpose mat in
 	
-	let mtvec = Lacaml_D.gemv matt vec in 
+	let mtvec = A.M.mul_vec matt vec in 
 	
 	let index = ref 0 in 
 	let res = 
 	  try
 	    ignore( 
-	      Lacaml_D.Vec.fold
+	      A.M.fold_vec
 		(fun acc c_mtvec -> (* acc will store the possible eigenvalue *)
 		  index := !index + 1;
-		  let c_vec = vec.{!index} in
+		  let c_vec = A.M.get_coef_vec !index vec in
 		  
-		  if c_mtvec = 0. then
+		  if c_mtvec = A.P.R.zero then
 		    begin
-		      if c_vec = 0. then acc (* 0*ev = 0, we don't know the ev *)
-		      else Some 0. (* c_vec * ev = 0 => ev = 0. *)
+		      if c_vec = A.P.R.zero then acc (* 0*ev = 0, we don't know the ev *)
+		      else Some A.P.R.zero (* c_vec * ev = 0 => ev = 0. *)
 		    end
 		  else 
-		    let ev = c_vec /. c_mtvec in 
+		    let ev = A.P.R.div c_vec c_mtvec in 
 	      (* Floating point division : maybe use zarith instead ? *)
 		    match acc with
 		      None -> Some ev (* We had no information about the eigenvalue before *)

@@ -31,18 +31,21 @@ exception Not_solvable
 module type S = sig 
 
   (** 1. Utils *)
-  type mat (** Matrix in which the affectation will be translated *)
+
+  module M : Matrix
 
   module P : 
     (sig 
-      include Polynomial       
+      include Polynomial  with type c = M.elt and type v = Varinfo.t
   (** Takes a monomial and its affectation, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
       Raises Incomplete_base if unconsidered variables are necessary for the matrix.
   *)
-      val to_mat : ?base:int Monom.Map.t -> Monom.t -> t -> int Monom.Map.t * mat
+      val to_mat : ?base:int Monom.Map.t -> Monom.t -> t -> int Monom.Map.t * M.t
      end)
+
+  type mat = M.t(** Matrix in which the affectation will be translated *)
 
   type coef = P.c (** Coefficient of the polynomial *)
   type var = P.v (** Variables used by the polynomial *)
@@ -79,19 +82,14 @@ module type S = sig
 
 end
 
-module Make (Poly:Polynomial with type v = Varinfo.t)(M:Matrix with type elt = Poly.c) : 
-  S = 
+module Make (M:Matrix) (Poly:Polynomial with type v = Varinfo.t and type c = M.elt) : S = 
 struct 
-  type coef = Poly.c
-  type var = Poly.v
-  type mat = M.t
-  type monomial = Poly.Monom.t
-  type m_set = Poly.Monom.Set.t
-  type p = Poly.t
-  module P = 
+
+  module M = M
+  module P =
   struct 
     include Poly
-    let to_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * mat = 
+    let to_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * M.t = 
       let base_monom = 
 	if Monom.Map.is_empty base
 	then 
@@ -129,6 +127,13 @@ struct
       base_monom,mat 
   end
 
+  type coef = P.c
+  type var = Poly.v
+  type mat = M.t
+  type monomial = Poly.Monom.t
+  type m_set = Poly.Monom.Set.t
+  type p = Poly.t 
+  
 
   type t = 
     Affect of var * p

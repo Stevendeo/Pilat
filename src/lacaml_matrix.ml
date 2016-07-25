@@ -40,6 +40,7 @@ let error m1 m2 =
 
 let zero = Lacaml_D.Mat.make0
 let create_mat = Lacaml_D.Mat.init_rows
+let create_vec = Lacaml_D.Vec.init
 let copy_mat m = Lacaml_D.lacpy m
 let identity = Lacaml_D.Mat.identity
 
@@ -69,6 +70,12 @@ let from_array m =  Lacaml_D.Mat.of_col_vecs m
 
 let set_coef i j m elt = m.{i+1,j+1} <- elt
 let get_coef i j m = m.{i+1,j+1}
+
+let set_coef_vec i v elt = v.{i}<- elt
+let get_coef_vec i v = v.{i}
+
+let fold_vec f acc v = 
+  Lacaml_D.Vec.fold f acc v
 
 let map f m = Lacaml_D.Mat.map f m
 let mapi = assert false

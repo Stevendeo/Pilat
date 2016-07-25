@@ -62,6 +62,8 @@ struct
       cols = c;
       m = m
     }
+
+  let create_vec = Array.init
     
   let copy_mat mat = 
     create_mat mat.rows mat.cols (fun i j -> mat.m.(i).(j))
@@ -94,6 +96,10 @@ struct
 
   let get_coef i j mat = mat.m.(i).(j)
 
+  let set_coef_vec i v elt = v.(i) <- elt
+
+  let get_coef_vec i v = v.(i)
+
   let vec_from_array v = v
 
   let vec_to_array v = v
@@ -116,6 +122,8 @@ struct
       ;
       {rows = rows; cols = cols; m = array}
   (* 3. Iterators  *)
+
+  let fold_vec = Array.fold_left
 
   let mapi (f : int -> int -> elt -> elt) m = 
     {rows = m.rows ; cols = m.cols ; 

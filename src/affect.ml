@@ -20,6 +20,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module Deterministic : Poly_affect.S = Poly_affect.Make(Poly_utils.F_poly)(Lacaml_matrix)
+module Deterministic : Poly_affect.S = Poly_affect.Make(Lacaml_matrix)(Poly_utils.F_poly)
 
-module Non_deterministic : Poly_affect.S = Poly_affect.Make(Poly_utils.NF_poly)(Pilat_matrix.PMat)
+module Non_deterministic : Poly_affect.S = Poly_affect.Make(Pilat_matrix.PMat)(Poly_utils.NF_poly)

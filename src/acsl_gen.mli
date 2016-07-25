@@ -22,10 +22,12 @@
 
 open Cil_types 
 open Invariant_utils 
+open Affect
+
 val add_loop_annots_zarith : 
   kernel_function 
   -> stmt 
-  -> int Poly_affect.F_poly.Monom.Map.t 
+  -> int Poly_utils.F_poly.Monom.Map.t 
   -> q_vec invar list
   -> unit
 

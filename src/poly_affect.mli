@@ -26,26 +26,25 @@ open Pilat_math
 exception Incomplete_base
 exception Not_solvable
 
-
 module type S = sig 
 
   (** 1. Utils *)
 
-
-  type mat (** Matrix in which the affectation will be translated *)
-
+  module M : Matrix 
   module P : 
     (sig 
-      include Polynomial       
+      include Polynomial with type c = M.elt and type v = Varinfo.t
   (** Takes a monomial and its affectation, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
       Raises Incomplete_base if unconsidered variables are necessary for the matrix.
   *)
-      val to_mat : ?base:int Monom.Map.t -> Monom.t -> t -> int Monom.Map.t * mat
+      val to_mat : ?base:int Monom.Map.t -> Monom.t -> t -> int Monom.Map.t * M.t
      end)
 
-  type coef = P.c (** Coefficient of the polynomial *)
+
+  type mat = M.t (** Matrix in which the affectation will be translated *)
+  type coef = P.c (** Coefficient of the polynomial and of the matrix *)
   type var = P.v (** Variables used by the polynomial *)
 
   type monomial = P.Monom.t
@@ -80,6 +79,6 @@ module type S = sig
 end
   
 module Make: 
-  functor (P : Polynomial with type v = Varinfo.t)(M : Matrix with type elt = P.c) -> 
+  functor (M : Matrix)(P : Polynomial with type v = Varinfo.t and type c = M.elt) -> 
     S 
   

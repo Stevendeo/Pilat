@@ -23,6 +23,7 @@
 (* Logic_const.new_code_annotation *)
 open Cil_types
 open Invariant_utils
+open Poly_utils
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
@@ -83,7 +84,7 @@ let monomial_to_mul_term m =
       res
   in
   let res = 
-  __m_to_term (Poly_affect.F_poly.to_var m)
+  __m_to_term (F_poly.to_var m)
   in
   Mat_option.debug ~dkey:dkey_term ~level:2
     "Whole term generated : %a"
@@ -93,7 +94,7 @@ let monomial_to_mul_term m =
 
 (** Zarith *)
 
-let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
+let vec_to_term_zarith (base:int F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
 
   let z_use = Mat_option.Use_zarith.get () in
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
@@ -106,7 +107,7 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
   let vec_array = Pilat_matrix.QMat.vec_to_array vec in 
-  Poly_affect.F_poly.Monom.Map.fold
+  F_poly.Monom.Map.fold
     (fun monom row acc -> 
       let row = row - 1 in
       
@@ -442,7 +443,7 @@ let term_list_to_simple_predicate t term_list fundec stmt =
 let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
-    (base:int Poly_affect.F_poly.Monom.Map.t) 
+    (base:int F_poly.Monom.Map.t) 
     (invar : q_vec invar) 
     : predicate named list =
 

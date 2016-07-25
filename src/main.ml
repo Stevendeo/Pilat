@@ -53,11 +53,11 @@ module Imap = Map.Make(struct type t = int let compare = compare end)
 
 let rev_base base = 
 
-  Poly_affect.F_poly.Monom.Map.fold
+  Poly_utils.F_poly.Monom.Map.fold
     (fun monom i intmap -> 
       Mat_option.debug ~level:5 "Basis %i : %a" 
 	i 
-	Poly_affect.F_poly.Monom.pretty monom; 
+	Poly_utils.F_poly.Monom.pretty monom; 
       Imap.add i monom intmap
     )
     base
@@ -74,7 +74,7 @@ let print_vec_lacaml rev_base vec =
 	Mat_option.debug ~dkey:dkey_stmt
 	  "+%f%a" 
 	   ((Z.to_float (Q.num fl)) /. (Z.to_float (Q.den fl)))
-	 Poly_affect.F_poly.Monom.pretty 
+	 Poly_utils.F_poly.Monom.pretty 
 	  (Imap.find !i rev_base)
     ) (QMat.vec_to_array vec)
     
@@ -91,7 +91,7 @@ let print_vec_zarith rev_base vec =
 	Mat_option.debug ~dkey:dkey_stmt
 	  "+%a%a" 
 	  Q.pp_print fl 
-	  Poly_affect.F_poly.Monom.pretty 
+	  Poly_utils.F_poly.Monom.pretty 
 	  (Imap.find !i rev_base)
     ) (QMat.vec_to_array vec)
     
@@ -161,7 +161,7 @@ object(self)
 	       add identity assignment *)
 	    Cil_datatype.Varinfo.Set.fold
 	      (fun v acc ->
-		Affect ((v, (Poly_affect.F_poly.monomial 1. [v,1]))):: acc )
+		Affect ((v, (Poly_utils.F_poly.monomial 1. [v,1]))):: acc )
 	      varinfos_used
 	      []
 	      
@@ -175,23 +175,23 @@ object(self)
 		    (basic_assigns@p_list) in 
 				
 		let acc_affect = affect :: acc_affect and  
-		    acc_base = Poly_affect.F_poly.Monom.Set.union acc_base m_set in
+		    acc_base = Poly_utils.F_poly.Monom.Set.union acc_base m_set in
 		(acc_affect,acc_base))
-	      ([],Poly_affect.F_poly.Monom.Set.empty)
+	      ([],Poly_utils.F_poly.Monom.Set.empty)
 	      poly_lists
 	  in
 	  
 	  let base = 
 	    let i = ref 0 in
-	    Poly_affect.F_poly.Monom.Set.fold
+	    Poly_utils.F_poly.Monom.Set.fold
 	      (fun m map -> 
 		i := !i + 1;
 		Mat_option.debug ~dkey:dkey_base 
-		  "%i <-> %a" !i Poly_affect.F_poly.Monom.pretty m;
-	        Poly_affect.F_poly.Monom.Map.add m !i map
+		  "%i <-> %a" !i Poly_utils.F_poly.Monom.pretty m;
+	        Poly_utils.F_poly.Monom.Map.add m !i map
 	      )
 	      bases_for_each_loop
-	      Poly_affect.F_poly.Monom.Map.empty
+	      Poly_utils.F_poly.Monom.Map.empty
 	  in
 	  let rev_base = rev_base base in
 
