@@ -44,6 +44,7 @@ val emitter : Emitter.t
 
 (** Misc. *)
 
+(** List of variables studied *)
 val var_list : unit -> Cil_datatype.Varinfo.Set.t
 
 (** Timers *)

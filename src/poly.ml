@@ -35,6 +35,8 @@ struct
     
   type v = V.t
     
+  module R = A
+  module Var = V
   module Monom: Datatype.S_with_collections with type t = (int V.Map.t) = struct 
   include (
     Datatype.Make_with_collections(
@@ -289,6 +291,17 @@ struct
 
     let has_monomial (p:t) (m:Monom.t)  : bool = 
       P.mem m p
+
+    let float_to_t (f:float) = const (A.float_to_t f)
+
+    let approx (p:t) =
+      Monom.Map.fold 
+	(fun monom coef acc -> 
+	  add (mono_poly (A.approx coef) monom) acc
+	)
+	p
+	zero
+
   end
 
 
@@ -304,6 +317,7 @@ type var = | X
 
 module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var) 
  = 
+
   Make 
     (A) 
     (Datatype.Make_with_collections 

@@ -24,12 +24,13 @@ open Cil_datatype
 open Pilat_math
 
 exception Incomplete_base
+exception Not_solvable
 
 
 module type S = sig 
 
-  type coef (** Coefficient of the polynomial *)
-  type var (** Variables used by the polynomial *)
+  (** 1. Utils *)
+
 
   type mat (** Matrix in which the affectation will be translated *)
 
@@ -44,18 +45,41 @@ module type S = sig
       val to_mat : ?base:int Monom.Map.t -> Monom.t -> t -> int Monom.Map.t * mat
      end)
 
-  type t = Affect of var * P.t
+  type coef = P.c (** Coefficient of the polynomial *)
+  type var = P.v (** Variables used by the polynomial *)
+
+  type monomial = P.Monom.t
+  type m_set = P.Monom.Set.t
+  type p = P.t
+
+  type t = 
+    Affect of var * p
+  | Loop of body list 
+
   and body = t list
 
   (** A monomial affectation is equivalent to considering a monomial is a variable modified
     by the affectation. *)
-  type monom_affect = P.Monom.t * P.t
+  type monom_affect = monomial * p
+
+  (** 2. Ast to matrix translators *)  
+
+  val exp_to_poly : Cil_types.exp -> P.t
+
+  val block_to_poly_lists : P.Var.Set.t-> Cil_types.block -> body list
+(** Returns a list of list of polynomial affectations. Each list correspond to a the 
+    succession of affectations for each possible path in the loop, while omitting 
+    variable absent of the set in argument
+    Raises Not_solvable if a statement of the loop is not solvable. *)
+
+  val add_monomial_modifications : 
+    body -> monom_affect list * P.Monom.Set.t
+(** Returns the list of monomial affectations needed to linearize the loop, and the
+    set of all monomials used. *)
 
 end
   
 module Make: 
-  functor (P : Polynomial)(M : Matrix with type elt = P.c) -> 
-    S with type coef = P.c 
-      and type var = P.v
-      and type mat = M.t
+  functor (P : Polynomial with type v = Varinfo.t)(M : Matrix with type elt = P.c) -> 
+    S 
   

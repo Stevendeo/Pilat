@@ -21,6 +21,7 @@
 (**************************************************************************)
 
 open Pilat_math
+open Poly_utils 
 
 let dkey_ev = Mat_option.register_category "pilat_matrix:eigenvalue"
 let dkey_null = Mat_option.register_category "pilat_matrix:nullspace"
@@ -419,9 +420,20 @@ end
 
 (** 2. Rational matrix implementation *)
 
-module QMat = Make(Q)
+module QMat = Make(
+  struct 
+    include Q
+    let float_to_t = Q.of_float 
+    let approx _ = assert false
+  end
+  )
 
-module QPoly = struct include Poly.XMake(Q) end 
+module QPoly = struct include Poly.XMake(
+  struct 
+    include Q
+    let float_to_t = Q.of_float 
+    let approx _ = assert false
+  end) end 
 
 module Q_Set:Set.S with type elt = Q.t = Set.Make
   (Q)
@@ -622,53 +634,8 @@ let eigenvalues mat =
       
   in res
 
-(** 3. Polynomial matrices implementation. 
-    This is how we will deal with non deterministic loop *)
-
-module N_id = State_builder.SharedCounter(struct let name = "nid_counter" end)
-
-type n_var = 	
-  {
-    name:string;
-    min:float;
-    max:float
-  }
-    
-module N_var =
-  struct 
-    include Datatype.Make_with_collections
-    (struct
-      type t = n_var
-      let name = "P_string"
-      let reprs = [{name = "n";min = -0.1; max = 0.1}]
-      let compare n1 n2 = 
-	let max = Pervasives.compare n1.max n2.max  in
-	if max <> 0 then max 
-	else 	
-	  let min = Pervasives.compare n1.min n2.min  in
-	  if min <> 0 then min
-	  else String.compare n1.name n2.name
-	
-      let equal = (=)
-      let copy = Datatype.undefined
-      let internal_pretty_code = Datatype.undefined
-      let structural_descr = Structural_descr.t_abstract
-      let mem_project = Datatype.never_any_project
-      let hash = Hashtbl.hash
-      let rehash = Datatype.identity
-      let pretty = Datatype.undefined
-      let varname s = "str " ^ s.name
-     end)
-      
-    let new_var min max = 
-      { name = "n" ^ (string_of_int (N_id.next ()));
-	min = min;
-	max = max}
-end
-module P : Polynomial with type c = Float.t and type v = N_var.t = 
-  Poly.Make(Float)(N_var)
-
-module PMat : Matrix with type elt = P.t = Make (P)
+module PMat : Matrix with type elt = N_poly.t = 
+  Make (N_poly)
 
 let pmat_eval_to_zero m = 
   let dim = PMat.get_dim_col m in
@@ -676,7 +643,7 @@ let pmat_eval_to_zero m =
   ignore (
     PMat.mapi (* TODO : PMat.iteri would be better *)
       (fun i j poly -> 
-	let affine_coef = P.coef poly P.empty_monom in
+	let affine_coef = N_poly.coef poly N_poly.empty_monom in
 	let () = res.{i,j} <- affine_coef in 
 	poly)
       m);
@@ -686,6 +653,6 @@ let pmat_eval_to_zero m =
 let fvec_to_pvec f_vec : PMat.vec = 
   PMat.vec_from_array
     (Array.map
-       P.const    
+       N_poly.const    
        (Lacaml_D.Vec.to_array f_vec)
     )

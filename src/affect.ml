@@ -20,18 +20,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type t = float
-let zero = 0.
-let one = 1.
-let add = (+.)
-let mul = ( *. )
-let sub = (-.)
-let div = (/.)
-let equal = (=)
-let pp_print fmt i = 
-  Format.fprintf fmt "%.3f" i 
+module Deterministic : Poly_affect.S = Poly_affect.Make(Poly_utils.F_poly)(Lacaml_matrix)
 
-let float_to_t f = f
-let approx coef = 
-  if coef < 0. then ceil coef
-  else floor coef 
+module Non_deterministic : Poly_affect.S = Poly_affect.Make(Poly_utils.NF_poly)(Pilat_matrix.PMat)

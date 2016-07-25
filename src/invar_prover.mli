@@ -21,8 +21,21 @@
 (**************************************************************************)
 
 open Poly_affect
+open Affect 
 
-val prove_invariant : Lacaml_D.Mat.t -> int F_poly.Monom.Map.t -> Cil_types.predicate -> Property_status.emitted_status
+module Make : functor (A : Poly_affect.S) -> 
+  sig
+    
+    val prove_invariant : 
+      A.mat -> 
+      int A.P.Monom.Map.t -> 
+      Cil_types.predicate -> 
+      Property_status.emitted_status
+	
+    val prove_annot : 
+      A.mat -> 
+      int A.P.Monom.Map.t -> 
+      Cil_types.code_annotation -> 
+      Property_status.emitted_status
 
-val prove_annot : Lacaml_D.Mat.t -> int F_poly.Monom.Map.t -> Cil_types.code_annotation -> Property_status.emitted_status
-
+  end

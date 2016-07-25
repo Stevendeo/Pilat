@@ -20,18 +20,60 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type t = float
-let zero = 0.
-let one = 1.
-let add = (+.)
-let mul = ( *. )
-let sub = (-.)
-let div = (/.)
-let equal = (=)
-let pp_print fmt i = 
-  Format.fprintf fmt "%.3f" i 
+open Pilat_math
+open Cil_datatype
 
-let float_to_t f = f
-let approx coef = 
-  if coef < 0. then ceil coef
-  else floor coef 
+(** 1. Variables used for polynomials *)
+
+module N_id = State_builder.SharedCounter(struct let name = "nid_counter" end)
+
+type n_var = 	
+  {
+    name:string;
+    min:float;
+    max:float
+  }
+   
+module N_var =
+  struct 
+    include Datatype.Make_with_collections
+    (struct
+      type t = n_var
+      let name = "P_string"
+      let reprs = [{name = "n";min = -0.1; max = 0.1}]
+      let compare n1 n2 = 
+	let max = Pervasives.compare n1.max n2.max  in
+	if max <> 0 then max 
+	else 	
+	  let min = Pervasives.compare n1.min n2.min  in
+	  if min <> 0 then min
+	  else String.compare n1.name n2.name
+	
+      let equal = (=)
+      let copy = Datatype.undefined
+      let internal_pretty_code = Datatype.undefined
+      let structural_descr = Structural_descr.t_abstract
+      let mem_project = Datatype.never_any_project
+      let hash = Hashtbl.hash
+      let rehash = Datatype.identity
+      let pretty = Datatype.undefined
+      let varname s = "str " ^ s.name
+     end)
+      
+    let new_var min max = 
+      { name = "n" ^ (string_of_int (N_id.next ()));
+	min = min;
+	max = max}
+    
+  end
+
+(** 2. Polynomials *)
+
+module F_poly : Polynomial with type c = Float.t and type v = Varinfo.t = 
+  Poly.Make(Float)(Varinfo)
+
+module N_poly : Polynomial with type c = Float.t and type v = N_var.t = 
+  Poly.Make(Float)(N_var)
+
+module NF_poly : Polynomial with type c = N_poly.t and type v = Varinfo.t =
+  Poly.Make(N_poly)(Varinfo)				   

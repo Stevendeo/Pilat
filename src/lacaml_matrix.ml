@@ -27,6 +27,8 @@ type t = Lacaml_D.mat
 type vec = Lacaml_D.vec
 type elt = float
 
+type mat = t
+
 exception Dimension_error of int*int*int*int
     
 let error m1 m2 = 

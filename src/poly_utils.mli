@@ -20,18 +20,31 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type t = float
-let zero = 0.
-let one = 1.
-let add = (+.)
-let mul = ( *. )
-let sub = (-.)
-let div = (/.)
-let equal = (=)
-let pp_print fmt i = 
-  Format.fprintf fmt "%.3f" i 
+open Pilat_math
+open Cil_datatype
 
-let float_to_t f = f
-let approx coef = 
-  if coef < 0. then ceil coef
-  else floor coef 
+(** 1. Variables used for polynomials *)
+
+type n_var = 	
+  {
+    name:string;
+    min:float;
+    max:float
+  }
+
+module N_var : 
+  (sig
+    include Datatype.S_with_collections
+    val new_var : float -> float -> t
+   end)
+
+(** 2. Polynomials *) 
+
+(** Polynomials for deterministic assignments *)
+module F_poly : Polynomial with type c = float and type v = Varinfo.t
+
+(** Polynomials for non deterministic expressions *)
+module N_poly : Polynomial with type c = float and type v = N_var.t
+
+(** Polynomials for non deterministic assignments *)
+module NF_poly : Polynomial with type c = N_poly.t and type v = Varinfo.t

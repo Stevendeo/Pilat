@@ -27,7 +27,7 @@ include Pilat_math.Matrix
  and type vec = Lacaml_D.vec
  and type t = Lacaml_D.mat
 
-
+type mat = t
 
 (** Computes the eigenvalues of a lacaml matrix.
     This function has several problems, as the lacaml library is

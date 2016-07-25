@@ -41,7 +41,10 @@ module type Ring = sig
   val div : t -> t -> t
   val equal : t -> t -> bool
   val pp_print : Format.formatter -> t -> unit
-    
+
+(** Ast translators : only required for Pilat *)
+  val float_to_t : float -> t    
+  val approx : t -> t
 end
 
 (** 2. The polynomial structure *)
@@ -53,9 +56,10 @@ sig
   
   type v 
     (** type of variables *)
-  
+  module R : Ring with type t = c
+  module Var : Datatype.S_with_collections with type t = v
   module Monom : Datatype.S_with_collections
-    
+
   type t
     (** type of polynoms *)
 
@@ -104,6 +108,10 @@ sig
     
   val has_monomial : t -> Monom.t -> bool
 
+  (** Ast translators : only required for Pilat's ring *)
+  val float_to_t : float -> t
+    
+  val approx : t -> t
 end
 
 (** 3. The matrix structure *)

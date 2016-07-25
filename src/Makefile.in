@@ -11,11 +11,13 @@ PLUGIN_CMO 	:= mat_option\
 		float\
 		pilat_visitors\
 		poly\
+		poly_utils\
 		lacaml_matrix\
 		pilat_matrix\
 		poly_affect\
-		invariant_utils\
+		affect\
 		matrix_ast\
+		invariant_utils\
 		invar_prover\
 		acsl_gen\
 		main
