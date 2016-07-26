@@ -29,29 +29,27 @@ let dkey_zinter = Mat_option.register_category "invar:zarith:inter"
 
 module Int = Datatype.Int 
 
-type float_vec = Lacaml_D.vec
-type q_vec = Pilat_matrix.QMat.vec 
+module Make (A : Poly_affect.S) =  
+struct 
+  module Ring = A.P.R
 
-type mat = Lacaml_D.mat 
-
-
-type limit = 
-  Convergent of Q.t
-| Divergent of Q.t
-| Altern
-| One
-| Zero
+  type limit = 
+    Convergent of Ring.t
+  | Divergent of Ring.t
+  | Altern
+  | One
+  | Zero
 
 type 'a invar = limit * ('a list)
 
 (** 0. Limit utility *)
 
-let ev_limit (ev:Q.t) : limit = 
-  let ev = Q.abs ev in
-  if ev = Q.zero then Zero
-  else if ev = Q.one
-  then One
-  else if Q.leq ev Q.one then Convergent ev
+let ev_limit (ev:Ring.t) : limit = 
+  let ev = if Ring.leq ev Ring.zero then Ring.sub Ring.zero ev else ev
+  in
+  if ev = Ring.zero then Zero
+  else if ev = Ring.one then One  
+  else if Ring.leq ev Ring.one then Convergent ev
   else Divergent ev
 
 let join_limits l1 l2 = 
@@ -59,8 +57,8 @@ let join_limits l1 l2 =
     One,l | l,One -> l
   | Altern,_ | _,Altern -> Altern
   | Zero,_ | _,Zero -> Zero
-  | Convergent a,Convergent b -> Convergent (Q.mul a b)
-  | Divergent a,Divergent b-> Divergent (Q.mul a b)
+  | Convergent a,Convergent b -> Convergent (Ring.mul a b)
+  | Divergent a,Divergent b-> Divergent (Ring.mul a b)
   | Convergent _,Divergent _ | Divergent _,Convergent _ -> Altern
 
 let lim_to_string l = 
@@ -68,8 +66,8 @@ let lim_to_string l =
     Zero -> "zero"
   | One -> "one"
   | Altern -> "altern"
-  | Convergent a -> "convergent by " ^ (Q.to_string a)
-  | Divergent a -> "divergent by " ^ (Q.to_string a)
+  | Convergent _ -> "convergent"
+  | Divergent _ -> "divergent"
 
 (** 1. Nullspace computation with time witness *)
 
@@ -499,3 +497,4 @@ let integrate_vec (vec:QMat.vec) =
     |> QMat.vec_from_array 
 
 
+end 

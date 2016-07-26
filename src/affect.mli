@@ -20,6 +20,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module Deterministic : Poly_affect.S
+module Float_deterministic : Poly_affect.S
+module Q_deterministic : Poly_affect.S
 
-module Non_deterministic : Poly_affect.S 
+module Float_non_deterministic : Poly_affect.S 
+module Q_non_deterministic : Poly_affect.S 

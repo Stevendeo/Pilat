@@ -36,7 +36,9 @@ module type S = sig
 
   module P : 
     (sig 
-      include Polynomial  with type c = M.elt and type v = Varinfo.t
+      include Polynomial with type c = M.elt 
+			 and type v = Varinfo.t
+			 and type Var.Set.t = Varinfo.Set.t
   (** Takes a monomial and its affectation, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
@@ -80,9 +82,21 @@ module type S = sig
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
 
+  module Imap : Map.S with type key = int
+
+  val monomial_base : P.Monom.Set.t -> int P.Monom.Map.t
+
+  val reverse_base : int P.Monom.Map.t -> P.Monom.t Imap.t
+
+  val print_vec : P.Monom.t Imap.t -> M.vec -> unit
+
+  val loop_matrix : int P.Monom.Map.t -> monom_affect list -> mat
+
 end
 
-module Make (M:Matrix) (Poly:Polynomial with type v = Varinfo.t and type c = M.elt) : S = 
+module Make (M:Matrix) (Poly:Polynomial with type v = Varinfo.t 
+					and type c = M.elt 
+					and type Var.Set.t = Varinfo.Set.t) : S = 
 struct 
 
   module M = M
@@ -151,7 +165,7 @@ let dkey_stmt = Mat_option.register_category "matast:block_analyzer"
 let dkey_lowerizer = Mat_option.register_category "matast:lowerizer" 
 let dkey_all_monom = Mat_option.register_category "matast:lowerizer:all_monom" 
 let dkey_loop_mat = Mat_option.register_category "matast:loop_mat"
-
+let dkey_base = Mat_option.register_category "matast:base"
 
 let all_possible_monomials e_deg_hashtbl =
   let module M_set =P.Monom.Set in
@@ -200,7 +214,7 @@ let all_possible_monomials e_deg_hashtbl =
 	  if M_set.is_empty new_monoms 
 	  then 
 	    acc_monoms 
-	  else 
+ 	  else 
 	    M_set.union (M_set.union acc_monoms new_monoms) (compute_all new_monoms)
       )
       computed_possible_monomials
@@ -519,6 +533,80 @@ let block_to_poly_lists varinfo_used block : body list =
   Mat_option.debug ~dkey:dkey_stmt ~level:5
     "How many paths ? %i" (List.length res); res
 
+let monomial_base set = 
+    let i = ref 0 in
+    P.Monom.Set.fold
+      (fun m map -> 
+	i := !i + 1;
+	Mat_option.debug ~dkey:dkey_base 
+	  "%i <-> %a" !i P.Monom.pretty m;
+        P.Monom.Map.add m !i map
+      )
+      set
+      P.Monom.Map.empty
+  
+module Imap = Map.Make(struct type t = int let compare = compare end)
 
+let reverse_base base = 	    
+  P.Monom.Map.fold
+    (fun monom i intmap -> 
+      Mat_option.debug ~level:5 ~dkey:dkey_base "Basis %i : %a" 
+	i 
+        P.Monom.pretty monom; 
+      Imap.add i monom intmap
+    )
+    base
+    Imap.empty 
+
+let print_vec rev_base vec =
+
+  let i = ref 0 in 
+  Array.iter
+    (fun c ->
+      i := !i + 1;if P.R.equal P.R.zero c
+      then () 
+      else 
+	Mat_option.debug ~dkey:dkey_stmt
+	  "+%a%a" 
+	  P.R.pp_print c
+	  P.Monom.pretty 
+	  (Imap.find !i rev_base)
+    ) (M.vec_to_array vec) 
+  
+
+let loop_matrix 
+    (base: int P.Monom.Map.t) 
+    (all_modifs :monom_affect list) : mat = 
+  
+  let mat_size = P.Monom.Map.cardinal base in
+  try 
+    List.fold_left
+      (fun acc (v,poly_affect) -> 
+	let new_matrix = 
+	  (snd
+	     (P.to_mat 
+		~base 
+		v 
+		poly_affect)
+	  ) in 
+	
+	Mat_option.debug ~dkey:dkey_loop_mat ~level:4
+	  "New matrix for %a = %a :"
+          P.Monom.pretty v
+	  P.pp_print poly_affect;
+	
+	Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
+	  M.pp_print new_matrix
+	  M.pp_print acc;
+	
+        M.mul
+	  new_matrix
+	  acc 
+      )
+      (M.identity mat_size)
+      all_modifs
+  with
+    Incomplete_base -> 
+      Mat_option.abort "The matrix base is incomplete, you need to add more variables"
 
 end

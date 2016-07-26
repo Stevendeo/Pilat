@@ -33,7 +33,9 @@ module type S = sig
   module M : Matrix 
   module P : 
     (sig 
-      include Polynomial with type c = M.elt and type v = Varinfo.t
+      include Polynomial with type c = M.elt 
+			 and type v = Varinfo.t 
+			 and type Var.Set.t = Varinfo.Set.t
   (** Takes a monomial and its affectation, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
@@ -76,9 +78,22 @@ module type S = sig
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
 
+  module Imap : Map.S with type key = int
+
+  val monomial_base : P.Monom.Set.t -> int P.Monom.Map.t
+
+  val reverse_base : int P.Monom.Map.t -> P.Monom.t Imap.t
+
+  val print_vec : P.Monom.t Imap.t -> M.vec -> unit
+
+  val loop_matrix : int P.Monom.Map.t -> monom_affect list -> mat
+
 end
   
 module Make: 
-  functor (M : Matrix)(P : Polynomial with type v = Varinfo.t and type c = M.elt) -> 
-    S 
+  functor 
+    (M : Matrix)
+    (P : Polynomial with type v = Varinfo.t 
+		    and type c = M.elt 
+		    and type Var.Set.t = Varinfo.Set.t) -> S 
   

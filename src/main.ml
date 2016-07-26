@@ -29,7 +29,6 @@ open Poly_affect
 *)
 let dkey_stmt = Mat_option.register_category "main:loop_analyser"
 let dkey_time = Mat_option.register_category "main:timer"
-let dkey_base = Mat_option.register_category "main:base"
 
 let output_fun chan = Printf.fprintf chan "%s\n" 
   
@@ -48,21 +47,7 @@ let read_file chan =
       (fun str acc -> acc ^ str ^ "\n") 
       !lines 
       ""
-
-module Imap = Map.Make(struct type t = int let compare = compare end)
-
-let rev_base base = 
-
-  Poly_utils.F_poly.Monom.Map.fold
-    (fun monom i intmap -> 
-      Mat_option.debug ~level:5 "Basis %i : %a" 
-	i 
-	Poly_utils.F_poly.Monom.pretty monom; 
-      Imap.add i monom intmap
-    )
-    base
-    Imap.empty 
-
+(*
 let print_vec_lacaml rev_base vec = 
 
   let i = ref 0 in
@@ -93,12 +78,12 @@ let print_vec_zarith rev_base vec =
 	  Q.pp_print fl 
 	  Poly_utils.F_poly.Monom.pretty 
 	  (Imap.find !i rev_base)
-    ) (QMat.vec_to_array vec)
+    ) (QMat.vec_to_array vec)*)
     
-let print_vec = 
+(*let print_vec = 
   if Mat_option.Use_zarith.get () 
   then print_vec_zarith
-  else print_vec_lacaml
+  else print_vec_lacaml*)
 
 (** Visitor *)
     
@@ -109,19 +94,18 @@ object(self)
   method! vstmt_aux stmt =
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
-    | Cil_types.Loop (_,b,_,_,_) -> 
       
+    | Cil_types.Loop (_,b,_,_,_) -> 
       
       let t0 = Sys.time() in
 
-      
       begin (* Loop treatment *)
 	let () = 	
 	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
 	    stmt.sid in
 	
 	let varinfos_used = Pilat_visitors.varinfo_registerer b in
-	Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
+	let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 	
 	Cil_datatype.Varinfo.Set.iter
 	  (fun v -> 
@@ -129,12 +113,14 @@ object(self)
 	      ~dkey:dkey_stmt 
 	      ~level:3 
 	      "Var %a" 
-	      Printer.pp_varinfo v) varinfos_used ;
+	      Printer.pp_varinfo v) varinfos_used in
 
+	let module Poly_assign =  Affect.Deterministic in
+	let open Poly_assign in
 	(** 1st step : Computation of the block as a list of list of polynomials affectations. *)
 	let polys_opt = 
-	try Some (Matrix_ast.block_to_poly_lists varinfos_used b)
-	with Matrix_ast.Not_solvable -> None 
+	try Some (Poly_assign.block_to_poly_lists varinfos_used b)
+	with Poly_affect.Not_solvable -> None 
 	in
 	
 	match polys_opt with 
@@ -161,7 +147,7 @@ object(self)
 	       add identity assignment *)
 	    Cil_datatype.Varinfo.Set.fold
 	      (fun v acc ->
-		Affect ((v, (Poly_utils.F_poly.monomial 1. [v,1]))):: acc )
+		Poly_assign.Affect ((v, (P.monomial P.R.one [v,1]))):: acc )
 	      varinfos_used
 	      []
 	      
@@ -171,38 +157,30 @@ object(self)
 	    List.fold_left
 	      (fun (acc_affect,acc_base) p_list -> 
 		let affect,m_set = 
-		  Matrix_ast.add_monomial_modifications 
+		  Poly_assign.add_monomial_modifications 
 		    (basic_assigns@p_list) in 
 				
 		let acc_affect = affect :: acc_affect and  
-		    acc_base = Poly_utils.F_poly.Monom.Set.union acc_base m_set in
+		    acc_base = Poly_assign.P.Monom.Set.union acc_base m_set in
 		(acc_affect,acc_base))
-	      ([],Poly_utils.F_poly.Monom.Set.empty)
+	      ([],Poly_assign.P.Monom.Set.empty)
 	      poly_lists
 	  in
 	  
-	  let base = 
-	    let i = ref 0 in
-	    Poly_utils.F_poly.Monom.Set.fold
-	      (fun m map -> 
-		i := !i + 1;
-		Mat_option.debug ~dkey:dkey_base 
-		  "%i <-> %a" !i Poly_utils.F_poly.Monom.pretty m;
-	        Poly_utils.F_poly.Monom.Map.add m !i map
-	      )
-	      bases_for_each_loop
-	      Poly_utils.F_poly.Monom.Map.empty
+	  let base = Poly_assign.monomial_base bases_for_each_loop 
 	  in
-	  let rev_base = rev_base base in
+	  
+	  let rev_base = Poly_assign.reverse_base base in
 
 	  let matrices = 
 	    List.map
-	      (Matrix_ast.loop_matrix base)
+	      (Poly_assign.loop_matrix base)
 	      affects in
 	  if Mat_option.Prove.get () 
 	  then
 	    let () = Mat_option.feedback "Proving invariants" in
 	    let open Property_status in
+	    let module Prover = Invar_prover.Make(Poly_assign) in
 	    List.iter
 	      (fun annot ->
 		let status = 
@@ -212,7 +190,7 @@ object(self)
 			False_and_reachable | False_if_reachable -> acc
 		    | Dont_know | True -> 
 		      begin
-			match Invar_prover.prove_annot mat base annot with
+			match Prover.prove_annot mat base annot with
 			  True -> acc
 			| res -> res
 		      end
@@ -258,7 +236,7 @@ object(self)
 			  "Invariant %s %i :" (Invariant_utils.lim_to_string limit)  (i + 1) in
 		      List.iter
 			(fun invar ->  
-			  print_vec rev_base invar;
+			  Poly_assign.print_vec rev_base invar;
 			  Mat_option.debug ~dkey:dkey_stmt "__\n";
 			)invars
 			

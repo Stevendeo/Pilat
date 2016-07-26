@@ -20,12 +20,10 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type float_vec = Lacaml_D.vec
-type q_vec = Pilat_matrix.QMat.vec 
-
-type mat = Lacaml_D.mat 
-
-
+module Make : functor 
+    (A : Poly_affect.S) -> 
+sig 
+  
 (** An invariant is an eigenspace, represented by its base with
     a vec list. 
     When an eigenspace is associated to an eigenvalue strictly 
@@ -35,25 +33,26 @@ type mat = Lacaml_D.mat
     (<e,X> > k => <e,MX> > k).
 *)
 
-type limit = 
-  Convergent of Q.t
-| Divergent of Q.t
-| Altern
-| One
-| Zero
-
-type 'a invar = limit * ('a list)
-
-val lim_to_string : limit -> string
-
-val invariant_computation_lacaml : mat -> float_vec invar list
-
+  type limit = 
+    Convergent of A.P.R.t
+  | Divergent of A.P.R.t
+  | Altern
+  | One
+  | Zero
+      
+  type invar = limit * (A.M.vec list)
+    
+  val lim_to_string : limit -> string
+    
+  val invariant_computation : A.mat -> A.M.vec list
+    
 (** Returns the rational eigenspaces union of the floating matrix 
     as a list of bases. *)
-val invariant_computation : mat -> q_vec invar list
-
+  val invariant_computation : A.mat -> invar list
+    
 (** Intersects two union of vectorial spaces. *)
-val intersection_invariants :  q_vec invar list -> q_vec invar list -> q_vec invar list
-
-(** After the integration, there is no fraction left on the vector expression. *)
-val integrate_vec : q_vec -> q_vec
+  val intersection_invariants :  invar list -> invar list -> invar list
+    (*
+  (** After the integration, there is no fraction left on the vector expression. *)
+  val integrate_vec : q_vec -> q_vec
+    *)end

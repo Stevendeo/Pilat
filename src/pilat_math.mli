@@ -40,6 +40,7 @@ module type Ring = sig
   val mul : t -> t -> t
   val div : t -> t -> t
   val equal : t -> t -> bool
+  val leq : t -> t -> bool
   val pp_print : Format.formatter -> t -> unit
 
 (** Ast translators : only required for Pilat *)
@@ -90,12 +91,13 @@ sig
   val add : t -> t -> t
   val sub : t -> t -> t
   val mul : t -> t -> t
-  val div : t -> t -> t (** Fails every time, but allows to match the RING signature. *)
+  val div : t -> t -> t (** Fails every time, but allows to match the Ring signature. *)
   val scal_mul : c -> t -> t
   val pow : t -> int -> t
     
   val equal : t -> t -> bool
-    
+  val leq : t -> t -> bool(** Fails every time, but allows to match the Ring signature. *)
+
   val eval : t -> v -> c -> t
   val pp_print : Format.formatter -> t -> unit
     

@@ -23,6 +23,9 @@
 open Cil_types
 open Cil
 
+type loop_kind = 
+  Deterministic | Non_deterministic
+
 let dkey_stmt = Mat_option.register_category "pilat_vis:stmt"
 
 (** Returns the varinfos used in the block in argument *)

@@ -26,8 +26,10 @@ open Pilat_math
    One must be careful to make the type of coefficients consistent with the
    type of the elements of the ring structure received as parameter *)
 
-module Make (A : Ring) (V : Datatype.S_with_collections) : Polynomial with type c = A.t
-	       and type v = V.t =
+module Make (A : Ring) (V : Datatype.S_with_collections) : 
+  Polynomial with type c = A.t
+	     and type v = V.t
+	     and type Var.Set.t = V.Set.t =
 struct
   
     (* 1. Type declaration *)
@@ -302,6 +304,7 @@ struct
 	p
 	zero
 
+    let leq = assert false
   end
 
 

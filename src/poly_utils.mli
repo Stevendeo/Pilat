@@ -40,11 +40,35 @@ module N_var :
 
 (** 2. Polynomials *) 
 
+
+
 (** Polynomials for deterministic assignments *)
-module F_poly : Polynomial with type c = float and type v = Varinfo.t
+
+  
+(** Polynomial with rational coefficients *)
+module QPoly : Polynomial with type c = Q.t 
+			  and type v = Cil_datatype.Varinfo.t
+			  and type Var.Set.t = Varinfo.Set.t
+
+module F_poly : Polynomial with type c = float 
+			   and type v = Varinfo.t 
+			   and type Var.Set.t = Varinfo.Set.t
 
 (** Polynomials for non deterministic expressions *)
 module N_poly : Polynomial with type c = float and type v = N_var.t
 
+module NQ_poly : Polynomial with type c = Q.t and type v = N_var.t
+
 (** Polynomials for non deterministic assignments *)
-module NF_poly : Polynomial with type c = N_poly.t and type v = Varinfo.t
+module NF_poly : Polynomial with type c = N_poly.t 
+			    and type v = Varinfo.t
+			    and type Var.Set.t = Varinfo.Set.t
+
+
+module NQF_poly : Polynomial with type c = NQ_poly.t
+			    and type v = Varinfo.t 
+			    and type Var.Set.t = Varinfo.Set.t
+
+(** Polynomial for matrix eigenvalue search *)
+
+module XQ_poly : Polynomial with type c = Q.t and type v = Poly.var

@@ -436,13 +436,6 @@ module QMat = Make(
   end
   )
 
-module QPoly = struct include Poly.XMake(
-  struct 
-    include Q
-    let float_to_t = Q.of_float 
-    let approx _ = assert false
-  end) end 
-
 module Q_Set:Set.S with type elt = Q.t = Set.Make
   (Q)
 module Z_Set:Set.S with type elt = Z.t = Set.Make
@@ -490,12 +483,12 @@ let char_poly (mat:QMat.t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Fadd
     then 
       let mk_coef = Q.div (QMat.trace mk) (Q.of_int index) in
       
-      let new_monom = (QPoly.monomial (Q.sub Q.zero mk_coef) [Poly.X,(dim-index)]) in
+      let new_monom = (XQ_poly.monomial (Q.sub Q.zero mk_coef) [Poly.X,(dim-index)]) in
       
       let mkpo =  QMat.mul mat (QMat.sub mk (QMat.scal_mul identity mk_coef)) in
 
-      QPoly.add new_monom (trace_mk (index + 1) mkpo)
-    else (QPoly.monomial Q.one [Poly.X,dim])
+      XQ_poly.add new_monom (trace_mk (index + 1) mkpo)
+    else (XQ_poly.monomial Q.one [Poly.X,dim])
     
   in
   let res = trace_mk 1 mat 
@@ -509,41 +502,41 @@ let eigenvalues mat =
   let integrate_poly p = (* returns the main coefficient of the polynomial after multiplying it
 			    by a scalar such that the polynomial have only integer coefficients.*)
     let rec integ xn p = 
-      if QPoly.deg_of_var xn Poly.X = deg_poly
+      if XQ_poly.deg_of_var xn Poly.X = deg_poly
       then Z.one (* by construction, its xn's coef is an integer *)
       else 
 	let den_of_coef = 
-	  Q.den (QPoly.coef p xn)
+	  Q.den (XQ_poly.coef p xn)
 	in
-	let xnpo = (QPoly.mono_mul xn (QPoly.mono_minimal [Poly.X,1]))
+	let xnpo = (XQ_poly.mono_mul xn (XQ_poly.mono_minimal [Poly.X,1]))
 	in 
 	let k = 
-	  integ xnpo (QPoly.scal_mul (Q.of_bigint den_of_coef) p) in
+	  integ xnpo (XQ_poly.scal_mul (Q.of_bigint den_of_coef) p) in
 	
 	
 	(Z.mul k den_of_coef)
 
     in
-    integ QPoly.empty_monom p
+    integ XQ_poly.empty_monom p
   in
   let poly = char_poly mat in 
   
   let () = Mat_option.debug ~dkey:dkey_ev ~level:2
-    "Char poly = %a" QPoly.pp_print poly
+    "Char poly = %a" XQ_poly.pp_print poly
 
   in
   let k = integrate_poly poly in
   
     let div_by_x poly = (* returns (coef,n) with coef*xn with the littlest n such that xn | poly *)
     let rec __div_by_x monomial = 
-      let coef = QPoly.coef poly monomial in
+      let coef = XQ_poly.coef poly monomial in
       Mat_option.debug ~dkey:dkey_ev ~level:4
 	"Coef for div_by_x : %a" Q.pp_print coef;
       if Q.equal coef Q.zero
-      then __div_by_x (QPoly.mono_mul monomial (QPoly.mono_minimal [Poly.X,1]))
-      else (coef,(QPoly.deg_of_var monomial Poly.X))
+      then __div_by_x (XQ_poly.mono_mul monomial (XQ_poly.mono_minimal [Poly.X,1]))
+      else (coef,(XQ_poly.deg_of_var monomial Poly.X))
     in
-    __div_by_x QPoly.empty_monom
+    __div_by_x XQ_poly.empty_monom
   in
   let (coef,power) = div_by_x poly
   in
@@ -621,10 +614,10 @@ let eigenvalues mat =
   in
   let res = Q_Set.filter 
     (fun elt -> 
-      let eval_poly = QPoly.eval poly Poly.X elt in
+      let eval_poly = XQ_poly.eval poly Poly.X elt in
       Mat_option.debug ~dkey:dkey_ev ~level:4
-	"Root candidate : %a. Returns %a" Q.pp_print elt QPoly.pp_print eval_poly;
-      Q.equal (QPoly.coef eval_poly QPoly.empty_monom) Q.zero
+	"Root candidate : %a. Returns %a" Q.pp_print elt XQ_poly.pp_print eval_poly;
+      Q.equal (XQ_poly.coef eval_poly XQ_poly.empty_monom) Q.zero
     )
     root_candidates
   in
@@ -644,6 +637,9 @@ let eigenvalues mat =
 
 module PMat : Matrix with type elt = N_poly.t = 
   Make (N_poly)
+
+module PQMat : Matrix with type elt = NQ_poly.t = 
+  Make (NQ_poly)
 
 let pmat_eval_to_zero m = 
   let dim = PMat.get_dim_col m in

@@ -35,9 +35,6 @@ module Make :
 (** Matrix with rational coefficients
     The module Q is from the Zarith library *)
 module QMat : Matrix with type elt = Q.t
-  
-(** Polynomial with rational coefficients *)
-module QPoly : Polynomial with type c = Q.t
 
 (** Set of rational numbers *)
 module Q_Set:Set.S with type elt = Q.t
@@ -45,7 +42,7 @@ module Q_Set:Set.S with type elt = Q.t
 (** Matrix utilities *)
 
 (** Characteristic polynomial of a rational matrix *)
-val char_poly : QMat.t -> QPoly.t
+val char_poly : QMat.t -> Poly_utils.XQ_poly.t
 
 (** Rational eigenvalues of a matrix. Computation of the 
     rational roots of the characteristic polynomial.
@@ -69,6 +66,8 @@ val qmat_to_lacaml : QMat.t -> Lacaml_D.Mat.t
     This is how we will deal with non deterministic loops *)
 
 module PMat : Matrix with type elt = Poly_utils.N_poly.t
+
+module PQMat :  Matrix with type elt = Poly_utils.NQ_poly.t
 
 val pmat_eval_to_zero : PMat.t -> Lacaml_D.Mat.t
 val fvec_to_pvec : Lacaml_D.Vec.t -> PMat.vec 

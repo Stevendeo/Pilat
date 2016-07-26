@@ -28,6 +28,7 @@ let mul = ( *. )
 let sub = (-.)
 let div = (/.)
 let equal = (=)
+let leq = (<=)
 let pp_print fmt i = 
   Format.fprintf fmt "%.3f" i 
 
