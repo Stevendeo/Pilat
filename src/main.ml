@@ -115,8 +115,13 @@ object(self)
 	      "Var %a" 
 	      Printer.pp_varinfo v) varinfos_used in
 
-	let module Poly_assign =  Affect.Deterministic in
-	let open Poly_assign in
+	let (module Poly_assign : Poly_affect.S) = 
+	      if Mat_option.Use_zarith.get () 
+	      then 
+		(module Affect.Q_deterministic) 
+	      else
+		(module Affect.Float_deterministic)
+	in
 	(** 1st step : Computation of the block as a list of list of polynomials affectations. *)
 	let polys_opt = 
 	try Some (Poly_assign.block_to_poly_lists varinfos_used b)
@@ -147,7 +152,8 @@ object(self)
 	       add identity assignment *)
 	    Cil_datatype.Varinfo.Set.fold
 	      (fun v acc ->
-		Poly_assign.Affect ((v, (P.monomial P.R.one [v,1]))):: acc )
+		Poly_assign.Affect 
+		  ((v, (Poly_assign.P.monomial Poly_assign.P.R.one [v,1]))):: acc )
 	      varinfos_used
 	      []
 	      
@@ -216,16 +222,17 @@ object(self)
 	      (Annotations.code_annot stmt); DoChildren
 	  else
 	    let () = Mat_option.feedback "Invariant generation" in
-	    
+	    let module Invariant_maker = Invariant_utils.Make(Poly_assign) in
 	    let whole_loop_invar = 
 	    List.fold_left
-	      (fun acc mat -> 
+	      (fun acc (mat : Poly_assign.mat) -> 
 		if acc = Some [] then Some [] 
 		else	  
 		  let () = 
-		    Mat_option.debug ~dkey:dkey_stmt ~level:3 "New mat : %a" Lacaml_D.pp_mat mat
+		    Mat_option.debug ~dkey:dkey_stmt ~level:3 
+		      "New mat : %a" Poly_assign.M.pp_print mat
 		  in
- 		  let invar = (Invariant_utils.invariant_computation mat)
+ 		  let invar = (Invariant_maker.invariant_computation mat)
 		  in 
 
 		  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
@@ -233,7 +240,7 @@ object(self)
 		    (fun i (limit,invars) -> 
 		      let () = 
 			Mat_option.debug ~dkey:dkey_stmt
-			  "Invariant %s %i :" (Invariant_utils.lim_to_string limit)  (i + 1) in
+			  "Invariant %s %i :" (Invariant_maker.lim_to_string limit)  (i + 1) in
 		      List.iter
 			(fun invar ->  
 			  Poly_assign.print_vec rev_base invar;
@@ -244,18 +251,24 @@ object(self)
 		   match acc with
 		     None -> Some invar
 		   | Some l ->  
-		     Some (Invariant_utils.intersection_invariants invar l) 		  
+		     Some (Invariant_maker.intersection_invariants invar l) 		  
 		  
 	      )
 	      None
 	      matrices
-	  in
-	  
-	  Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time ;
-	  match whole_loop_invar with 
-	    None -> DoChildren 
-	  | Some i ->  Acsl_gen.add_loop_annots_zarith kf stmt base i; DoChildren
-	  
+	    in
+	    
+	    Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time ;
+	    let module Annot_generator = Acsl_gen.Make(Poly_assign) in 
+		match whole_loop_invar with 
+		  None -> DoChildren 
+		| Some i ->  
+		  let z_invars = 
+		    List.map 
+		      Invariant_maker.zarith_invariant 
+		      i in
+		  Annot_generator.add_loop_annots_zarith kf stmt base z_invars; DoChildren
+		  
       end (* Loop *)
     | _ -> DoChildren 
 end

@@ -33,30 +33,8 @@ let dkey_zero = Mat_option.register_category "acsl_gen:iszero"
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
-
-let integrate_vec (vec:QMat.vec) = 
-  let array = QMat.vec_to_array vec in
-  let coef = 
-  Array.fold_left
-    (fun acc elt -> 
-
-      let den =  (Q.den elt) in 
-      if Z.equal Z.zero (Z.rem acc den)
-      then acc 
-      else
-      
-	Z.mul acc den
-    )
-    Z.one 
-    array
-  in
-  
-  Array.map
-    (fun elt -> Q.mul (Q.(~$$)coef) elt)
-    array
-    
-    |> QMat.vec_from_array 
-
+module Make(A:Poly_affect.S) =
+struct 
 
 let to_code_annot (preds:predicate named list) = 
   
@@ -74,7 +52,7 @@ let term_is_zero t =
   | TConst (LReal lr) -> lr.r_nearest <> 0.
   | _ -> false
 
-let monomial_to_mul_term m = 
+let monomial_to_mul_term (m:A.P.Monom.t) = 
   
   let rec __m_to_term vars = 
     match vars with
@@ -110,7 +88,7 @@ let monomial_to_mul_term m =
       res
   in
   let res = 
-  __m_to_term (F_poly.to_var m)
+  __m_to_term (A.P.to_var m)
   in
   Mat_option.debug ~dkey:dkey_term ~level:2
     "Whole term generated : %a"
@@ -120,7 +98,7 @@ let monomial_to_mul_term m =
 
 (** Zarith *)
 
-let vec_to_term_zarith (base:int F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
+let vec_to_term_zarith (base:int A.P.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
 
   let z_use = Mat_option.Use_zarith.get () in
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
@@ -133,7 +111,7 @@ let vec_to_term_zarith (base:int F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.ve
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
   let vec_array = Pilat_matrix.QMat.vec_to_array vec in 
-  F_poly.Monom.Map.fold
+  A.P.Monom.Map.fold
     (fun monom row acc -> 
       let row = row - 1 in
       
@@ -469,7 +447,7 @@ let term_list_to_simple_predicate t term_list fundec stmt =
 let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
-    (base:int F_poly.Monom.Map.t) 
+    (base:int A.P.Monom.Map.t) 
     (invar : q_invar) 
     : predicate named list =
 
@@ -479,15 +457,11 @@ let vec_space_to_predicate_zarith
     List.map
       (vec_to_term_zarith base) vec_list in
 
-  (* If a term is always different to 0, then a stronger result is possible *)
-(*
-  match test_never_zero stmt term_list with
-    None -> *)
       term_list_to_predicate term_list limit fundec stmt
-  (*| Some t -> 
-    [term_list_to_simple_predicate t term_list fundec stmt]
-  *)
-let add_loop_annots_zarith kf stmt base vec_lists = 
+
+let add_loop_annots_zarith
+    (kf:kernel_function) (stmt:stmt) (base:int A.P.Monom.Map.t) (vec_lists : q_invar list) = 
+
   let fundec = match kf.fundec with
       Definition(f,_) -> f
     | Declaration _ -> assert false
@@ -512,3 +486,4 @@ let add_loop_annots_zarith kf stmt base vec_lists =
       Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
   )annots
   *)  
+end

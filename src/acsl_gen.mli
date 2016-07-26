@@ -24,10 +24,14 @@ open Cil_types
 open Invariant_utils 
 open Affect
 
-val add_loop_annots_zarith : 
-  kernel_function 
-  -> stmt 
-  -> int Poly_utils.F_poly.Monom.Map.t 
-  -> q_invar list
-  -> unit
+module Make: functor (A:Poly_affect.S) -> 
+sig
+  
+  val add_loop_annots_zarith : 
+    kernel_function 
+    -> stmt 
+    -> int A.P.Monom.Map.t 
+    -> q_invar list
+    -> unit
 
+end
