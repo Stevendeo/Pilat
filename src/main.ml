@@ -188,7 +188,7 @@ object(self)
 		    (fun acc mat -> 
 		      match acc with
 			False_and_reachable | False_if_reachable -> acc
-		    | Dont_know | True -> 
+		      | Dont_know | True -> 
 		      begin
 			match Prover.prove_annot mat base annot with
 			  True -> acc

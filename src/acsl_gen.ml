@@ -24,6 +24,7 @@
 open Cil_types
 open Invariant_utils
 open Poly_utils
+open Pilat_matrix
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
@@ -31,6 +32,31 @@ let dkey_zero = Mat_option.register_category "acsl_gen:iszero"
 
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
+
+
+let integrate_vec (vec:QMat.vec) = 
+  let array = QMat.vec_to_array vec in
+  let coef = 
+  Array.fold_left
+    (fun acc elt -> 
+
+      let den =  (Q.den elt) in 
+      if Z.equal Z.zero (Z.rem acc den)
+      then acc 
+      else
+      
+	Z.mul acc den
+    )
+    Z.one 
+    array
+  in
+  
+  Array.map
+    (fun elt -> Q.mul (Q.(~$$)coef) elt)
+    array
+    
+    |> QMat.vec_from_array 
+
 
 let to_code_annot (preds:predicate named list) = 
   
@@ -444,7 +470,7 @@ let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
     (base:int F_poly.Monom.Map.t) 
-    (invar : q_vec invar) 
+    (invar : q_invar) 
     : predicate named list =
 
   let limit,vec_list = invar in

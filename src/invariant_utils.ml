@@ -29,18 +29,24 @@ let dkey_zinter = Mat_option.register_category "invar:zarith:inter"
 
 module Int = Datatype.Int 
 
+type 'a lim = 
+  Convergent of 'a
+| Divergent of 'a
+| Altern
+| One
+| Zero
+
+type ('a,'v) inv = 'a lim * 'v list
+
+type q_invar = (Q.t,Pilat_matrix.QMat.vec) inv
+
 module Make (A : Poly_affect.S) =  
 struct 
   module Ring = A.P.R
 
-  type limit = 
-    Convergent of Ring.t
-  | Divergent of Ring.t
-  | Altern
-  | One
-  | Zero
-
-type invar = limit * (A.M.vec list)
+  type limit = Ring.t lim
+      
+  type invar = (Ring.t,A.M.vec) inv
 
 (** 0. Limit utility *)
 
@@ -220,29 +226,33 @@ let intersection_invariants ll1 ll2 =
   let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t
   in res
 
+let limit_zarith (lim: limit) : Q.t lim = 
+  match lim with 
+    Zero -> Zero
+  | One -> One 
+  | Altern -> Altern
+  | Convergent ev -> Convergent (ev |> A.P.R.t_to_float |> Q.of_float)
+  | Divergent ev -> Divergent(ev |> A.P.R.t_to_float |> Q.of_float)
+
+let vec_zarith (vec:A.M.vec) : QMat.vec = 
+  let arr = A.M.vec_to_array vec in 
+  (Array.map 
+     (fun elt -> (elt |> A.P.R.t_to_float |> Q.of_float))
+     arr)
+  |> QMat.vec_from_array
+
+let zarith_invariant ((lim,inv):invar) = 
+  limit_zarith lim, (List.map vec_zarith inv)
+
 end 
 
-let integrate_vec (vec:QMat.vec) = 
-  let array = QMat.vec_to_array vec in
-  let coef = 
-  Array.fold_left
-    (fun acc elt -> 
-
-      let den =  (Q.den elt) in 
-      if Z.equal Z.zero (Z.rem acc den)
-      then acc 
-      else
-      
-	Z.mul acc den
-    )
-    Z.one 
-    array
-  in
+let integrate_vec (qvec : QMat.vec) : QMat.vec = 
   
-  Array.map
-    (fun elt -> Q.mul (Q.(~$$)coef) elt)
-    array
-    
-    |> QMat.vec_from_array 
-
-
+  let prod_den = ref Q.one in
+ 
+  QMat.create_vec (qvec |> QMat.vec_to_array |> Array.length)
+    (fun i -> 
+      let elt = QMat.get_coef_vec i qvec in
+      let den = Q.den elt in 
+      let () = prod_den := (Q.mul !prod_den (Q.of_bigint den)) in
+      Q.mul elt !prod_den)  

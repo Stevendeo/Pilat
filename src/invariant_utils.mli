@@ -20,6 +20,19 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open Pilat_matrix
+
+type 'a lim = 
+  Convergent of 'a
+| Divergent of 'a
+| Altern
+| One
+| Zero
+
+type ('a,'v) inv = 'a lim * 'v list
+
+type q_invar = (Q.t,QMat.vec) inv
+
 module Make : functor 
     (A : Poly_affect.S) -> 
 sig 
@@ -33,14 +46,9 @@ sig
     (<e,X> > k => <e,MX> > k).
 *)
 
-  type limit = 
-    Convergent of A.P.R.t
-  | Divergent of A.P.R.t
-  | Altern
-  | One
-  | Zero
+  type limit = A.P.R.t lim
       
-  type invar = limit * (A.M.vec list)
+  type invar = (A.P.R.t,A.M.vec) inv
     
   val lim_to_string : limit -> string
     
@@ -52,7 +60,12 @@ sig
     
 (** Intersects two union of vectorial spaces. *)
   val intersection_invariants :  invar list -> invar list -> invar list
+
+  val zarith_invariant : invar -> q_invar
+end
+
     (*
   (** After the integration, there is no fraction left on the vector expression. *)
   val integrate_vec : q_vec -> q_vec
-    *)end
+    *)
+val integrate_vec : QMat.vec -> QMat.vec

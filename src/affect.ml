@@ -30,3 +30,4 @@ module Q_deterministic : Poly_affect.S = Poly_affect.Make(QMat)(QPoly)
 module Float_non_deterministic : Poly_affect.S = Poly_affect.Make(PMat)(NF_poly)
 
 module Q_non_deterministic : Poly_affect.S = Poly_affect.Make(PQMat)(NQF_poly)
+

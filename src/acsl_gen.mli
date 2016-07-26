@@ -28,6 +28,6 @@ val add_loop_annots_zarith :
   kernel_function 
   -> stmt 
   -> int Poly_utils.F_poly.Monom.Map.t 
-  -> q_vec invar list
+  -> q_invar list
   -> unit
 
