@@ -44,6 +44,13 @@ let create_vec = Lacaml_D.Vec.init
 let copy_mat m = Lacaml_D.lacpy m
 let identity = Lacaml_D.Mat.identity
 
+let of_col_vecs vl = Lacaml_D.Mat.of_col_vecs vl
+let transpose m = Lacaml_D.Mat.transpose_copy m
+let of_row_vecs vl = vl |> of_col_vecs |> transpose
+
+let cols m = Lacaml_D.Mat.to_col_vecs m
+let rows m = m |> transpose |> Lacaml_D.Mat.to_col_vecs
+
 let get_row m i = 
   Lacaml_D.Mat.from_row_vec 
     (Lacaml_D.Vec.of_array (m |> Lacaml_D.Mat.to_array).(i))  
@@ -103,7 +110,14 @@ let trace = assert false
 let mul_vec m v = Lacaml_D.gemv m v
 
 (** 2. Eigenvalues of a lacaml matrix *)
-let eigen_val matrix = 
+(** Computes the eigenvalues of a lacaml matrix.
+    This function has several problems, as the lacaml library is
+    not precise enough for big matrices. Therefore : 
+    
+    - Eigenvalues are not guaranteed to be correct for big matrices
+    - Complex eigenvalue are ignored 
+*)
+let eigenvalues matrix = 
   let t = Sys.time () in
   let dimx,dimy = (Lacaml_D.Mat.dim1 matrix),(Lacaml_D.Mat.dim2 matrix)
   in

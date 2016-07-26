@@ -70,7 +70,33 @@ struct
 
   
   let identity n = create_mat n n (fun i j -> if i = j then F.one else F.zero)
+      
+  let transpose mat = 
+    let d1 = Array.length mat.m in
+    if d1 = 0 then mat
+    else 
+      let d2 = Array.length mat.m.(0) in 
+      create_mat d2 d1 (fun i j -> mat.m.(j).(i))
 
+    
+  let of_row_vecs array =
+    if array = [||]
+    then {rows = 0; cols = 0; m = array}
+    else
+      
+      let rows = Array.length array in 
+      let cols = Array.length array.(0) in 
+      Array.iter
+	(fun row -> 
+	  if Array.length row <> cols
+	  then raise (Dimension_error (cols,rows,cols,Array.length row))
+	  else ())
+	array
+      ;
+      {rows = rows; cols = cols; m = array}
+      
+  let of_col_vecs (v_list :vec array) : t = v_list |> of_row_vecs |> transpose  
+  
   (* 2. Getters and setters *)
 
   let get_row mat i = 
@@ -104,23 +130,10 @@ struct
 
   let vec_to_array v = v
 
-  let to_array mat = mat.m
-    
-  let from_array array =
-    if array = [||]
-    then {rows = 0; cols = 0; m = array}
-    else
-      
-      let rows = Array.length array in 
-      let cols = Array.length array.(0) in 
-      Array.iter
-	(fun row -> 
-	  if Array.length row <> cols
-	  then raise (Dimension_error (cols,rows,cols,Array.length row))
-	  else ())
-	array
-      ;
-      {rows = rows; cols = cols; m = array}
+  let rows mat = mat.m
+
+  let cols mat = (transpose mat).m
+
   (* 3. Iterators  *)
 
   let fold_vec = Array.fold_left
@@ -185,13 +198,6 @@ struct
     else
       Array.mapi
 	(fun i elt -> F.sub elt v2.(i)) v1
-      
-  let transpose mat = 
-    let d1 = Array.length mat.m in
-    if d1 = 0 then mat
-    else 
-      let d2 = Array.length mat.m.(0) in 
-      create_mat d2 d1 (fun i j -> mat.m.(j).(i))
 
   let scal_mul m k = map (F.mul k) m
 
@@ -247,7 +253,7 @@ struct
     if mat.cols <> Array.length vec
     then raise (Dimension_error (mat.rows,mat.cols,Array.length vec,1))
     else
-      let vecs_array = to_array mat in 
+      let vecs_array = cols mat in 
       Array.map
 	(fun line -> scal_prod line vec)
 	vecs_array
@@ -422,83 +428,58 @@ let nullspace m =
   Mat_option.debug ~dkey:dkey_null
     "Nullspace done"; res
 
-   
-end
-      
+(** Eigenvalue *)
 
-(** 2. Rational matrix implementation *)
+(** Polynomial for matrix eigenvalue search *)
 
-module QMat = Make(
-  struct 
-    include Q
-    let float_to_t = Q.of_float 
-    let approx _ = assert false
-  end
-  )
-
-module Q_Set:Set.S with type elt = Q.t = Set.Make
-  (Q)
-module Z_Set:Set.S with type elt = Z.t = Set.Make
-  (Z)
-
-
-let lacaml_to_qmat lmat = 
+module XQ_poly : Polynomial with type c = Q.t and type v = Poly.var = Poly.XMake(Qring) 
   
-  lmat 	 |> Lacaml_D.Mat.to_array 
-	 |> Array.map 
-	     (fun arr -> QMat.vec_from_array (Array.map (fun fl -> Q.of_float fl) arr)) 
-	 |> QMat.from_array
-  
-let qmat_to_lacaml qmat = 
-  
-  let arr = QMat.to_array qmat in
-  
-  Array.map 
-    (fun a -> Array.map
-      (fun q -> (Z.to_float (Q.num q)) /. (Z.to_float (Q.den q))) a)
-    arr
-	 |> Lacaml_D.Mat.of_array
+module F_Set:Set.S with type elt = F.t = Set.Make (F)
+module Z_Set :Set.S with type elt = Z.t = Set.Make (Z)
+module Q_Set :Set.S with type elt = Q.t = Set.Make (Q)
+ 
+let f_to_q f = f |> F.t_to_float |> Q.of_float
 
-let lvec_to_qvec lvec = 
-  lvec |> Lacaml_D.Vec.to_array
-	 |> Array.map (fun fl -> Q.of_float fl)
-	 |> QMat.vec_from_array
-
-let qvec_to_lvec lvec = 
-  let arr = QMat.vec_to_array lvec in
-  Array.map (fun fl -> (Z.to_float (Q.num fl)) /. (Z.to_float (Q.den fl))) arr 
-	 |> Lacaml_D.Vec.of_array
-
-let char_poly (mat:QMat.t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Faddeev-Leverrier *)
+let char_poly (mat:t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Faddeev-Leverrier *)
   (* To find eigenvalues, we will compute the faddeev-leverrier iteration in order to find
      the extremities of the rational characteristic polynomial and then apply the rational root
      theorem.*)
   assert (Mat_option.Use_zarith.get ());
   let t = Sys.time () in
-  let dim = (QMat.get_dim_col mat) in
-  let identity = QMat.identity dim in
+  let dim = (get_dim_col mat) in
+  let identity = identity dim in
 
   let rec trace_mk index mk = 
     if index <= dim
     then 
-      let mk_coef = Q.div (QMat.trace mk) (Q.of_int index) in
+      let mk_coef = F.div (trace mk) (index |> float_of_int |> F.float_to_t) in
       
-      let new_monom = (XQ_poly.monomial (Q.sub Q.zero mk_coef) [Poly.X,(dim-index)]) in
+      let new_monom = (XQ_poly.monomial (f_to_q (F.sub F.zero mk_coef)) [Poly.X,(dim-index)]) in
       
-      let mkpo =  QMat.mul mat (QMat.sub mk (QMat.scal_mul identity mk_coef)) in
+      let mkpo =  mul mat (sub mk (scal_mul identity mk_coef)) in
 
       XQ_poly.add new_monom (trace_mk (index + 1) mkpo)
-    else (XQ_poly.monomial Q.one [Poly.X,dim])
+    else (XQ_poly.monomial (f_to_q F.one) [Poly.X,dim])
     
   in
   let res = trace_mk 1 mat 
   in
   let () = Mat_option.char_poly_timer := !Mat_option.char_poly_timer +. Sys.time () -. t in res
 
+(** Rational eigenvalues of a matrix. Computation of the 
+    rational roots of the characteristic polynomial.
+      ^
+     /|\
+    /_o_\ 
+    
+    If the characteristic polynomial is to big, will only test
+    a subset of all possible eigenvalues.
+*)
+
 let eigenvalues mat = 
   let t = Sys.time () in
   
-  let deg_poly = (QMat.get_dim_col mat) in
+  let deg_poly = (get_dim_col mat) in
   let integrate_poly p = (* returns the main coefficient of the polynomial after multiplying it
 			    by a scalar such that the polynomial have only integer coefficients.*)
     let rec integ xn p = 
@@ -511,7 +492,7 @@ let eigenvalues mat =
 	let xnpo = (XQ_poly.mono_mul xn (XQ_poly.mono_minimal [Poly.X,1]))
 	in 
 	let k = 
-	  integ xnpo (XQ_poly.scal_mul (Q.of_bigint den_of_coef) p) in
+	  integ xnpo (XQ_poly.scal_mul (Q.(///) den_of_coef Z.one) p) in
 	
 	
 	(Z.mul k den_of_coef)
@@ -541,10 +522,11 @@ let eigenvalues mat =
   let (coef,power) = div_by_x poly
   in
   
-  let affine_constant = Q.mul coef (Q.of_bigint k) 
+  let affine_constant = Q.mul coef (Q.(///) k Z.one)
   in
-  assert (Q.den affine_constant = Z.one);
-  let affine_constant = Q.num affine_constant in
+  assert (Z.equal (Q.den affine_constant) Z.one);
+  let affine_constant = Q.num affine_constant
+  in
   
   let () = Mat_option.debug ~dkey:dkey_ev ~level:2
     "Divisible by 0 %i times. Affine constant : %a"
@@ -553,7 +535,7 @@ let eigenvalues mat =
   (*let max_number_of_roots = deg_poly - power
   in*)
   let all_divs (i:Z.t) : Z_Set.t = 
-    let max_ev = Z.of_int (Mat_option.Ev_leq.get ()) in
+        let max_ev = Z.of_int (Mat_option.Ev_leq.get ()) in
     let rec __all_divs cpt i = 
 
       if  Z.gt (Z.shift_left cpt 1) i (* 2*p > i => p does not div i *)
@@ -633,7 +615,52 @@ let eigenvalues mat =
 	Mat_option.debug ~dkey:dkey_ev ~level:2 "Eigenvalue : %a" 
 	  Q.pp_print ev) res
       
-  in res
+  in  
+  Q_Set.fold
+    (fun q acc -> 
+      let ev = 
+	F.div 
+	  (q |> Q.num |> Z.to_int |> F.int_to_t) 
+	  (q |> Q.den |> Z.to_int |> F.int_to_t) in
+      ev :: acc)
+    res 
+    []
+ 
+end
+      
+
+(** 2. Rational matrix implementation *)
+
+module QMat = Make(Qring)
+
+let lacaml_to_qmat lmat = 
+  
+  lmat 	 |> Lacaml_D.Mat.to_array 
+	 |> Array.map 
+	     (fun arr -> QMat.vec_from_array (Array.map (fun fl -> Q.of_float fl) arr)) 
+	 |> QMat.of_row_vecs
+  
+let qmat_to_lacaml qmat = 
+  
+  let arr = QMat.rows qmat in
+  
+  Array.map 
+    (fun vec -> Array.map
+      (fun q -> (Z.to_float (Q.num q)) /. (Z.to_float (Q.den q))) 
+      (QMat.vec_to_array vec))
+    arr
+	 |> Lacaml_D.Mat.of_array
+
+let lvec_to_qvec lvec = 
+  lvec |> Lacaml_D.Vec.to_array
+	 |> Array.map (fun fl -> Q.of_float fl)
+	 |> QMat.vec_from_array
+
+let qvec_to_lvec lvec = 
+  let arr = QMat.vec_to_array lvec in
+  Array.map (fun fl -> (Z.to_float (Q.num fl)) /. (Z.to_float (Q.den fl))) arr 
+	 |> Lacaml_D.Vec.of_array
+
 
 module PMat : Matrix with type elt = N_poly.t = 
   Make (N_poly)

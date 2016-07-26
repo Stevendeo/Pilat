@@ -69,15 +69,8 @@ module N_var =
 
 (** 2. Polynomials *)
 
-module Q = 
-struct
-  include Q
-  let float_to_t = Q.of_float 
-  let approx _ = assert false
-end
-    
 (** Polynomials for deterministic assignments *)
-module QPoly = struct include Poly.Make(Q)(Cil_datatype.Varinfo) end 
+module QPoly = struct include Poly.Make(Qring)(Cil_datatype.Varinfo) end 
 
 module F_poly : Polynomial with type c = Float.t 
 			   and type v = Varinfo.t 
@@ -92,16 +85,15 @@ module N_poly : Polynomial with type c = Float.t and type v = N_var.t =
 module NF_poly : Polynomial with type c = N_poly.t
 			    and type v = Varinfo.t 
 			    and type Var.Set.t = Varinfo.Set.t=
-				  Poly.Make(N_poly)(Varinfo)
+				  Poly.Make
+				    (N_poly)
+				    (Varinfo)
 				   
 module NQ_poly : Polynomial with type c = Q.t and type v = N_var.t = 
-  Poly.Make(Q)(N_var)
+  Poly.Make(Qring)(N_var)
 
 module NQF_poly : Polynomial with type c = NQ_poly.t
 			    and type v = Varinfo.t 
 			    and type Var.Set.t = Varinfo.Set.t=
 				  Poly.Make(NQ_poly)(Varinfo)
 
-(** Polynomial for matrix eigenvalue search *)
-
-module XQ_poly : Polynomial with type c = Q.t and type v = Poly.var = Poly.XMake(Q) 

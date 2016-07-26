@@ -29,10 +29,20 @@ let sub = (-.)
 let div = (/.)
 let equal = (=)
 let leq = (<=)
+let geq = (>=)
+let lt = (<)
+let gt = (>)
+let compare = Pervasives.compare
 let pp_print fmt i = 
   Format.fprintf fmt "%.3f" i 
 
+let t_to_float f = f
 let float_to_t f = f
 let approx coef = 
   if coef < 0. then ceil coef
   else floor coef 
+
+let den = assert false
+
+let int_to_t = float_of_int
+let t_to_int = int_of_float 

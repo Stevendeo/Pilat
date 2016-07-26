@@ -29,12 +29,4 @@ include Pilat_math.Matrix
 
 type mat = t
 
-(** Computes the eigenvalues of a lacaml matrix.
-    This function has several problems, as the lacaml library is
-    not precise enough for big matrices. Therefore : 
-    
-    - Eigenvalues are not guaranteed to be correct for big matrices
-    - Complex eigenvalue are ignored 
-*)
-val eigen_val : t -> float list
 

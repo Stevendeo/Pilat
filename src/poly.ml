@@ -304,8 +304,16 @@ struct
 	p
 	zero
 
-    let leq = assert false
-  end
+    let leq _ _ = assert false  
+    let geq = assert false
+    let lt = assert false
+    let gt = assert false
+    let compare = assert false
+    let den _ = assert false
+    let t_to_int _ = assert false
+    let int_to_t _ = assert false
+    let t_to_float = assert false
+end
 
 
 (*
@@ -320,8 +328,7 @@ type var = | X
 
 module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var) 
  = 
-
-  Make 
+  struct include Make 
     (A) 
     (Datatype.Make_with_collections 
        (struct  
@@ -340,5 +347,8 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
 	 let mem_project = Datatype.never_any_project
 	end
        )
-    );;
+    )
+    
+  end
+;;
   

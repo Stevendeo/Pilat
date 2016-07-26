@@ -40,8 +40,6 @@ module N_var :
 
 (** 2. Polynomials *) 
 
-
-
 (** Polynomials for deterministic assignments *)
 
   
@@ -69,6 +67,3 @@ module NQF_poly : Polynomial with type c = NQ_poly.t
 			    and type v = Varinfo.t 
 			    and type Var.Set.t = Varinfo.Set.t
 
-(** Polynomial for matrix eigenvalue search *)
-
-module XQ_poly : Polynomial with type c = Q.t and type v = Poly.var

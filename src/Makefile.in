@@ -9,6 +9,7 @@ PLUGIN_CMI 	:= pilat_math
 
 PLUGIN_CMO 	:= mat_option\
 		float\
+		qring\
 		pilat_visitors\
 		poly\
 		poly_utils\
@@ -16,7 +17,6 @@ PLUGIN_CMO 	:= mat_option\
 		pilat_matrix\
 		poly_affect\
 		affect\
-		matrix_ast\
 		invariant_utils\
 		invar_prover\
 		acsl_gen\

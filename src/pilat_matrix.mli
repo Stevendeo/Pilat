@@ -36,13 +36,7 @@ module Make :
     The module Q is from the Zarith library *)
 module QMat : Matrix with type elt = Q.t
 
-(** Set of rational numbers *)
-module Q_Set:Set.S with type elt = Q.t
-
 (** Matrix utilities *)
-
-(** Characteristic polynomial of a rational matrix *)
-val char_poly : QMat.t -> Poly_utils.XQ_poly.t
 
 (** Rational eigenvalues of a matrix. Computation of the 
     rational roots of the characteristic polynomial.
@@ -53,7 +47,6 @@ val char_poly : QMat.t -> Poly_utils.XQ_poly.t
     If the characteristic polynomial is to big, will only test
     a subset of all possible eigenvalues.
 *)
-val eigenvalues : QMat.t -> Q_Set.t
 
 (** Float <-> Rational translaters *)
 val lvec_to_qvec : Lacaml_D.vec -> QMat.vec

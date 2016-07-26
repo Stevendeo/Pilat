@@ -41,11 +41,22 @@ module type Ring = sig
   val div : t -> t -> t
   val equal : t -> t -> bool
   val leq : t -> t -> bool
+  val geq: t -> t -> bool
+  val lt : t -> t -> bool
+  val gt : t -> t -> bool
+  val compare : t -> t -> int
   val pp_print : Format.formatter -> t -> unit
 
 (** Ast translators : only required for Pilat *)
-  val float_to_t : float -> t    
+  val float_to_t : float -> t 
+  val t_to_float : t -> float
+  val int_to_t : int -> t   
+  val t_to_int : t -> int
   val approx : t -> t
+
+(** For the eigenvalue non-optimized algorithm, the following is required *)
+(** den fl = The smallest int i such that fl*i is an integer.  *)
+  val den : t -> t
 end
 
 (** 2. The polynomial structure *)
@@ -91,12 +102,11 @@ sig
   val add : t -> t -> t
   val sub : t -> t -> t
   val mul : t -> t -> t
-  val div : t -> t -> t (** Fails every time, but allows to match the Ring signature. *)
   val scal_mul : c -> t -> t
   val pow : t -> int -> t
     
   val equal : t -> t -> bool
-  val leq : t -> t -> bool(** Fails every time, but allows to match the Ring signature. *)
+
 
   val eval : t -> v -> c -> t
   val pp_print : Format.formatter -> t -> unit
@@ -110,10 +120,19 @@ sig
     
   val has_monomial : t -> Monom.t -> bool
 
-  (** Ast translators : only required for Pilat's ring *)
-  val float_to_t : float -> t
-    
+  (** Only required for Pilat's ring. Undefined behavior *)  
+  val div : t -> t -> t 
+  val den : t -> t
   val approx : t -> t
+  val float_to_t : float -> t
+  val t_to_float : t -> float
+  val int_to_t : int -> t   
+  val t_to_int : t -> int 
+  val leq : t -> t -> bool
+  val geq: t -> t -> bool
+  val lt : t -> t -> bool
+  val gt : t -> t -> bool
+  val compare : t -> t -> int
 end
 
 (** 3. The matrix structure *)
@@ -133,6 +152,9 @@ module type Matrix = sig
   val copy_mat : t -> t
   val identity : int  -> t
 
+  val of_col_vecs : vec array -> t 
+  val of_row_vecs : vec array -> t
+
   (** Getters and setters *)
 
   val get_row : t -> int -> t
@@ -141,11 +163,11 @@ module type Matrix = sig
   val get_dim_col : t -> int
   val get_dim_row : t -> int
 
-  val vec_to_array : vec -> elt array
+  val vec_to_array : vec -> elt array 
   val vec_from_array : elt array -> vec
 
-  val to_array : t -> elt array array
-  val from_array : vec array -> t
+  val rows : t -> vec array
+  val cols : t -> vec array
 
   val set_coef : int -> int -> t -> elt -> unit
   val get_coef : int -> int -> t -> elt 
@@ -180,6 +202,9 @@ module type Matrix = sig
   val mul_vec : t -> vec -> vec
   (** Nullspace computation *)
   val nullspace : t -> vec list
+
+  (** Eigenvalue *)
+  val eigenvalues : t -> elt list
 
   (** Pretty printers *)
   val pp_print : Format.formatter -> t -> unit
