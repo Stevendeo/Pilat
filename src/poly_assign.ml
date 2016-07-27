@@ -38,20 +38,16 @@ module type S = sig
 
   (** 1. Utils *)
 
-  module M : Matrix
-
-  module P : 
-    (sig 
-      include Polynomial with type c = M.elt 
-			 and type v = Varinfo.t
+  module P : Polynomial with type v = Varinfo.t
 			 and type Var.Set.t = Varinfo.Set.t
+
+  module M : Matrix with type elt = P.c
   (** Takes a monomial and its affectation, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
       Raises Incomplete_base if unconsidered variables are necessary for the matrix.
   *)
-      val to_mat : ?base:int Monom.Map.t -> Monom.t -> t -> int Monom.Map.t * M.t
-     end)
+  val to_mat : ?base:int P.Monom.Map.t -> P.Monom.t -> P.t -> int P.Monom.Map.t * M.t
 
   type mat = M.t(** Matrix in which the affectation will be translated *)
 
@@ -106,68 +102,65 @@ end
 
 module Make (M:Matrix) (Poly:Polynomial with type v = Varinfo.t 
 					and type c = M.elt 
-					and type Var.Set.t = Varinfo.Set.t) : S = 
+					and type Var.Set.t = Varinfo.Set.t) = 
 struct 
 
   module M = M
-  module P =
-  struct 
-    include Poly
-    let to_mat ?(base = Monom.Map.empty) (monom_var:Monom.t) (p:t) : int Monom.Map.t * M.t = 
-      let base_monom = 
-	if Monom.Map.is_empty base
-	then 
-	  let poly_base = 
-	    Monom.Set.add monom_var (get_monomials p) in 
-	  let i = ref (-1) in 
-	  Monom.Set.fold
-	    (fun m map ->
-	      i := !i + 1;
-	      Monom.Map.add m !i map
-	    )
-	    poly_base
-	    Monom.Map.empty
-	else base
-	    
-      in
-      
+  module P = Poly
 
-      let size_base = (Monom.Map.cardinal base_monom) in
-      let () = 
-	Mat_option.debug ~dkey:dkey_to_mat ~level:2 
-	  "Base of size %i" size_base;
-	Monom.Map.iter
+  let to_mat ?(base = P.Monom.Map.empty) (monom_var:P.Monom.t) (p:P.t) : int P.Monom.Map.t * M.t = 
+    let base_monom = 
+      if P.Monom.Map.is_empty base
+      then 
+	let poly_base = 
+	  P.Monom.Set.add monom_var (P.get_monomials p) in 
+	let i = ref (-1) in 
+	P.Monom.Set.fold
+	  (fun m map ->
+	    i := !i + 1;
+	    P.Monom.Map.add m !i map
+	  )
+	  poly_base
+	  P.Monom.Map.empty
+      else base
+	
+    in
+    
+    
+    let size_base = (P.Monom.Map.cardinal base_monom) in
+    let () = 
+      Mat_option.debug ~dkey:dkey_to_mat ~level:2 
+	"Base of size %i" size_base;
+	P.Monom.Map.iter
 	  (fun monom i -> 
 	    Mat_option.debug ~dkey:dkey_to_mat ~level:3
-	  "%a <-> %i" Poly.Monom.pretty monom i;
+	  "%a <-> %i" P.Monom.pretty monom i;
 	  ) base_monom
 	  
       in
-      let index_mvar = Monom.Map.find monom_var base_monom in
+      let index_mvar = P.Monom.Map.find monom_var base_monom in
       let () = 
 	Mat_option.debug ~dkey:dkey_to_mat ~level:2 
-	  "Index of %a is %i" Poly.Monom.pretty monom_var index_mvar in
+	  "Index of %a is %i" P.Monom.pretty monom_var index_mvar in
       let mat = M.identity size_base in 
       let () = M.set_coef index_mvar index_mvar mat Poly.R.zero in
               
-      let row = Monom.Map.find monom_var base_monom in 
+      let row = P.Monom.Map.find monom_var base_monom in 
       
       let () = 
-	Monom.Set.iter
+	P.Monom.Set.iter
 	  (fun m -> 
 	      let col_monom = 
-		try Monom.Map.find m base_monom 
+		try P.Monom.Map.find m base_monom 
 		with Not_found -> raise Incomplete_base
 	      in
-	      let coef = coef p m in
+	      let coef = P.coef p m in
 	      M.set_coef row col_monom mat coef
 	  )
-	  (get_monomials p)
+	  (P.get_monomials p)
 	  
       in
       base_monom,mat 
-  end
-
   type coef = P.c
   type var = Poly.v
   type mat = M.t
@@ -629,7 +622,7 @@ let loop_matrix
       (fun acc (v,poly_affect) -> 
 	let new_matrix = 
 	  (snd
-	     (P.to_mat 
+	     (to_mat 
 		~base 
 		v 
 		poly_affect)

@@ -27,42 +27,44 @@ let dkey_inter = Mat_option.register_category "invar:lacaml:inter"
 
 module Int = Datatype.Int 
 
-type 'a lim = 
-  Convergent of 'a
-| Divergent of 'a
+type limit = 
+  Convergent of float
+| Divergent of float
 | Altern
 | One
 | Zero
 
-type ('a,'v) inv = 'a lim * 'v list
+type 'v inv = limit * 'v list
 
-type q_invar = (Q.t,Pilat_matrix.QMat.vec) inv
+type q_invar = Pilat_matrix.QMat.vec inv
 
 module Make (A : Poly_assign.S) =  
 struct 
   module Ring = A.P.R
-
-  type limit = Ring.t lim
       
-  type invar = (Ring.t,A.M.vec) inv
+  type invar = A.M.vec inv
 
 (** 0. Limit utility *)
 
-let ev_limit (ev:Ring.t) : limit = 
-  let ev = if Ring.leq ev Ring.zero then Ring.sub Ring.zero ev else ev
-  in
-  if ev = Ring.zero then Zero
-  else if ev = Ring.one then One  
-  else if Ring.leq ev Ring.one then Convergent ev
-  else Divergent ev
+  let float_limit (ev:float) = 
+    let ev = if ev<0. then (-1.)*.ev else ev
+    in
+    if ev = 0. then Zero
+    else if ev = 1. then One  
+    else if ev <= 1. then Convergent ev
+    else Divergent ev
+
+  let ev_limit (ev:Ring.t) : limit = 
+    ev |> Ring.t_to_float |> float_limit
+
 
 let join_limits l1 l2 = 
   match l1,l2 with
     One,l | l,One -> l
   | Altern,_ | _,Altern -> Altern
   | Zero,_ | _,Zero -> Zero
-  | Convergent a,Convergent b -> Convergent (Ring.mul a b)
-  | Divergent a,Divergent b-> Divergent (Ring.mul a b)
+  | Convergent a,Convergent b -> Convergent (a *. b)
+  | Divergent a,Divergent b-> Divergent (a *. b)
   | Convergent _,Divergent _ | Divergent _,Convergent _ -> Altern
 
 let lim_to_string l = 
@@ -72,37 +74,60 @@ let lim_to_string l =
   | Altern -> "altern"
   | Convergent _ -> "convergent"
   | Divergent _ -> "divergent"
-
-(** 1. Nullspace computation with time witness *)
-
-let nullspace_computation m = 
-  Mat_option.debug ~dkey:dkey_null 
-    "Nullspace computation";
-  let t = Sys.time () in
-  let res = A.M.nullspace m in 
-  let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
-  Mat_option.debug ~dkey:dkey_null
-    "Nullspace done"; res
  
 (** Invariant computation *)
 
-let invariant_computation mat : invar list = 
+module Deter_mat = Assign.Determinizer(A)
+module Fd = Assign.Float_deterministic
+
+let undeterminize_vec (vec:Fd.M.vec) = 
+  let arr = Fd.M.vec_to_array vec in 
+  (Array.map
+     (fun elt -> elt |> Fd.P.R.t_to_float |> A.P.R.float_to_t) 
+     arr) |> A.M.vec_from_array
+
+let invariant_computation is_deter mat : invar list = 
   
   let t = Sys.time () in
-  let evs = A.M.eigenvalues mat in 
-  let mat_dim = A.M.get_dim_row mat in
-  let matt = (A.M.transpose mat) in
+  
+  (*let mat = Deter_mat.nd_mat_to_d_mat mat in
+  *)
   let res = 
-  List.fold_left
-    (fun acc ev -> 
-      let eigen_mat = A.M.sub matt (A.M.scal_mul (A.M.identity mat_dim) ev) in 
-      ((ev_limit ev),(nullspace_computation eigen_mat)) :: acc
-    )
-    []
-    evs
+    if is_deter
+    then
+      let evs = A.M.eigenvalues mat in 
+      let mat_dim = A.M.get_dim_row mat in
+      let matt = (A.M.transpose mat) in
+      
+      List.fold_left
+	(fun acc ev -> 
+	  let eigen_mat = A.M.sub matt (A.M.scal_mul (A.M.identity mat_dim) ev) in 
+	  ((ev_limit ev),(A.M.nullspace eigen_mat)) :: acc
+	)
+	[]
+	evs
+    else 
+      let mat = Deter_mat.nd_mat_to_d_mat mat in
+      let evs = Fd.M.eigenvalues mat in 
+      let mat_dim = Fd.M.get_dim_row mat in
+      let matt = (Fd.M.transpose mat) in
+      
+      List.fold_left 
+	(fun acc ev ->   
+	  let eigen_mat = Fd.M.sub matt (Fd.M.scal_mul (Fd.M.identity mat_dim) ev) in 
+	  let eigen_space = (Fd.M.nullspace eigen_mat) in 
+	  let eigen_space = 
+	    List.map
+	      undeterminize_vec
+	      eigen_space 
+	  in
+	  ((float_limit (ev|>Fd.P.R.t_to_float)),eigen_space) :: acc
+	)
+	[] 
+	evs
   in
   let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t
-  in res
+    in res
 
 let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) = 
    if b1 = [] || b2 = [] then [||]
@@ -110,7 +135,7 @@ let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) =
      let mat = A.M.of_col_vecs (Array.of_list (b1@b2))
      in
      let b1 = Array.of_list b1 and b2 = Array.of_list b2 in
-     let null_space = nullspace_computation mat
+     let null_space = A.M.nullspace mat
      in
      let b1_length = Array.length b1 in
      let b2_length = Array.length b2 in
@@ -224,15 +249,15 @@ let intersection_invariants ll1 ll2 =
   in
   let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t
   in res
-
+(*
 let limit_zarith (lim: limit) : Q.t lim = 
   match lim with 
     Zero -> Zero
   | One -> One 
   | Altern -> Altern
-  | Convergent ev -> Convergent (ev |> A.P.R.t_to_float |> Q.of_float)
-  | Divergent ev -> Divergent(ev |> A.P.R.t_to_float |> Q.of_float)
-
+  | Convergent ev -> Convergent (ev |> Q.of_float)
+  | Divergent ev -> Divergent(ev |> Q.of_float)
+*)
 let vec_zarith (vec:A.M.vec) : QMat.vec = 
   let arr = A.M.vec_to_array vec in 
   (Array.map 
@@ -241,7 +266,7 @@ let vec_zarith (vec:A.M.vec) : QMat.vec =
   |> QMat.vec_from_array
 
 let zarith_invariant ((lim,inv):invar) = 
-  limit_zarith lim, (List.map vec_zarith inv)
+  lim, (List.map vec_zarith inv)
 
 end 
 

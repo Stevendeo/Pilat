@@ -75,10 +75,12 @@ object(self)
 	      "Var %a" 
 	      Printer.pp_varinfo v) varinfos_used in
 
+	let assign_is_deter = Cil_datatype.Varinfo.Map.is_empty nd_var
+	in
 	let (module Assign_type : Poly_assign.S) = 
 	  
 
-	  match (Mat_option.Use_zarith.get ()), Cil_datatype.Varinfo.Map.is_empty nd_var with
+	  match (Mat_option.Use_zarith.get ()), assign_is_deter with
 	    true,  true  -> (module Assign.Q_deterministic) 
 	  | true,  false -> 
 	    Mat_option.abort 
@@ -203,7 +205,7 @@ object(self)
 		    Mat_option.debug ~dkey:dkey_stmt ~level:3 
 		      "New mat : %a" Assign_type.M.pp_print mat
 		  in
- 		  let invar = (Invariant_maker.invariant_computation mat)
+ 		  let invar = (Invariant_maker.invariant_computation assign_is_deter mat)
 		  in 
 
 		  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";

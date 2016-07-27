@@ -25,3 +25,8 @@ module Q_deterministic : Poly_assign.S
 
 module Float_non_deterministic : Poly_assign.S 
 module Q_non_deterministic : Poly_assign.S 
+
+module Determinizer : functor (ND_assign :Poly_assign.S) -> 
+  sig
+    val nd_mat_to_d_mat : ND_assign.M.t -> Float_deterministic.M.t
+  end 

@@ -306,7 +306,12 @@ struct
 	)
 	p
 	zero
-      
+	
+    let deter poly = (* eval to zero *)
+      try A.t_to_float (Monom.Map.find empty_monom poly)
+      with
+	Not_found -> 0.
+
     let leq _ _ = assert false  
     let geq _ _ = assert false
     let lt _ _ = assert false

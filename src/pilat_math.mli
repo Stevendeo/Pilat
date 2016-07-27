@@ -54,6 +54,7 @@ module type Ring = sig
   val t_to_int : t -> int
   val approx : t -> t
   val non_det_repr : float -> float -> t
+  val deter : t -> float
 
 (** For the eigenvalue non-optimized algorithm, the following is required *)
 (** den fl = The smallest int i such that fl*i is an integer.  *)
@@ -128,6 +129,8 @@ sig
   val get_monomials : t -> Monom.Set.t
     
   val has_monomial : t -> Monom.t -> bool
+
+  val deter : t -> float (** Pilat use : returning a random value in the polynomial image *)
 
   (** Only required for Pilat's ring. Undefined behavior *)  
   val div : t -> t -> t 

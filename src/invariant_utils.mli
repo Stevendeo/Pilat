@@ -22,16 +22,16 @@
 
 open Pilat_matrix
 
-type 'a lim = 
-  Convergent of 'a
-| Divergent of 'a
+type limit = 
+  Convergent of float
+| Divergent of float
 | Altern
 | One
 | Zero
 
-type ('a,'v) inv = 'a lim * 'v list
+type 'v inv = limit * 'v list
 
-type q_invar = (Q.t,QMat.vec) inv
+type q_invar = Pilat_matrix.QMat.vec inv
 
 module Make : functor 
     (A : Poly_assign.S) -> 
@@ -45,16 +45,15 @@ sig
     When it is higher to one, it is divergent
     (<e,X> > k => <e,MX> > k).
 *)
-
-  type limit = A.P.R.t lim
       
-  type invar = (A.P.R.t,A.M.vec) inv
+  type invar = A.M.vec inv
     
   val lim_to_string : limit -> string
     
 (** Returns the rational eigenspaces union of the floating matrix 
-    as a list of bases. *)
-  val invariant_computation : A.mat -> invar list
+    as a list of bases. If assignments are non deterministic, the boolean 
+    must be set to true *)
+  val invariant_computation : bool -> A.mat -> invar list
     
 (** Intersects two union of vectorial spaces. *)
   val intersection_invariants :  invar list -> invar list -> invar list

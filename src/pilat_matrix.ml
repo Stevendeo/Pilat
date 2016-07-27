@@ -372,7 +372,7 @@ let insert_val vec elt pos =
   insert vec elt pos
  
 let nullspace_computation mat = 
-  
+
   let mat = copy_mat mat in
   let no_pivs = List.rev (rref mat) in 
 

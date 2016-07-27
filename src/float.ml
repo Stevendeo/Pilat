@@ -20,6 +20,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+
 type t = float
 let zero = 0.
 let one = 1.
@@ -52,3 +53,5 @@ let non_det_repr f1 f2 =
   else 
       Mat_option.abort 
 	"Deterministic float library used for non deterministic assignments"
+
+let deter f = f

@@ -30,20 +30,16 @@ module type S = sig
 
   (** 1. Utils *)
 
-  module M : Matrix 
-  module P : 
-    (sig 
-      include Polynomial with type c = M.elt 
-			 and type v = Varinfo.t 
+  module P : Polynomial with type v = Varinfo.t
 			 and type Var.Set.t = Varinfo.Set.t
+
+  module M : Matrix with type elt = P.c
   (** Takes a monomial and its affectation, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
       Raises Incomplete_base if unconsidered variables are necessary for the matrix.
   *)
-      val to_mat : ?base:int Monom.Map.t -> Monom.t -> t -> int Monom.Map.t * M.t
-     end)
-
+  val to_mat : ?base:int P.Monom.Map.t -> P.Monom.t -> P.t -> int P.Monom.Map.t * M.t
 
   type mat = M.t (** Matrix in which the affectation will be translated *)
   type coef = P.c (** Coefficient of the polynomial and of the matrix *)
@@ -99,5 +95,5 @@ module Make:
     (M : Matrix)
     (P : Polynomial with type v = Varinfo.t 
 		    and type c = M.elt 
-		    and type Var.Set.t = Varinfo.Set.t) -> S 
+		    and type Var.Set.t = Varinfo.Set.t) -> S with type P.c = M.elt
   
