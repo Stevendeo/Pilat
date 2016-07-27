@@ -80,7 +80,10 @@ object(self)
 
 	  match (Mat_option.Use_zarith.get ()), Cil_datatype.Varinfo.Map.is_empty nd_var with
 	    true,  true  -> (module Assign.Q_deterministic) 
-	  | true,  false -> (module Assign.Q_non_deterministic) 
+	  | true,  false -> 
+	    Mat_option.abort 
+	      "Use of zarith for non determinism is not implemented. If your program uses floating point numbers, consider the option -pilat-no-z."
+	      (*(module Assign.Q_non_deterministic) *)
 	  | false, true  -> (module Assign.Float_deterministic) 
 	  | false, false -> (module Assign.Float_non_deterministic)
 	in

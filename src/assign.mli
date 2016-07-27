@@ -25,4 +25,3 @@ module Q_deterministic : Poly_assign.S
 
 module Float_non_deterministic : Poly_assign.S 
 module Q_non_deterministic : Poly_assign.S 
-
