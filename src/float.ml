@@ -46,3 +46,9 @@ let den = assert false
 
 let int_to_t = float_of_int
 let t_to_int = int_of_float 
+
+let non_det_repr f1 f2 = 
+  if f1 = f2 then f1
+  else 
+      Mat_option.abort 
+	"Deterministic float library used for non deterministic assignments"

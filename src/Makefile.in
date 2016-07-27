@@ -10,9 +10,9 @@ PLUGIN_CMI 	:= pilat_math
 PLUGIN_CMO 	:= mat_option\
 		float\
 		qring\
-		pilat_visitors\
 		poly\
 		poly_utils\
+		pilat_visitors\
 		lacaml_matrix\
 		pilat_matrix\
 		poly_assign\

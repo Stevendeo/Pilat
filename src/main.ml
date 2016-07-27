@@ -64,7 +64,7 @@ object(self)
 	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
 	    stmt.sid in
 	
-	let (varinfos_used,nd_variables) = Pilat_visitors.varinfo_registerer b in
+	let (varinfos_used,nd_var) = Pilat_visitors.varinfo_registerer b in
 	let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 	
 	Cil_datatype.Varinfo.Set.iter
@@ -78,7 +78,7 @@ object(self)
 	let (module Assign_type : Poly_assign.S) = 
 	  
 
-	  match (Mat_option.Use_zarith.get ()), Cil_datatype.Varinfo.Map.is_empty nd_variables with
+	  match (Mat_option.Use_zarith.get ()), Cil_datatype.Varinfo.Map.is_empty nd_var with
 	    true,  true  -> (module Assign.Q_deterministic) 
 	  | true,  false -> (module Assign.Q_non_deterministic) 
 	  | false, true  -> (module Assign.Float_deterministic) 
@@ -86,7 +86,7 @@ object(self)
 	in
 	(** 1st step : Computation of the block as a list of list of polynomials assignments. *)
 	let polys_opt = 
-	try Some (Assign_type.block_to_poly_lists varinfos_used b)
+	try Some (Assign_type.block_to_poly_lists varinfos_used ~nd_var b)
 	with Poly_assign.Not_solvable -> None 
 	in
 	
@@ -103,9 +103,16 @@ object(self)
 	    (fun v -> 
 	      Mat_option.debug 
 		~dkey:dkey_stmt 
-		~level:3 
+		~level:3
 		"%a" 
 		Printer.pp_varinfo v) varinfos_used ;
+	  Cil_datatype.Varinfo.Map.iter
+	    (fun v (f1,f2) -> 
+	      Mat_option.debug 
+		~dkey:dkey_stmt 
+		~level:3 
+		"%a between %f and %f" 
+		Printer.pp_varinfo v f1 f2) nd_var ;
 
 	  let basic_assigns = 
 	    (* In order to compute the transformations for all variables in each 

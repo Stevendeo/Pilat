@@ -32,10 +32,7 @@ type n_var =
     max:float
   }
 
-module N_var : 
-  (sig
-    include Poly.S_with_col_and_nd_rep
-   end)
+module N_var : Datatype.S_with_collections
 
 (** 2. Polynomials *) 
 

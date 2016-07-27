@@ -27,7 +27,6 @@ open Cil_datatype
 exception Incomplete_base
 exception Not_solvable
 
-
 module type S = sig 
 
   (** 1. Utils *)
@@ -69,9 +68,13 @@ module type S = sig
 
   (** 2. Ast to matrix translators *)  
 
-  val exp_to_poly : Cil_types.exp -> P.t
+  val exp_to_poly : ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> Cil_types.exp -> P.t
 
-  val block_to_poly_lists : P.Var.Set.t-> Cil_types.block -> body list
+  val block_to_poly_lists : 
+    P.Var.Set.t -> 
+    ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> 
+    Cil_types.block -> 
+    body list
 (** Returns a list of list of polynomial affectations. Each list correspond to a the 
     succession of affectations for each possible path in the loop, while omitting 
     variable absent of the set in argument
@@ -403,7 +406,7 @@ exception Loop_break
 
 let poly_hashtbl = Cil_datatype.Stmt.Hashtbl.create 12
 
-let rec exp_to_poly exp =
+let rec exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
   let float_of_const c = 
     match c with
       CInt64 (i,_,_) -> Integer.to_float i
@@ -411,39 +414,51 @@ let rec exp_to_poly exp =
     | CReal (f,_,_) -> f
     | _ -> assert false
   in
-  
-  match exp.enode with 
-    Const c -> 
-      P.const (c |> float_of_const |> P.R.float_to_t)
-  | Lval (Var v,_) ->
-    P.monomial P.R.one [v,1]
-  | Lval _ -> assert false
-  | SizeOf _ | SizeOfE _ | SizeOfStr _ | AlignOf _ | AlignOfE _ -> assert false
-  | UnOp (Neg,e,_) -> 
-    P.sub P.zero (exp_to_poly e)
-  | UnOp _ -> assert false
-  | BinOp (binop,e1,e2,_) -> 
-    begin
-      match binop with
-	PlusA | PlusPI | IndexPI -> P.add (exp_to_poly e1) (exp_to_poly e2)
-      | MinusA | MinusPI | MinusPP -> P.sub (exp_to_poly e1) (exp_to_poly e2)
-      | Mult -> P.mul (exp_to_poly e1) (exp_to_poly e2)
-      | Div -> 
-	begin 
-	match e2.enode with
-	  Const c -> P.mul (exp_to_poly e1) (P.const (1. /.(c |> float_of_const) |> P.R.float_to_t))
-	| _ -> Mat_option.abort "The expression %a is a forbidden division." Printer.pp_exp exp
-      end	    
-      | _ -> assert false
-    end
-  | CastE (_,e) -> exp_to_poly e
-  | _ -> assert false
+  let rec __e_to_p e = 
+    match e.enode with 
+      Const c -> 
+	P.const (c |> float_of_const |> P.R.float_to_t)
+    | Lval (Var v,_) ->
+      begin
+	try 
+	  let (low,up) = Varinfo.Map.find v nd_var 
+	  in
+	  P.const (P.R.non_det_repr low up)
+	with
+	  Not_found (* Varinfo.Map.find *) -> 
+	    P.monomial P.R.one [v,1]
+      end
+    | Lval _ -> assert false   
+    | SizeOf _ | SizeOfE _ | SizeOfStr _ | AlignOf _ | AlignOfE _ -> assert false
+    | UnOp (Neg,e,_) -> 
+      P.sub P.zero (__e_to_p e)
+    | UnOp _ -> assert false
+    | BinOp (binop,e1,e2,_) -> 
+      begin
+	match binop with
+	  PlusA | PlusPI | IndexPI -> P.add (__e_to_p e1) (__e_to_p e2)
+	| MinusA | MinusPI | MinusPP -> P.sub (__e_to_p e1) (__e_to_p e2)
+	| Mult -> P.mul (__e_to_p e1) (__e_to_p e2)
+	| Div -> 
+	  begin 
+	    match e2.enode with
+	      Const c -> 
+		P.mul (__e_to_p e1) (P.const (1. /.(c |> float_of_const) |> P.R.float_to_t))
+	    | _ ->
+	      Mat_option.abort "The expression %a is a forbidden division." Printer.pp_exp exp
+	  end	    
+	| _ -> assert false
+      end
+    | CastE (_,e) -> __e_to_p e
+    | _ -> assert false
+  in
+  __e_to_p exp
 
-let instr_to_poly_assign varinfo_used : Cil_types.instr -> t option = 
+let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> t option = 
   function
   | Set ((Var v, _),e,_) -> 
     if P.Var.Set.mem v varinfo_used 
-    then Some (Assign (v,(exp_to_poly e)))
+    then Some (Assign (v,(exp_to_poly ~nd_var e)))
     else None 
    
   | Skip _ -> None
@@ -451,7 +466,7 @@ let instr_to_poly_assign varinfo_used : Cil_types.instr -> t option =
 
 let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl   
 
-let stmt_to_poly_assign varinfo_used s : t option = 
+let stmt_to_poly_assign varinfo_used nd_var s : t option = 
   begin
   try 
     Stmt.Hashtbl.find poly_hashtbl s 
@@ -463,7 +478,7 @@ let stmt_to_poly_assign varinfo_used s : t option =
 	    "Instruction"
 	  in
 	  begin
-	    match instr_to_poly_assign varinfo_used i with 
+	    match instr_to_poly_assign varinfo_used nd_var i with 
 	      Some p -> register_poly s (Some p); Some p
 	    | None -> register_poly s None; None
 	  end
@@ -472,7 +487,10 @@ let stmt_to_poly_assign varinfo_used s : t option =
       | _ -> None
   end
 
-let block_to_poly_lists varinfo_used block : body list = 
+let block_to_poly_lists 
+    varinfo_used 
+    ?(nd_var = Cil_datatype.Varinfo.Map.empty) 
+    block : body list = 
   let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
   in
   let rec dfs stmt = 
@@ -496,7 +514,7 @@ let block_to_poly_lists varinfo_used block : body list =
 		
 	try
 
-	  let poly_opt = stmt_to_poly_assign varinfo_used stmt in
+	  let poly_opt = stmt_to_poly_assign varinfo_used nd_var stmt in
 
 	  let future_lists = 
 	    List.fold_left

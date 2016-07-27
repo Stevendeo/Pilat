@@ -86,10 +86,10 @@ module F_poly : Polynomial with type c = Float.t
 
 (** Polynomial for non deterministic assignments *)
 
-module N_poly : Polynomial with type c = Float.t and type v = N_var.t =
+module N_poly : Polynomial with type c = Float.t and type v = N_var.t = 
 struct
   include Poly.Make(Float)(N_var)
-    
+  let non_det_repr f1 f2 = mono_poly 1. (var_to_monom (N_var.non_det_repr f1 f2))
 end
 module NF_poly : Polynomial with type c = N_poly.t
 			    and type v = Varinfo.t 

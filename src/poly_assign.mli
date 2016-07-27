@@ -65,9 +65,13 @@ module type S = sig
 
   (** 2. Ast to matrix translators *)  
 
-  val exp_to_poly : Cil_types.exp -> P.t
+  val exp_to_poly : ?nd_var: (float*float) Cil_datatype.Varinfo.Map.t -> Cil_types.exp -> P.t
 
-  val block_to_poly_lists : P.Var.Set.t-> Cil_types.block -> body list
+  val block_to_poly_lists : 
+    Cil_datatype.Varinfo.Set.t -> 
+    ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> 
+    Cil_types.block -> 
+    body list
 (** Returns a list of list of polynomial affectations. Each list correspond to a the 
     succession of affectations for each possible path in the loop, while omitting 
     variable absent of the set in argument

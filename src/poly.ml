@@ -26,13 +26,7 @@ open Pilat_math
    One must be careful to make the type of coefficients consistent with the
    type of the elements of the ring structure received as parameter *)
 
-module type S_with_col_and_nd_rep = 
-sig
-  include Datatype.S_with_collections
-  val non_det_repr : float -> float -> t
-end
-
-module Make (A : Ring) (V : S_with_col_and_nd_rep) : 
+module Make (A : Ring) (V : Datatype.S_with_collections) : 
   Polynomial with type c = A.t
 	     and type v = V.t
 	     and type Var.Set.t = V.Set.t =
@@ -319,6 +313,8 @@ struct
     let t_to_int _ = assert false
     let int_to_t _ = assert false
     let t_to_float = assert false
+    
+    let non_det_repr _ = assert false 
 end
 
 

@@ -53,6 +53,7 @@ module type Ring = sig
   val int_to_t : int -> t   
   val t_to_int : t -> int
   val approx : t -> t
+  val non_det_repr : float -> float -> t
 
 (** For the eigenvalue non-optimized algorithm, the following is required *)
 (** den fl = The smallest int i such that fl*i is an integer.  *)
@@ -61,6 +62,13 @@ module type Ring = sig
 end
 
 (** 2. The polynomial structure *)
+(*
+module type S_with_col_and_nd_rep = 
+sig
+  include Datatype.S_with_collections
+  val non_det_repr : float -> float -> t
+end
+*)
 module type Polynomial =
 sig
   
@@ -134,6 +142,7 @@ sig
   val lt : t -> t -> bool
   val gt : t -> t -> bool
   val compare : t -> t -> int
+  val non_det_repr : float -> float -> t
 end
 
 (** 3. The matrix structure *)
