@@ -32,10 +32,13 @@ let float_of_const c =
   | CReal (f,_,_) -> f
   | _ -> assert false
     
-let arg_exp e = 
+let rec arg_exp e = 
   match e.enode with 
     Const c -> float_of_const c
-  | _ -> Mat_option.abort "Bad number of argument for non det function : only 2."
+  | CastE (_,e) | Info (e,_) -> arg_exp e
+  | UnOp (Neg,e,_) -> -1.*.  (arg_exp e)
+  | _ -> Mat_option.abort "Bad argument for non det function : %a."
+    Printer.pp_exp e
 
 (** Returns the varinfos used in the block in argument *)
 let varinfo_registerer block = 
