@@ -78,8 +78,8 @@ let from_array m =  Lacaml_D.Mat.of_col_vecs m
 let set_coef i j m elt = m.{i+1,j+1} <- elt
 let get_coef i j m = m.{i+1,j+1}
 
-let set_coef_vec i v elt = v.{i}<- elt
-let get_coef_vec i v = v.{i}
+let set_coef_vec i v elt = v.{i+1}<- elt
+let get_coef_vec i v = v.{i+1}
 
 let fold_vec f acc v = 
   Lacaml_D.Vec.fold f acc v

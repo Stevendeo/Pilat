@@ -144,15 +144,11 @@ struct
 	  
       in
       let index_mvar = Monom.Map.find monom_var base_monom in
-
-      let mat = 
-	M.create_mat size_base size_base 
-	  (fun i j -> 
-	    if (i = j && i <> index_mvar)
-	    then Poly.R.one
-	    else Poly.R.zero)
-	     
-      in 
+      let () = 
+	Mat_option.debug ~dkey:dkey_to_mat ~level:2 
+	  "Index of %a is %i" Poly.Monom.pretty monom_var index_mvar in
+      let mat = M.identity size_base in 
+      let () = M.set_coef index_mvar index_mvar mat Poly.R.zero in
               
       let row = Monom.Map.find monom_var base_monom in 
       
