@@ -424,6 +424,8 @@ exception Loop_break
 
 let poly_hashtbl = Cil_datatype.Stmt.Hashtbl.create 12
 
+let non_det_var_memoizer = Cil_datatype.Varinfo.Hashtbl.create 2
+
 let rec exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
   let float_of_const c = 
     match c with
@@ -439,12 +441,18 @@ let rec exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
     | Lval (Var v,_) ->
       begin
 	try 
-	  let (low,up) = Varinfo.Map.find v nd_var 
-	  in
-	  P.const (P.R.non_det_repr low up)
-	with
-	  Not_found (* Varinfo.Map.find *) -> 
-	    P.monomial P.R.one [v,1]
+	  P.const (Cil_datatype.Varinfo.Hashtbl.find non_det_var_memoizer v)
+	with Not_found -> 
+	  try 
+	    let (low,up) = Varinfo.Map.find v nd_var 
+	    in
+	    let new_rep = (P.R.non_det_repr low up) in 
+	    let () = Cil_datatype.Varinfo.Hashtbl.add non_det_var_memoizer v new_rep
+	    in
+	    P.const (P.R.non_det_repr low up)
+	  with
+	    Not_found (* Varinfo.Map.find *) -> 
+	      P.monomial P.R.one [v,1]
       end
     | Lval _ -> assert false   
     | SizeOf _ | SizeOfE _ | SizeOfStr _ | AlignOf _ | AlignOfE _ -> assert false
@@ -478,7 +486,9 @@ let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> t option =
     if P.Var.Set.mem v varinfo_used 
     then Some (Assign (v,(exp_to_poly ~nd_var e)))
     else None 
-   
+  | Call(_,{enode = Lval(Var v,NoOffset) },_,_) -> 
+    assert (v.vorig_name = Mat_option.non_det_name); None
+      
   | Skip _ -> None
   | _ -> assert false
 

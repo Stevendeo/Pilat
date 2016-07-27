@@ -63,7 +63,7 @@ module N_var =
       let mem_project = Datatype.never_any_project
       let hash = Hashtbl.hash
       let rehash = Datatype.identity
-      let pretty = Datatype.undefined
+      let pretty fmt var = Format.fprintf fmt "%s" var.name
       let varname s = "str " ^ s.name
      end)
       
