@@ -118,7 +118,10 @@ struct
 
   let get_dim_col mat = mat.cols
 
-  let set_coef i j mat elt = mat.m.(i).(j) <- elt
+  let set_coef i j mat elt = 
+    let vec = mat.m.(i)
+    in
+    vec.(j) <- elt
 
   let get_coef i j mat = mat.m.(i).(j)
 

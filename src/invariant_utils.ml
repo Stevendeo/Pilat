@@ -91,10 +91,11 @@ let invariant_computation mat : invar list =
   let t = Sys.time () in
   let evs = A.M.eigenvalues mat in 
   let mat_dim = A.M.get_dim_row mat in
+  let matt = (A.M.transpose mat) in
   let res = 
   List.fold_left
     (fun acc ev -> 
-      let eigen_mat = A.M.sub mat (A.M.scal_mul (A.M.identity mat_dim) ev) in 
+      let eigen_mat = A.M.sub matt (A.M.scal_mul (A.M.identity mat_dim) ev) in 
       ((ev_limit ev),(nullspace_computation eigen_mat)) :: acc
     )
     []

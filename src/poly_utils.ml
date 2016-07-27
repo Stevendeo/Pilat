@@ -25,7 +25,7 @@ open Cil_datatype
 
 (** 1. Variables used for polynomials *)
 
-module N_id = State_builder.SharedCounter(struct let name = "nid_counter" end)
+module N_id = State_builder.SharedCounter(struct let name = "pilat_non_det_var_counter" end)
 
 type n_var = 	
   {

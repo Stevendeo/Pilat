@@ -42,7 +42,7 @@ let approx coef =
   if coef < 0. then ceil coef
   else floor coef 
 
-let den = assert false
+let den _ = assert false
 
 let int_to_t = float_of_int
 let t_to_int = int_of_float 

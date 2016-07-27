@@ -85,7 +85,7 @@ let fold_vec f acc v =
   Lacaml_D.Vec.fold f acc v
 
 let map f m = Lacaml_D.Mat.map f m
-let mapi = assert false
+let mapi _ = assert false
 
 let add m n = 
   let res = copy_mat n in Lacaml_D.Mat.axpy m res ~alpha:1.; res
@@ -105,8 +105,8 @@ let scal_mul_vec v a = Lacaml_D.Vec.map (fun elt -> a *. elt) v
 let mul m n = Lacaml_D.gemm m n 
 let scal_prod v w = Lacaml_D.Vec.sum (Lacaml_D.Vec.mul v w)
 
-let pow = assert false
-let trace = assert false
+let pow _ _ = assert false
+let trace _ = assert false
 let mul_vec m v = Lacaml_D.gemv m v
 
 (** 2. Eigenvalues of a lacaml matrix *)

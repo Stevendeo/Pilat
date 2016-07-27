@@ -3,8 +3,8 @@ int petter(int N){
   
   while(y < N)
     {
-      x += y*y;
       y++;
+      x += y;
     }
   y--;
   return x;

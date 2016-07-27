@@ -26,6 +26,9 @@ open Pilat_math
    One must be careful to make the type of coefficients consistent with the
    type of the elements of the ring structure received as parameter *)
 
+module Vmod_id = State_builder.SharedCounter(struct let name = "pilat_vid_counter" end)
+module Xmod_id = State_builder.SharedCounter(struct let name = "pilat_xmod_counter" end)
+
 module Make (A : Ring) (V : Datatype.S_with_collections) : 
   Polynomial with type c = A.t
 	     and type v = V.t
@@ -45,7 +48,7 @@ struct
       struct
 	include Datatype.Undefined
 	type t = (int V.Map.t)
-	let name = "Monom_"  ^ V.name
+	let name = "Monom_"  ^ V.name  ^ "_" ^ (string_of_int (Vmod_id.next ()))
 	let equal = V.Map.equal (fun (a:int) (b:int) -> a = b)   
 	let hash = Hashtbl.hash (* For now, do not hash monomials *)
 	let compare = V.Map.compare Pervasives.compare
@@ -305,14 +308,14 @@ struct
 	zero
       
     let leq _ _ = assert false  
-    let geq = assert false
-    let lt = assert false
-    let gt = assert false
-    let compare = assert false
+    let geq _ _ = assert false
+    let lt _ _ = assert false
+    let gt _ _ = assert false
+    let compare _ = assert false
     let den _ = assert false
     let t_to_int _ = assert false
     let int_to_t _ = assert false
-    let t_to_float = assert false
+    let t_to_float _ = assert false
     
     let non_det_repr _ = assert false 
 end
@@ -338,7 +341,7 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
 	 type t = var
 	 let compare _ _ = 0
 	 let copy _ = X
-	 let name = "X" 
+	 let name = "X_type"  ^ (string_of_int (Xmod_id.next ()))
 	 let hash = Hashtbl.hash
 	 let rehash s = s
 	 let structural_descr = Structural_descr.t_abstract

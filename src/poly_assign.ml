@@ -27,6 +27,13 @@ open Cil_datatype
 exception Incomplete_base
 exception Not_solvable
 
+let dkey_to_mat = Mat_option.register_category "assign:to_mat"
+let dkey_stmt = Mat_option.register_category "matast:block_analyzer" 
+let dkey_lowerizer = Mat_option.register_category "matast:lowerizer" 
+let dkey_all_monom = Mat_option.register_category "matast:lowerizer:all_monom" 
+let dkey_loop_mat = Mat_option.register_category "matast:loop_mat"
+let dkey_base = Mat_option.register_category "matast:base"
+
 module type S = sig 
 
   (** 1. Utils *)
@@ -112,7 +119,7 @@ struct
 	then 
 	  let poly_base = 
 	    Monom.Set.add monom_var (get_monomials p) in 
-	  let i = ref 0 in 
+	  let i = ref (-1) in 
 	  Monom.Set.fold
 	    (fun m map ->
 	      i := !i + 1;
@@ -123,8 +130,29 @@ struct
 	else base
 	    
       in
+      
+
       let size_base = (Monom.Map.cardinal base_monom) in
-      let mat = M.zero size_base size_base in
+      let () = 
+	Mat_option.debug ~dkey:dkey_to_mat ~level:2 
+	  "Base of size %i" size_base;
+	Monom.Map.iter
+	  (fun monom i -> 
+	    Mat_option.debug ~dkey:dkey_to_mat ~level:3
+	  "%a <-> %i" Poly.Monom.pretty monom i;
+	  ) base_monom
+	  
+      in
+      let index_mvar = Monom.Map.find monom_var base_monom in
+
+      let mat = 
+	M.create_mat size_base size_base 
+	  (fun i j -> 
+	    if (i = j && i <> index_mvar)
+	    then Poly.R.one
+	    else Poly.R.zero)
+	     
+      in 
               
       let row = Monom.Map.find monom_var base_monom in 
       
@@ -163,12 +191,6 @@ struct
   type monom_affect = monomial * p
 
 (** 2. Ast to matrix translator *)
-
-let dkey_stmt = Mat_option.register_category "matast:block_analyzer" 
-let dkey_lowerizer = Mat_option.register_category "matast:lowerizer" 
-let dkey_all_monom = Mat_option.register_category "matast:lowerizer:all_monom" 
-let dkey_loop_mat = Mat_option.register_category "matast:loop_mat"
-let dkey_base = Mat_option.register_category "matast:base"
 
 let all_possible_monomials e_deg_hashtbl =
   let module M_set =P.Monom.Set in
@@ -551,7 +573,7 @@ let block_to_poly_lists
     "How many paths ? %i" (List.length res); res
 
 let monomial_base set = 
-    let i = ref 0 in
+    let i = ref (-1) in
     P.Monom.Set.fold
       (fun m map -> 
 	i := !i + 1;
@@ -577,10 +599,11 @@ let reverse_base base =
 
 let print_vec rev_base vec =
 
-  let i = ref 0 in 
+  let i = ref (-1) in 
   Array.iter
     (fun c ->
-      i := !i + 1;if P.R.equal P.R.zero c
+      i := !i + 1; 
+      if P.R.equal P.R.zero c
       then () 
       else 
 	Mat_option.debug ~dkey:dkey_stmt
@@ -589,7 +612,6 @@ let print_vec rev_base vec =
 	  P.Monom.pretty 
 	  (Imap.find !i rev_base)
     ) (M.vec_to_array vec) 
-  
 
 let loop_matrix 
     (base: int P.Monom.Map.t) 

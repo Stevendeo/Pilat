@@ -113,8 +113,6 @@ let vec_to_term_zarith (base:int A.P.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) 
   let vec_array = Pilat_matrix.QMat.vec_to_array vec in 
   A.P.Monom.Map.fold
     (fun monom row acc -> 
-      let row = row - 1 in
-      
       let cst = 
 	
 	vec_array.(row) 
