@@ -23,10 +23,19 @@
 open Cil_types
 open Cil
 
-type loop_kind = 
-  Deterministic | Non_deterministic
-
 let dkey_stmt = Mat_option.register_category "pilat_vis:stmt"
+
+let float_of_const c = 
+  match c with
+    CInt64 (i,_,_) -> Integer.to_float i
+  | CChr c -> Integer.to_float (Cil.charConstToInt c)
+  | CReal (f,_,_) -> f
+  | _ -> assert false
+    
+let arg_exp e = 
+  match e.enode with 
+    Const c -> float_of_const c
+  | _ -> Mat_option.abort "Bad number of argument for non det function : only 2."
 
 (** Returns the varinfos used in the block in argument *)
 let varinfo_registerer block = 
@@ -34,15 +43,30 @@ let varinfo_registerer block =
   
   let focused_vinfo = Mat_option.var_list ()
   in
+  let non_det_variables = ref Cil_datatype.Varinfo.Map.empty
+  in
   let visitor = 
 object(self)
       inherit Visitor.frama_c_inplace
-      
 	
       method! vvrbl v = 
+		
 	match self#current_stmt with 
 	  None -> DoChildren (* This case might be useless *)
 	| Some {skind = If _ } -> DoChildren
+	| Some {skind = Instr (Call(Some(Var nd,_),{ enode = Lval(Var v,NoOffset) },args,_))} -> 
+	  let () = 
+	    if v.vorig_name = Mat_option.non_det_name && (List.length args) = 2 
+	    then 
+	      let fst_arg = List.hd args and snd_arg = List.hd (List.tl args) in 
+	      non_det_variables := 
+		Cil_datatype.Varinfo.Map.add 
+		nd
+		((arg_exp fst_arg),arg_exp snd_arg)
+		!non_det_variables
+	    else Mat_option.abort "Function call in the loop : undefined behavior."
+	  in
+	  DoChildren
 	| _ -> 
 	  let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
 	  in
@@ -53,11 +77,14 @@ object(self)
   let () = 
     ignore (Cil.visitCilBlock (visitor :> cilVisitor) block)
   in
-  if Cil_datatype.Varinfo.Set.is_empty focused_vinfo
-  then
-    !vinfos
-  else
-    Cil_datatype.Varinfo.Set.inter !vinfos focused_vinfo
+  let var = 
+    if Cil_datatype.Varinfo.Set.is_empty focused_vinfo
+    then
+      !vinfos
+    else
+      Cil_datatype.Varinfo.Set.inter !vinfos focused_vinfo
+  in
+  var,!non_det_variables
 
 let stmt_init_table = Cil_datatype.Stmt.Hashtbl.create 42
 

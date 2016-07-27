@@ -33,6 +33,13 @@ type n_var =
     min:float;
     max:float
   }
+
+module Varinfo = 
+  struct 
+    include Cil_datatype.Varinfo
+    let non_det_repr _ _ = assert false
+  end
+
    
 module N_var =
   struct 
@@ -60,17 +67,17 @@ module N_var =
       let varname s = "str " ^ s.name
      end)
       
-    let new_var min max = 
+    let non_det_repr min max = 
       { name = "n" ^ (string_of_int (N_id.next ()));
 	min = min;
 	max = max}
+        
+  end 
     
-  end
-
 (** 2. Polynomials *)
 
 (** Polynomials for deterministic assignments *)
-module QPoly = struct include Poly.Make(Qring)(Cil_datatype.Varinfo) end 
+module QPoly = struct include Poly.Make(Qring)(Varinfo) end 
 
 module F_poly : Polynomial with type c = Float.t 
 			   and type v = Varinfo.t 
@@ -79,9 +86,11 @@ module F_poly : Polynomial with type c = Float.t
 
 (** Polynomial for non deterministic assignments *)
 
-module N_poly : Polynomial with type c = Float.t and type v = N_var.t = 
-  Poly.Make(Float)(N_var)
-
+module N_poly : Polynomial with type c = Float.t and type v = N_var.t =
+struct
+  include Poly.Make(Float)(N_var)
+    
+end
 module NF_poly : Polynomial with type c = N_poly.t
 			    and type v = Varinfo.t 
 			    and type Var.Set.t = Varinfo.Set.t=

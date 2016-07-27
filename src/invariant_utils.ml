@@ -23,9 +23,7 @@
 open Pilat_matrix
 
 let dkey_null = Mat_option.register_category "invar:nullspace"
-let dkey_inv = Mat_option.register_category "invar:inv"
 let dkey_inter = Mat_option.register_category "invar:lacaml:inter"
-let dkey_zinter = Mat_option.register_category "invar:zarith:inter"
 
 module Int = Datatype.Int 
 
@@ -40,7 +38,7 @@ type ('a,'v) inv = 'a lim * 'v list
 
 type q_invar = (Q.t,Pilat_matrix.QMat.vec) inv
 
-module Make (A : Poly_affect.S) =  
+module Make (A : Poly_assign.S) =  
 struct 
   module Ring = A.P.R
 
@@ -81,7 +79,7 @@ let nullspace_computation m =
   Mat_option.debug ~dkey:dkey_null 
     "Nullspace computation";
   let t = Sys.time () in
-  let res = QMat.nullspace m in 
+  let res = A.M.nullspace m in 
   let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
   Mat_option.debug ~dkey:dkey_null
     "Nullspace done"; res
@@ -97,7 +95,7 @@ let invariant_computation mat : invar list =
   List.fold_left
     (fun acc ev -> 
       let eigen_mat = A.M.sub mat (A.M.scal_mul (A.M.identity mat_dim) ev) in 
-      ((ev_limit ev),(A.M.nullspace eigen_mat)) :: acc
+      ((ev_limit ev),(nullspace_computation eigen_mat)) :: acc
     )
     []
     evs
@@ -111,7 +109,7 @@ let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) =
      let mat = A.M.of_col_vecs (Array.of_list (b1@b2))
      in
      let b1 = Array.of_list b1 and b2 = Array.of_list b2 in
-     let null_space = A.M.nullspace mat
+     let null_space = nullspace_computation mat
      in
      let b1_length = Array.length b1 in
      let b2_length = Array.length b2 in

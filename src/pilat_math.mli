@@ -57,6 +57,7 @@ module type Ring = sig
 (** For the eigenvalue non-optimized algorithm, the following is required *)
 (** den fl = The smallest int i such that fl*i is an integer.  *)
   val den : t -> t
+
 end
 
 (** 2. The polynomial structure *)

@@ -23,8 +23,7 @@
 open Cil_types
 open Cil_datatype
 
-
-val varinfo_registerer : block -> Varinfo.Set.t
+val varinfo_registerer : block -> Varinfo.Set.t * (float*float) Varinfo.Map.t
 
  
 (** fundec_updater adds the constant initialisation as new stmts in the CFG. It is based on the 

@@ -26,7 +26,13 @@ open Pilat_math
    One must be careful to make the type of coefficients consistent with the
    type of the elements of the ring structure received as parameter *)
 
-module Make (A : Ring) (V : Datatype.S_with_collections) : 
+module type S_with_col_and_nd_rep = 
+sig
+  include Datatype.S_with_collections
+  val non_det_repr : float -> float -> t
+end
+
+module Make (A : Ring) (V : S_with_col_and_nd_rep) : 
   Polynomial with type c = A.t
 	     and type v = V.t
 	     and type Var.Set.t = V.Set.t =
@@ -303,7 +309,7 @@ struct
 	)
 	p
 	zero
-
+      
     let leq _ _ = assert false  
     let geq = assert false
     let lt = assert false
@@ -330,7 +336,8 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
  = 
   struct include Make 
     (A) 
-    (Datatype.Make_with_collections 
+    (struct
+      include Datatype.Make_with_collections 
        (struct  
 	 type t = var
 	 let compare _ _ = 0
@@ -347,6 +354,8 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
 	 let mem_project = Datatype.never_any_project
 	end
        )
+     let non_det_repr _ _ = assert false
+     end
     )
     
   end

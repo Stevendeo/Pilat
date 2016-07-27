@@ -34,7 +34,7 @@ type ('a,'v) inv = 'a lim * 'v list
 type q_invar = (Q.t,QMat.vec) inv
 
 module Make : functor 
-    (A : Poly_affect.S) -> 
+    (A : Poly_assign.S) -> 
 sig 
   
 (** An invariant is an eigenspace, represented by its base with
@@ -51,8 +51,6 @@ sig
   type invar = (A.P.R.t,A.M.vec) inv
     
   val lim_to_string : limit -> string
-    
-  val invariant_computation : A.mat -> A.M.vec list
     
 (** Returns the rational eigenspaces union of the floating matrix 
     as a list of bases. *)

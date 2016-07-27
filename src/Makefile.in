@@ -15,8 +15,8 @@ PLUGIN_CMO 	:= mat_option\
 		poly_utils\
 		lacaml_matrix\
 		pilat_matrix\
-		poly_affect\
-		affect\
+		poly_assign\
+		assign\
 		invariant_utils\
 		invar_prover\
 		acsl_gen\

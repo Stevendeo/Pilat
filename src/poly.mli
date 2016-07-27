@@ -23,7 +23,14 @@
 open Pilat_math
 
 (** Polynomials with multiple variables. *)    
-module Make : functor (A : Ring) (V : Datatype.S_with_collections) -> 
+
+module type S_with_col_and_nd_rep = 
+sig
+  include Datatype.S_with_collections
+  val non_det_repr : float -> float -> t
+end
+
+module Make : functor (A : Ring) (V : S_with_col_and_nd_rep) -> 
   (Polynomial with type c = A.t 
 	      and type v = V.t 
 	      and type Var.Set.t = V.Set.t) 

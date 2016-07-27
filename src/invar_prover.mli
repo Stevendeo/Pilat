@@ -20,10 +20,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Poly_affect
-open Affect 
-
-module Make : functor (A : Poly_affect.S) -> 
+module Make : functor (A : Poly_assign.S) -> 
   sig
     
     val prove_invariant : 

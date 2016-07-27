@@ -20,9 +20,14 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module Float_deterministic : Poly_affect.S
-module Q_deterministic : Poly_affect.S
+open Pilat_matrix
+open Poly_utils
 
-module Float_non_deterministic : Poly_affect.S 
-module Q_non_deterministic : Poly_affect.S 
+module Float_deterministic : Poly_assign.S = Poly_assign.Make(Lacaml_matrix)(F_poly)
+
+module Q_deterministic : Poly_assign.S = Poly_assign.Make(QMat)(QPoly)
+
+module Float_non_deterministic : Poly_assign.S = Poly_assign.Make(PMat)(NF_poly)
+
+module Q_non_deterministic : Poly_assign.S = Poly_assign.Make(PQMat)(NQF_poly)
 

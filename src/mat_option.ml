@@ -100,6 +100,8 @@ let emitter = Emitter.create
 
 (** Misc. *)
 
+let non_det_name = "float_interval"
+
 let var_list () = 
   let str = Var_focus.get () in
   let list = Str.split (Str.regexp ":") str

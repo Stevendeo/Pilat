@@ -21,11 +21,10 @@
 (**************************************************************************)
 
 open Cil_types
-open Poly_affect
 
 exception Bad_invariant
 
-module Make (A : Poly_affect.S with type P.v = Cil_datatype.Varinfo.t) = 
+module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t) = 
   
   struct 
     let poly_of_cst = 

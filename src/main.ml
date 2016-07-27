@@ -22,8 +22,6 @@
 
 open Cil_types
 open Cil
-open Pilat_matrix
-open Poly_affect
 
 (*open Logic_const
 *)
@@ -47,44 +45,6 @@ let read_file chan =
       (fun str acc -> acc ^ str ^ "\n") 
       !lines 
       ""
-(*
-let print_vec_lacaml rev_base vec = 
-
-  let i = ref 0 in
-  Array.iter
-    (fun fl ->
-      i := !i + 1;if Q.equal fl Q.zero
-      then () 
-      else 
-	Mat_option.debug ~dkey:dkey_stmt
-	  "+%f%a" 
-	   ((Z.to_float (Q.num fl)) /. (Z.to_float (Q.den fl)))
-	 Poly_utils.F_poly.Monom.pretty 
-	  (Imap.find !i rev_base)
-    ) (QMat.vec_to_array vec)
-    
-let print_vec_zarith rev_base vec = 
-
-  let i = ref 0 in
-  
-  Array.iter
-    (fun fl ->
-      i := !i + 1;
-      if Q.equal fl Q.zero
-      then () 
-      else 
-	Mat_option.debug ~dkey:dkey_stmt
-	  "+%a%a" 
-	  Q.pp_print fl 
-	  Poly_utils.F_poly.Monom.pretty 
-	  (Imap.find !i rev_base)
-    ) (QMat.vec_to_array vec)*)
-    
-(*let print_vec = 
-  if Mat_option.Use_zarith.get () 
-  then print_vec_zarith
-  else print_vec_lacaml*)
-
 (** Visitor *)
     
 let loop_analyzer () = 
@@ -104,7 +64,7 @@ object(self)
 	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
 	    stmt.sid in
 	
-	let varinfos_used = Pilat_visitors.varinfo_registerer b in
+	let (varinfos_used,nd_variables) = Pilat_visitors.varinfo_registerer b in
 	let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 	
 	Cil_datatype.Varinfo.Set.iter
@@ -115,17 +75,19 @@ object(self)
 	      "Var %a" 
 	      Printer.pp_varinfo v) varinfos_used in
 
-	let (module Poly_assign : Poly_affect.S) = 
-	      if Mat_option.Use_zarith.get () 
-	      then 
-		(module Affect.Q_deterministic) 
-	      else
-		(module Affect.Float_deterministic)
+	let (module Assign_type : Poly_assign.S) = 
+	  
+
+	  match (Mat_option.Use_zarith.get ()), Cil_datatype.Varinfo.Map.is_empty nd_variables with
+	    true,  true  -> (module Assign.Q_deterministic) 
+	  | true,  false -> (module Assign.Q_non_deterministic) 
+	  | false, true  -> (module Assign.Float_deterministic) 
+	  | false, false -> (module Assign.Float_non_deterministic)
 	in
-	(** 1st step : Computation of the block as a list of list of polynomials affectations. *)
+	(** 1st step : Computation of the block as a list of list of polynomials assignments. *)
 	let polys_opt = 
-	try Some (Poly_assign.block_to_poly_lists varinfos_used b)
-	with Poly_affect.Not_solvable -> None 
+	try Some (Assign_type.block_to_poly_lists varinfos_used b)
+	with Poly_assign.Not_solvable -> None 
 	in
 	
 	match polys_opt with 
@@ -135,7 +97,6 @@ object(self)
 	| Some poly_lists -> 
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 	  
-	  let varinfos_used = Pilat_visitors.varinfo_registerer b in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 	  
 	  Cil_datatype.Varinfo.Set.iter
@@ -152,41 +113,41 @@ object(self)
 	       add identity assignment *)
 	    Cil_datatype.Varinfo.Set.fold
 	      (fun v acc ->
-		Poly_assign.Affect 
-		  ((v, (Poly_assign.P.monomial Poly_assign.P.R.one [v,1]))):: acc )
+		Assign_type.Assign 
+		  ((v, (Assign_type.P.monomial Assign_type.P.R.one [v,1]))):: acc )
 	      varinfos_used
 	      []
 	      
 	    
 	  in
-	  let affects,bases_for_each_loop = 
+	  let assigns,bases_for_each_loop = 
 	    List.fold_left
-	      (fun (acc_affect,acc_base) p_list -> 
-		let affect,m_set = 
-		  Poly_assign.add_monomial_modifications 
+	      (fun (acc_assign,acc_base) p_list -> 
+		let assign,m_set = 
+		  Assign_type.add_monomial_modifications 
 		    (basic_assigns@p_list) in 
 				
-		let acc_affect = affect :: acc_affect and  
-		    acc_base = Poly_assign.P.Monom.Set.union acc_base m_set in
-		(acc_affect,acc_base))
-	      ([],Poly_assign.P.Monom.Set.empty)
+		let acc_assign = assign :: acc_assign and  
+		    acc_base = Assign_type.P.Monom.Set.union acc_base m_set in
+		(acc_assign,acc_base))
+	      ([],Assign_type.P.Monom.Set.empty)
 	      poly_lists
 	  in
 	  
-	  let base = Poly_assign.monomial_base bases_for_each_loop 
+	  let base = Assign_type.monomial_base bases_for_each_loop 
 	  in
 	  
-	  let rev_base = Poly_assign.reverse_base base in
+	  let rev_base = Assign_type.reverse_base base in
 
 	  let matrices = 
 	    List.map
-	      (Poly_assign.loop_matrix base)
-	      affects in
+	      (Assign_type.loop_matrix base)
+	      assigns in
 	  if Mat_option.Prove.get () 
 	  then
 	    let () = Mat_option.feedback "Proving invariants" in
 	    let open Property_status in
-	    let module Prover = Invar_prover.Make(Poly_assign) in
+	    let module Prover = Invar_prover.Make(Assign_type) in
 	    List.iter
 	      (fun annot ->
 		let status = 
@@ -222,15 +183,15 @@ object(self)
 	      (Annotations.code_annot stmt); DoChildren
 	  else
 	    let () = Mat_option.feedback "Invariant generation" in
-	    let module Invariant_maker = Invariant_utils.Make(Poly_assign) in
+	    let module Invariant_maker = Invariant_utils.Make(Assign_type) in
 	    let whole_loop_invar = 
 	    List.fold_left
-	      (fun acc (mat : Poly_assign.mat) -> 
+	      (fun acc (mat : Assign_type.mat) -> 
 		if acc = Some [] then Some [] 
 		else	  
 		  let () = 
 		    Mat_option.debug ~dkey:dkey_stmt ~level:3 
-		      "New mat : %a" Poly_assign.M.pp_print mat
+		      "New mat : %a" Assign_type.M.pp_print mat
 		  in
  		  let invar = (Invariant_maker.invariant_computation mat)
 		  in 
@@ -243,7 +204,7 @@ object(self)
 			  "Invariant %s %i :" (Invariant_maker.lim_to_string limit)  (i + 1) in
 		      List.iter
 			(fun invar ->  
-			  Poly_assign.print_vec rev_base invar;
+			  Assign_type.print_vec rev_base invar;
 			  Mat_option.debug ~dkey:dkey_stmt "__\n";
 			)invars
 			
@@ -259,7 +220,7 @@ object(self)
 	    in
 	    
 	    Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time ;
-	    let module Annot_generator = Acsl_gen.Make(Poly_assign) in 
+	    let module Annot_generator = Acsl_gen.Make(Assign_type) in 
 		match whole_loop_invar with 
 		  None -> DoChildren 
 		| Some i ->  

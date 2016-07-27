@@ -22,9 +22,8 @@
 
 open Cil_types 
 open Invariant_utils 
-open Affect
 
-module Make: functor (A:Poly_affect.S) -> 
+module Make: functor (A:Poly_assign.S) -> 
 sig
   
   val add_loop_annots_zarith : 

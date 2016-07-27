@@ -34,8 +34,7 @@ type n_var =
 
 module N_var : 
   (sig
-    include Datatype.S_with_collections
-    val new_var : float -> float -> t
+    include Poly.S_with_col_and_nd_rep
    end)
 
 (** 2. Polynomials *) 

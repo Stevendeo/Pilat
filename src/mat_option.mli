@@ -44,6 +44,10 @@ val emitter : Emitter.t
 
 (** Misc. *)
 
+(** Name of the non deterministic function *)
+
+val non_det_name : string
+
 (** List of variables studied *)
 val var_list : unit -> Cil_datatype.Varinfo.Set.t
 

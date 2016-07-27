@@ -58,7 +58,7 @@ module type S = sig
 
 
   type t = 
-    Affect of var * p
+    Assign of var * p
   | Loop of body list 
 
   and body = t list
@@ -150,7 +150,7 @@ struct
   
 
   type t = 
-    Affect of var * p
+    Assign of var * p
   | Loop of body list 
 
   and body = t list
@@ -256,7 +256,7 @@ let add_monomial_modifications
   let () = List.iter (* Registration of the monom used in the transformation of each var *)
     (fun affect -> 
       match affect with 
-	Affect (v,p) -> 
+	Assign (v,p) -> 
 	  let useful_monoms = 
 	    M_set.filter (fun m -> (m |> (P.mono_poly P.R.one) |> P.deg) > 1)
 	      (P.get_monomials p)
@@ -374,7 +374,7 @@ let add_monomial_modifications
   (List.fold_right
     (fun affect acc  -> 
       match affect with
-	Affect (v,poly) -> 
+	Assign (v,poly) -> 
       
 	  let monoms_modified = P.Var.Map.find v modification_map
 	  in 
@@ -411,6 +411,7 @@ let rec exp_to_poly exp =
     | CReal (f,_,_) -> f
     | _ -> assert false
   in
+  
   match exp.enode with 
     Const c -> 
       P.const (c |> float_of_const |> P.R.float_to_t)
@@ -440,13 +441,11 @@ let rec exp_to_poly exp =
 
 let instr_to_poly_assign varinfo_used : Cil_types.instr -> t option = 
   function
-  | Set (l,e,_) -> begin
-    match fst l with 
-      Var v -> 
-	if P.Var.Set.mem v varinfo_used 
-	then Some (Affect (v,(exp_to_poly e)))
-	else None 
-    | _ -> assert false end
+  | Set ((Var v, _),e,_) -> 
+    if P.Var.Set.mem v varinfo_used 
+    then Some (Assign (v,(exp_to_poly e)))
+    else None 
+   
   | Skip _ -> None
   | _ -> assert false
 
@@ -515,7 +514,7 @@ let block_to_poly_lists varinfo_used block : body list =
 		"No polynom generated from this stmt"
 	      ;
 	      future_lists
-	  | Some (Affect (_,p) as aff) ->
+	  | Some (Assign (_,p) as aff) ->
 	    Mat_option.debug ~dkey:dkey_stmt 
 	      "Polynom generated : %a"
 	      P.pp_print p;

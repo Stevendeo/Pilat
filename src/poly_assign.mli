@@ -54,7 +54,7 @@ module type S = sig
   type p = P.t
 
   type t = 
-    Affect of var * p
+    Assign of var * p
   | Loop of body list 
 
   and body = t list
