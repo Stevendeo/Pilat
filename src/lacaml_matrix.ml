@@ -39,7 +39,7 @@ let error m1 m2 =
 	    Lacaml_D.Mat.dim2 m2))
 
 let zero = Lacaml_D.Mat.make0
-let create_mat = Lacaml_D.Mat.init_rows
+let create_mat d1 d2 f = Lacaml_D.Mat.init_rows d1 d2 (fun i j -> f (i-1) (j-1))
 let create_vec = Lacaml_D.Vec.init
 let copy_mat m = Lacaml_D.lacpy m
 let identity = Lacaml_D.Mat.identity

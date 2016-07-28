@@ -308,9 +308,15 @@ struct
 	zero
 	
     let deter poly = (* eval to zero *)
-      try A.t_to_float (Monom.Map.find empty_monom poly)
+      try A.deter (Monom.Map.find empty_monom poly)
       with
 	Not_found -> 0.
+
+    let t_to_float poly = 
+      let card = Monom.Map.cardinal poly in
+      try (assert (card = 1)); (Monom.Map.find empty_monom poly) |> A.t_to_float
+      with
+	_ -> assert (card = 0);0.
 
     let leq _ _ = assert false  
     let geq _ _ = assert false
@@ -320,7 +326,6 @@ struct
     let den _ = assert false
     let t_to_int _ = assert false
     let int_to_t _ = assert false
-    let t_to_float _ = assert false
     
     let non_det_repr _ = assert false 
 end
