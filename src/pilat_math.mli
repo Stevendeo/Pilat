@@ -46,7 +46,7 @@ module type Ring = sig
   val gt : t -> t -> bool
   val compare : t -> t -> int
   val pp_print : Format.formatter -> t -> unit
-
+  val to_str : t -> string
 (** Ast translators : only required for Pilat *)
   val float_to_t : float -> t 
   val t_to_float : t -> float
@@ -70,6 +70,15 @@ sig
   val non_det_repr : float -> float -> t
 end
 *)
+
+
+module type Variable = 
+  sig
+    include Datatype.S_with_collections
+    val max : t -> float
+    val min : t -> float
+  end 
+
 module type Polynomial =
 sig
   
@@ -79,7 +88,7 @@ sig
   type v 
     (** type of variables *)
   module R : Ring with type t = c
-  module Var : Datatype.S_with_collections with type t = v
+  module Var : Variable with type t = v
   module Monom : Datatype.S_with_collections
 
   type t
@@ -119,6 +128,7 @@ sig
 
 
   val eval : t -> v -> c -> t
+  val to_str : t -> string
   val pp_print : Format.formatter -> t -> unit
     
   (** Composition of two polynoms *)

@@ -28,7 +28,7 @@ let add = (+.)
 let mul = ( *. )
 let sub = (-.)
 let div = (/.)
-let equal = (=)
+let equal f1 f2 = abs_float (f1 -. f2) < 1e-5 
 let leq = (<=)
 let geq = (>=)
 let lt = (<)
@@ -36,6 +36,7 @@ let gt = (>)
 let compare = Pervasives.compare
 let pp_print fmt i = 
   Format.fprintf fmt "%.3f" i 
+let to_str = string_of_float
 
 let t_to_float f = f
 let float_to_t f = f
@@ -55,3 +56,4 @@ let non_det_repr f1 f2 =
 	"Deterministic float library used for non deterministic assignments"
 
 let deter f = f
+

@@ -61,22 +61,24 @@ module type S = sig
 
   (** 2. Ast to matrix translators *)  
 
+(** Returns a polynomial representing the expression in argument *)
   val exp_to_poly : ?nd_var: (float*float) Cil_datatype.Varinfo.Map.t -> Cil_types.exp -> P.t
 
+(** Returns a list of list of polynomial affectations. Each list correspond to a the 
+    succession of affectations for each possible path in the loop, while omitting 
+    variable absent of the set in argument
+    Raises Not_solvable if a statement of the loop is not solvable. *)
   val block_to_poly_lists : 
     Cil_datatype.Varinfo.Set.t -> 
     ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> 
     Cil_types.block -> 
     body list
-(** Returns a list of list of polynomial affectations. Each list correspond to a the 
-    succession of affectations for each possible path in the loop, while omitting 
-    variable absent of the set in argument
-    Raises Not_solvable if a statement of the loop is not solvable. *)
 
-  val add_monomial_modifications : 
-    body -> monom_affect list * P.Monom.Set.t
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
+  val add_monomial_modifications : 
+    body -> monom_affect list * P.Monom.Set.t
+
 
   module Imap : Map.S with type key = int
 
@@ -85,6 +87,8 @@ module type S = sig
   val reverse_base : int P.Monom.Map.t -> P.Monom.t Imap.t
 
   val print_vec : P.Monom.t Imap.t -> M.vec -> unit
+
+  val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
 
   val loop_matrix : int P.Monom.Map.t -> monom_affect list -> mat
 

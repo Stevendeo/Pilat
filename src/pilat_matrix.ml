@@ -256,133 +256,133 @@ struct
     if mat.cols <> Array.length vec
     then raise (Dimension_error (mat.rows,mat.cols,Array.length vec,1))
     else
-      let vecs_array = cols mat in 
+      let vecs_array = rows mat in 
       Array.map
 	(fun line -> scal_prod line vec)
 	vecs_array
 
-let pp_vec fmt v =   
+  let pp_vec fmt v =   
 
-  Format.fprintf fmt "(";
-  Array.iter
-    (fun elt -> 
-      Format.fprintf fmt "%a ," F.pp_print elt)
-    v;
-  Format.fprintf fmt ")\n"
+    Format.fprintf fmt "(";
+    Array.iter
+      (fun elt -> 
+	Format.fprintf fmt "%a ," F.pp_print elt)
+      v;
+    Format.fprintf fmt ")\n"
 
-let pp_print fmt mat = 
-  
-  Format.fprintf fmt "(";  
+  let pp_print fmt mat = 
+    
+    Format.fprintf fmt "(";  
 
-  Array.iter
-    (fun vec -> 
-      (pp_vec fmt vec)
-    )
-    mat.m;
-  Format.fprintf fmt ")\n" 
+    Array.iter
+      (fun vec -> 
+	(pp_vec fmt vec)
+      )
+      mat.m;
+    Format.fprintf fmt ")\n" 
 
 (** 3. Nullspace computation *)
 
-let revert_rows mat a b = 
+  let revert_rows mat a b = 
   (*assert dim1 mat = dim2 mat *)
 
-  Mat_option.debug ~dkey:dkey_null ~level:5
-    "Switching %a and %a"
-    pp_vec mat.m.(a) pp_vec mat.m.(b)
-  ;
+    Mat_option.debug ~dkey:dkey_null ~level:5
+      "Switching %a and %a"
+      pp_vec mat.m.(a) pp_vec mat.m.(b)
+    ;
 
-  let tmp = mat.m.(a) in
-  mat.m.(a) <- mat.m.(b);
-  mat.m.(b) <- tmp
+    let tmp = mat.m.(a) in
+    mat.m.(a) <- mat.m.(b);
+    mat.m.(b) <- tmp
 
-let mult_row_plus_row mat a b k = (* sets the row a to a + k*b *)
+  let mult_row_plus_row mat a b k = (* sets the row a to a + k*b *)
   (* assert dim1 mat = dim2 mat *)
 
-  Mat_option.debug ~dkey:dkey_null ~level:5
-    "Replacing %a by %a + %a * %a"
-    pp_vec mat.m.(a) 
-    pp_vec mat.m.(a) F.pp_print k pp_vec mat.m.(b)
-  ;
+    Mat_option.debug ~dkey:dkey_null ~level:5
+      "Replacing %a by %a + %a * %a"
+      pp_vec mat.m.(a) 
+      pp_vec mat.m.(a) F.pp_print k pp_vec mat.m.(b)
+    ;
 
-   mat.m.(a) <-
-  Array.mapi
-    (fun i elt -> F.add elt (F.mul k mat.m.(b).(i)))
-    mat.m.(a)
+    mat.m.(a) <-
+      Array.mapi
+      (fun i elt -> F.add elt (F.mul k mat.m.(b).(i)))
+      mat.m.(a)
 
-let mult_row mat a k = (* sets the row a to k*a *)
-  Mat_option.debug ~dkey:dkey_null ~level:5
-    "Replacing %a by %a * %a"
-    pp_vec mat.m.(a) F.pp_print k pp_vec mat.m.(a);
+  let mult_row mat a k = (* sets the row a to k*a *)
+    Mat_option.debug ~dkey:dkey_null ~level:5
+      "Replacing %a by %a * %a"
+      pp_vec mat.m.(a) F.pp_print k pp_vec mat.m.(a);
 
-  mat.m.(a) <-
-  Array.map 
-    (F.mul k)
-    mat.m.(a)  
+    mat.m.(a) <-
+      Array.map 
+      (F.mul k)
+      mat.m.(a)  
 
-let mone = F.sub F.zero F.one
+  let mone = F.sub F.zero F.one
 
-let norm_col mat col piv = 
-  mult_row mat piv (F.div F.one mat.m.(piv).(col));
-  
-  for i=0 to mat.rows - 1 do 
-    if i = piv then ()
-    else 
-      let m_i_col = mat.m.(i).(col) in
-      
-      mult_row_plus_row mat i piv (F.mul mone m_i_col) ;
-  done 
-   
-exception Done;;
-
-let rref mat = (* Returns the list of the position of the columns that are not pivots *)
-  let normalize_mat col piv = 
-    for i = piv to mat.rows - 1 do
-      if not (F.equal mat.m.(i).(col) F.zero) then
-      begin 
-	revert_rows mat piv i;
-	norm_col mat col piv;
-	raise Done
-      end
-    done
-  in
-  let piv = ref 0 in
-  let no_piv_list = ref [] in
-  for col = 0 to mat.cols - 1 do
-    try normalize_mat col !piv; 
-	no_piv_list := col :: !no_piv_list ;
-    with Done -> 
-	piv := !piv + 1;
-  done
-  ;
-  !no_piv_list
-
-let insert_val vec elt pos = 
-  let dim = Array.length vec in 
-  
-  let rec insert vec elt pos =
-  if pos >= dim
-  then () 
-  else 
-    begin
-      let new_elt = vec.(pos) in
-      vec.(pos) <- elt;
-      insert vec new_elt (pos + 1)
-    end
-  in
-  insert vec elt pos
- 
-let nullspace_computation mat = 
-
-  let mat = copy_mat mat in
-  let no_pivs = List.rev (rref mat) in 
-
-  let dim2 = mat.rows in
-
-  let num_pivs = mat.cols - List.length no_pivs in
-  let vecs =
+  let norm_col mat col piv = 
+    mult_row mat piv (F.div F.one mat.m.(piv).(col));
     
-    List.fold_right
-      (fun no_piv acc -> 
+    for i=0 to mat.rows - 1 do 
+      if i = piv then ()
+      else 
+	let m_i_col = mat.m.(i).(col) in
+	
+	mult_row_plus_row mat i piv (F.mul mone m_i_col) ;
+    done 
+      
+  exception Done;;
+
+  let rref mat = (* Returns the list of the position of the columns that are not pivots *)
+    let normalize_mat col piv = 
+      for i = piv to mat.rows - 1 do
+	if not (F.equal mat.m.(i).(col) F.zero) then
+	  begin 
+	    revert_rows mat piv i;
+	    norm_col mat col piv;
+	    raise Done
+	  end
+      done
+    in
+    let piv = ref 0 in
+    let no_piv_list = ref [] in
+    for col = 0 to mat.cols - 1 do
+      try normalize_mat col !piv; 
+	  no_piv_list := col :: !no_piv_list ;
+      with Done -> 
+	piv := !piv + 1;
+    done
+    ;
+    !no_piv_list
+
+  let insert_val vec elt pos = 
+    let dim = Array.length vec in 
+    
+    let rec insert vec elt pos =
+      if pos >= dim
+      then () 
+      else 
+	begin
+	  let new_elt = vec.(pos) in
+	  vec.(pos) <- elt;
+	  insert vec new_elt (pos + 1)
+	end
+    in
+    insert vec elt pos
+      
+  let nullspace_computation mat = 
+
+    let mat = copy_mat mat in
+    let no_pivs = List.rev (rref mat) in 
+
+    let dim2 = mat.rows in
+
+    let num_pivs = mat.cols - List.length no_pivs in
+    let vecs =
+      
+      List.fold_right
+	(fun no_piv acc -> 
 	  if dim2 = mat.cols
 	  then
 	    Array.map (F.mul mone)
@@ -391,246 +391,246 @@ let nullspace_computation mat =
 	    let new_vec = Array.make mat.cols F.zero
 	    in
 	    Array.iteri
-	    (fun i f -> 
-	      if i <= num_pivs
-	      then new_vec.(i) <- F.mul mone f
-	    )
+	      (fun i f -> 
+		if i <= num_pivs
+		then new_vec.(i) <- F.mul mone f
+	      )
 	      (get_col_in_line mat no_piv)
 	    ;
 	    new_vec :: acc
 	      
-	    
-      )
-      no_pivs
-      []
-  
-  in 
-  List.iter2
-    (fun vec not_piv ->       
-      List.iter
-	(fun not_piv2 -> 
-	  if not_piv <> not_piv2
-	  then 
-	    insert_val vec F.zero not_piv2
-	  else ()
+	      
 	)
-	no_pivs;
-      insert_val vec F.one not_piv;
+	no_pivs
+	[]
+	
+    in 
+    List.iter2
+      (fun vec not_piv ->       
+	List.iter
+	  (fun not_piv2 -> 
+	    if not_piv <> not_piv2
+	    then 
+	      insert_val vec F.zero not_piv2
+	    else ()
+	  )
+	  no_pivs;
+	insert_val vec F.one not_piv;
 
-    )
-    vecs 
-    no_pivs;
-  vecs
-  
-let nullspace m = 
-  Mat_option.debug ~dkey:dkey_null
-    "Nullspace computation";
-  let t = Sys.time () in
-  let res = nullspace_computation m in 
-  let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
-  Mat_option.debug ~dkey:dkey_null
-    "Nullspace done"; res
+      )
+      vecs 
+      no_pivs;
+    vecs
+      
+  let nullspace m = 
+    Mat_option.debug ~dkey:dkey_null
+      "Nullspace computation";
+    let t = Sys.time () in
+    let res = nullspace_computation m in 
+    let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
+    Mat_option.debug ~dkey:dkey_null
+      "Nullspace done"; res
 
 (** Eigenvalue *)
 
 (** Polynomial for matrix eigenvalue search *)
 
-module XQ_poly : Polynomial with type c = Q.t and type v = Poly.var = Poly.XMake(Qring) 
-  
-module F_Set:Set.S with type elt = F.t = Set.Make (F)
-module Z_Set :Set.S with type elt = Z.t = Set.Make (Z)
-module Q_Set :Set.S with type elt = Q.t = Set.Make (Q)
- 
-let f_to_q f = f |> F.t_to_float |> Q.of_float
+  module XQ_poly : Polynomial with type c = Q.t and type v = Poly.var = Poly.XMake(Qring) 
+				     
+  module F_Set:Set.S with type elt = F.t = Set.Make (F)
+  module Z_Set :Set.S with type elt = Z.t = Set.Make (Z)
+  module Q_Set :Set.S with type elt = Q.t = Set.Make (Q)
+    
+  let f_to_q f = f |> F.t_to_float |> Q.of_float
 
-let char_poly (mat:t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Faddeev-Leverrier *)
+  let char_poly (mat:t) = (* https://fr.wikipedia.org/wiki/Algorithme_de_Faddeev-Leverrier *)
   (* To find eigenvalues, we will compute the faddeev-leverrier iteration in order to find
      the extremities of the rational characteristic polynomial and then apply the rational root
      theorem.*)
-  assert (Mat_option.Use_zarith.get ());
-  let t = Sys.time () in
-  let dim = (get_dim_col mat) in
-  let identity = identity dim in
+    assert (Mat_option.Use_zarith.get ());
+    let t = Sys.time () in
+    let dim = (get_dim_col mat) in
+    let identity = identity dim in
 
-  let rec trace_mk index mk = 
-    if index <= dim
-    then 
-      let mk_coef = F.div (trace mk) (index |> float_of_int |> F.float_to_t) in
-      
-      let new_monom = (XQ_poly.monomial (f_to_q (F.sub F.zero mk_coef)) [Poly.X,(dim-index)]) in
-      
-      let mkpo =  mul mat (sub mk (scal_mul identity mk_coef)) in
+    let rec trace_mk index mk = 
+      if index <= dim
+      then 
+	let mk_coef = F.div (trace mk) (index |> float_of_int |> F.float_to_t) in
+	
+	let new_monom = (XQ_poly.monomial (f_to_q (F.sub F.zero mk_coef)) [Poly.X,(dim-index)]) in
+	
+	let mkpo =  mul mat (sub mk (scal_mul identity mk_coef)) in
 
-      XQ_poly.add new_monom (trace_mk (index + 1) mkpo)
-    else (XQ_poly.monomial (f_to_q F.one) [Poly.X,dim])
-    
-  in
-  let res = trace_mk 1 mat 
-  in
-  let () = Mat_option.char_poly_timer := !Mat_option.char_poly_timer +. Sys.time () -. t in res
+	XQ_poly.add new_monom (trace_mk (index + 1) mkpo)
+      else (XQ_poly.monomial (f_to_q F.one) [Poly.X,dim])
+	
+    in
+    let res = trace_mk 1 mat 
+    in
+    let () = Mat_option.char_poly_timer := !Mat_option.char_poly_timer +. Sys.time () -. t in res
 
 (** Rational eigenvalues of a matrix. Computation of the 
     rational roots of the characteristic polynomial.
-      ^
-     /|\
+    ^
+    /|\
     /_o_\ 
     
     If the characteristic polynomial is to big, will only test
     a subset of all possible eigenvalues.
 *)
 
-let eigenvalues mat = 
-  let t = Sys.time () in
-  
-  let deg_poly = (get_dim_col mat) in
-  let integrate_poly p = (* returns the main coefficient of the polynomial after multiplying it
-			    by a scalar such that the polynomial have only integer coefficients.*)
-    let rec integ xn p = 
-      if XQ_poly.deg_of_var xn Poly.X = deg_poly
-      then Z.one (* by construction, its xn's coef is an integer *)
-      else 
-	let den_of_coef = 
-	  Q.den (XQ_poly.coef p xn)
-	in
-	let xnpo = (XQ_poly.mono_mul xn (XQ_poly.mono_minimal [Poly.X,1]))
-	in 
-	let k = 
-	  integ xnpo (XQ_poly.scal_mul (Q.(///) den_of_coef Z.one) p) in
-	
-	
-	(Z.mul k den_of_coef)
+  let eigenvalues mat = 
+    let t = Sys.time () in
+    
+    let deg_poly = (get_dim_col mat) in
+    let integrate_poly p = (* returns the main coefficient of the polynomial after multiplying it
+			      by a scalar such that the polynomial have only integer coefficients.*)
+      let rec integ xn p = 
+	if XQ_poly.deg_of_var xn Poly.X = deg_poly
+	then Z.one (* by construction, its xn's coef is an integer *)
+	else 
+	  let den_of_coef = 
+	    Q.den (XQ_poly.coef p xn)
+	  in
+	  let xnpo = (XQ_poly.mono_mul xn (XQ_poly.mono_minimal [Poly.X,1]))
+	  in 
+	  let k = 
+	    integ xnpo (XQ_poly.scal_mul (Q.(///) den_of_coef Z.one) p) in
+	  
+	  
+	  (Z.mul k den_of_coef)
+
+      in
+      integ XQ_poly.empty_monom p
+    in
+    let poly = char_poly mat in 
+    
+    let () = Mat_option.debug ~dkey:dkey_ev ~level:2
+      "Char poly = %a" XQ_poly.pp_print poly
 
     in
-    integ XQ_poly.empty_monom p
-  in
-  let poly = char_poly mat in 
-  
-  let () = Mat_option.debug ~dkey:dkey_ev ~level:2
-    "Char poly = %a" XQ_poly.pp_print poly
-
-  in
-  let k = integrate_poly poly in
-  
+    let k = integrate_poly poly in
+    
     let div_by_x poly = (* returns (coef,n) with coef*xn with the littlest n such that xn | poly *)
-    let rec __div_by_x monomial = 
-      let coef = XQ_poly.coef poly monomial in
-      Mat_option.debug ~dkey:dkey_ev ~level:4
-	"Coef for div_by_x : %a" Q.pp_print coef;
-      if Q.equal coef Q.zero
-      then __div_by_x (XQ_poly.mono_mul monomial (XQ_poly.mono_minimal [Poly.X,1]))
-      else (coef,(XQ_poly.deg_of_var monomial Poly.X))
+      let rec __div_by_x monomial = 
+	let coef = XQ_poly.coef poly monomial in
+	Mat_option.debug ~dkey:dkey_ev ~level:4
+	  "Coef for div_by_x : %a" Q.pp_print coef;
+	if Q.equal coef Q.zero
+	then __div_by_x (XQ_poly.mono_mul monomial (XQ_poly.mono_minimal [Poly.X,1]))
+	else (coef,(XQ_poly.deg_of_var monomial Poly.X))
+      in
+      __div_by_x XQ_poly.empty_monom
     in
-    __div_by_x XQ_poly.empty_monom
-  in
-  let (coef,power) = div_by_x poly
-  in
-  
-  let affine_constant = Q.mul coef (Q.(///) k Z.one)
-  in
-  assert (Z.equal (Q.den affine_constant) Z.one);
-  let affine_constant = Q.num affine_constant
-  in
-  
-  let () = Mat_option.debug ~dkey:dkey_ev ~level:2
-    "Divisible by 0 %i times. Affine constant : %a"
-    power Z.pp_print affine_constant in
+    let (coef,power) = div_by_x poly
+    in
+    
+    let affine_constant = Q.mul coef (Q.(///) k Z.one)
+    in
+    assert (Z.equal (Q.den affine_constant) Z.one);
+    let affine_constant = Q.num affine_constant
+    in
+    
+    let () = Mat_option.debug ~dkey:dkey_ev ~level:2
+      "Divisible by 0 %i times. Affine constant : %a"
+      power Z.pp_print affine_constant in
 
   (*let max_number_of_roots = deg_poly - power
-  in*)
-  let all_divs (i:Z.t) : Z_Set.t = 
-        let max_ev = Z.of_int (Mat_option.Ev_leq.get ()) in
-    let rec __all_divs cpt i = 
+    in*)
+    let all_divs (i:Z.t) : Z_Set.t = 
+      let max_ev = Z.of_int (Mat_option.Ev_leq.get ()) in
+      let rec __all_divs cpt i = 
 
-      if  Z.gt (Z.shift_left cpt 1) i (* 2*p > i => p does not div i *)
-	|| Z.geq cpt max_ev
+	if  Z.gt (Z.shift_left cpt 1) i (* 2*p > i => p does not div i *)
+	  || Z.geq cpt max_ev
+	then 
+	  (Z_Set.singleton Z.one) 
+					    |> Z_Set.add Z.minus_one 
+	else if Z.erem i cpt = Z.zero 
+	then 
+	  let divs = __all_divs cpt (Z.div i cpt) in
+	  Z_Set.fold
+	    (fun elt -> Z_Set.add (Z.mul cpt elt) )
+	    divs
+	    divs
+	else
+	  __all_divs (Z.nextprime cpt) i
+      in
+      if Z.leq i Z.zero
       then 
-	(Z_Set.singleton Z.one) 
-	 |> Z_Set.add Z.minus_one 
-      else if Z.erem i cpt = Z.zero 
-      then 
-	let divs = __all_divs cpt (Z.div i cpt) in
-	Z_Set.fold
-	  (fun elt -> Z_Set.add (Z.mul cpt elt) )
-	  divs
-	  divs
-      else
-	 __all_divs (Z.nextprime cpt) i
+	__all_divs (Z.of_int 2) (Z.mul Z.minus_one i)
+	  
+	  
+      else 
+	__all_divs (Z.of_int 2) i |> Z_Set.add i |> Z_Set.add (Z.mul i Z.minus_one)
+
     in
-    if Z.leq i Z.zero
-    then 
-      __all_divs (Z.of_int 2) (Z.mul Z.minus_one i)
+    
+    let root_candidates =
+
+      let divs_of_affine_coef = all_divs affine_constant in
+      let divs_of_main_coef = all_divs k in
+      
+      Z_Set.iter
+	(fun q -> 
+	  Mat_option.debug 
+	    ~dkey:dkey_ev 
+	    ~level:5
+	    "Divisor of affine const : %a" Z.pp_print q) divs_of_affine_coef ; 
+      Z_Set.iter
+	(fun p -> 
+	  Mat_option.debug 
+	    ~dkey:dkey_ev 
+	    ~level:5
+	    "Divisor of main const : %a" Z.pp_print p) divs_of_main_coef ; 
       
       
-    else 
-      __all_divs (Z.of_int 2) i |> Z_Set.add i |> Z_Set.add (Z.mul i Z.minus_one)
-
-  in
-  
-  let root_candidates =
-
-    let divs_of_affine_coef = all_divs affine_constant in
-    let divs_of_main_coef = all_divs k in
-    
-    Z_Set.iter
-      (fun q -> 
-	Mat_option.debug 
-	  ~dkey:dkey_ev 
-	  ~level:5
-	  "Divisor of affine const : %a" Z.pp_print q) divs_of_affine_coef ; 
-    Z_Set.iter
-      (fun p -> 
-	Mat_option.debug 
-	  ~dkey:dkey_ev 
-	  ~level:5
-	  "Divisor of main const : %a" Z.pp_print p) divs_of_main_coef ; 
-    
-    
-    Z_Set.fold
-      (fun p acc -> 
-	
-	Z_Set.fold
-	  (fun q acc2 -> 
-	    Q_Set.add ((Q.(///)) p q) acc2)
-	  divs_of_main_coef
-	  acc
+      Z_Set.fold
+	(fun p acc -> 
+	  
+	  Z_Set.fold
+	    (fun q acc2 -> 
+	      Q_Set.add ((Q.(///)) p q) acc2)
+	    divs_of_main_coef
+	    acc
+	)
+	divs_of_affine_coef
+	Q_Set.empty
+    in
+    let res = Q_Set.filter 
+      (fun elt -> 
+	let eval_poly = XQ_poly.eval poly Poly.X elt in
+	Mat_option.debug ~dkey:dkey_ev ~level:4
+	  "Root candidate : %a. Returns %a" Q.pp_print elt XQ_poly.pp_print eval_poly;
+	Q.equal (XQ_poly.coef eval_poly XQ_poly.empty_monom) Q.zero
       )
-      divs_of_affine_coef
-      Q_Set.empty
-  in
-  let res = Q_Set.filter 
-    (fun elt -> 
-      let eval_poly = XQ_poly.eval poly Poly.X elt in
-      Mat_option.debug ~dkey:dkey_ev ~level:4
-	"Root candidate : %a. Returns %a" Q.pp_print elt XQ_poly.pp_print eval_poly;
-      Q.equal (XQ_poly.coef eval_poly XQ_poly.empty_monom) Q.zero
-    )
-    root_candidates
-  in
-  let res = 
-    if power = 0 then res 
-    else Q_Set.add Q.zero res in
+      root_candidates
+    in
+    let res = 
+      if power = 0 then res 
+      else Q_Set.add Q.zero res in
 
 
-  let () = 
-    Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t;
-    Q_Set.iter 
-      (fun ev -> 
-	Mat_option.debug ~dkey:dkey_ev ~level:2 "Eigenvalue : %a" 
-	  Q.pp_print ev) res
+    let () = 
+      Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t;
+      Q_Set.iter 
+	(fun ev -> 
+	  Mat_option.debug ~dkey:dkey_ev ~level:2 "Eigenvalue : %a" 
+	    Q.pp_print ev) res
+	
+    in  
+    Q_Set.fold
+      (fun q acc -> 
+	let ev = 
+	  F.div 
+	    (q |> Q.num |> Z.to_int |> F.int_to_t) 
+	    (q |> Q.den |> Z.to_int |> F.int_to_t) in
+	ev :: acc)
+      res 
+      []
       
-  in  
-  Q_Set.fold
-    (fun q acc -> 
-      let ev = 
-	F.div 
-	  (q |> Q.num |> Z.to_int |> F.int_to_t) 
-	  (q |> Q.den |> Z.to_int |> F.int_to_t) in
-      ev :: acc)
-    res 
-    []
- 
 end
-      
+  
 
 (** 2. Rational matrix implementation *)
 
@@ -639,10 +639,10 @@ module QMat = Make(Qring)
 let lacaml_to_qmat lmat = 
   
   lmat 	 |> Lacaml_D.Mat.to_array 
-	 |> Array.map 
-	     (fun arr -> QMat.vec_from_array (Array.map (fun fl -> Q.of_float fl) arr)) 
-	 |> QMat.of_row_vecs
-  
+					      |> Array.map 
+						  (fun arr -> QMat.vec_from_array (Array.map (fun fl -> Q.of_float fl) arr)) 
+					      |> QMat.of_row_vecs
+						  
 let qmat_to_lacaml qmat = 
   
   let arr = QMat.rows qmat in
@@ -652,17 +652,17 @@ let qmat_to_lacaml qmat =
       (fun q -> (Z.to_float (Q.num q)) /. (Z.to_float (Q.den q))) 
       (QMat.vec_to_array vec))
     arr
-	 |> Lacaml_D.Mat.of_array
+					      |> Lacaml_D.Mat.of_array
 
 let lvec_to_qvec lvec = 
   lvec |> Lacaml_D.Vec.to_array
-	 |> Array.map (fun fl -> Q.of_float fl)
-	 |> QMat.vec_from_array
+					      |> Array.map (fun fl -> Q.of_float fl)
+					      |> QMat.vec_from_array
 
 let qvec_to_lvec lvec = 
   let arr = QMat.vec_to_array lvec in
   Array.map (fun fl -> (Z.to_float (Q.num fl)) /. (Z.to_float (Q.den fl))) arr 
-	 |> Lacaml_D.Vec.of_array
+					      |> Lacaml_D.Vec.of_array
 
 
 module PMat : Matrix with type elt = N_poly.t = 

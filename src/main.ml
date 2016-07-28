@@ -218,8 +218,21 @@ object(self)
 			(fun invar ->  
 			  Assign_type.print_vec rev_base invar;
 			  Mat_option.debug ~dkey:dkey_stmt "__\n";
-			)invars
-			
+			  (** DEBUG TODO : REMOVE *)
+			  
+			  if not assign_is_deter
+			  then 
+			    let module NDI = Non_det_invar.Make(Assign_type) in
+			    match limit with 
+			      Invariant_utils.Convergent ev -> 
+				NDI.do_the_job base mat ev invar 
+			    | _ -> ()
+				  
+			(** DEBUG TODO : REMOVE *)
+			)invars;	    
+		      
+
+
 		    ) invar;
 		   match acc with
 		     None -> Some invar
@@ -231,7 +244,9 @@ object(self)
 	      matrices
 	    in
 	    
-	    Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time ;
+	    let () = Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time 
+
+	    in
 	    let module Annot_generator = Acsl_gen.Make(Assign_type) in 
 		match whole_loop_invar with 
 		  None -> DoChildren 

@@ -19,6 +19,7 @@ PLUGIN_CMO 	:= mat_option\
 		assign\
 		invariant_utils\
 		invar_prover\
+		non_det_invar\
 		acsl_gen\
 		main
 

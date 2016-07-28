@@ -96,6 +96,8 @@ module type S = sig
 
   val print_vec : P.Monom.t Imap.t -> M.vec -> unit
 
+  val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
+
   val loop_matrix : int P.Monom.Map.t -> monom_affect list -> mat
 
 end
@@ -605,12 +607,22 @@ let print_vec rev_base vec =
       if P.R.equal P.R.zero c
       then () 
       else 
-	Mat_option.debug ~dkey:dkey_stmt
+	Mat_option.feedback
 	  "+%a%a" 
 	  P.R.pp_print c
 	  P.Monom.pretty 
 	  (Imap.find !i rev_base)
     ) (M.vec_to_array vec) 
+
+let vec_to_poly rev_base vec = 
+  Imap.fold
+    (fun i monom acc -> 
+      let c = M.get_coef_vec i vec in 
+      P.add acc (P.mono_poly c monom)
+    )
+    rev_base
+    P.zero
+  
 
 let loop_matrix 
     (base: int P.Monom.Map.t) 

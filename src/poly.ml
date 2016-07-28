@@ -28,8 +28,16 @@ open Pilat_math
 
 module Vmod_id = State_builder.SharedCounter(struct let name = "pilat_vid_counter" end)
 module Xmod_id = State_builder.SharedCounter(struct let name = "pilat_xmod_counter" end)
+module Tab_index = State_builder.SharedCounter(struct let name = "pilat_to_str_counter" end)
+let next_index () = Tab_index.next () - 1
+module type Variable = 
+  sig
+    include Datatype.S_with_collections
+    val max : t -> float
+    val min : t -> float
+  end 
 
-module Make (A : Ring) (V : Datatype.S_with_collections) : 
+module Make (A : Ring) (V : Variable) : 
   Polynomial with type c = A.t
 	     and type v = V.t
 	     and type Var.Set.t = V.Set.t =
@@ -122,7 +130,7 @@ struct
 
   let to_var_set (m:Monom.t) : v list = 
     V.Map.fold
-      (fun v _ acc -> v :: acc)
+      (fun v p acc -> if p <> 0 then v :: acc else acc)
       m
       []
 
@@ -221,7 +229,60 @@ struct
 
     let print_monom = Monom.pretty
 	
+    let (to_str_var_map : string Var.Hashtbl.t) = Var.Hashtbl.create 5
+    let new_var v = 
+      let str = 
+	"x[" ^ (string_of_int (next_index ())) ^ "]" in
+      Var.Hashtbl.add to_str_var_map v str
 
+    let to_str (p:t) = 
+      (* This string is used for the sage optimizer, string is formatted in consequence *)
+      if p = zero then "0" else
+	let () = 
+	  Monom.Map.iter
+	    (fun monom _ -> 
+	      List.iter 
+		(fun  v -> 
+		  if Var.Hashtbl.mem to_str_var_map v
+		  then ()
+		  else new_var v
+		     
+		)
+		(to_var_set monom)
+	    )
+	    p
+	in
+	let var_pow var monom = 
+	  let str_var = (Var.Hashtbl.find to_str_var_map var)  in
+	  let deg = deg_of_var monom var in 
+	  if deg = 1 then str_var
+	  else str_var ^ "**" ^ (string_of_int deg) in
+
+	Monom.Map.fold
+	  (fun monom c acc -> if R.equal R.zero c then acc else
+	    let sign = try if R.leq c R.zero then "" else "+" with _ -> "" in
+	    let vars = to_var_set monom in
+	    let c_str = R.to_str c in
+	    if c_str = "" then acc
+	    else if empty_monom = monom
+	    then if acc = "" then c_str else acc ^ "*" ^ c_str 
+	    else
+	      let init_str = 
+		sign ^ c_str ^ " * " ^ var_pow (List.hd vars) monom
+	      in
+	      acc  ^ 
+		List.fold_left
+		(fun acc var -> 
+		  acc ^ "*" ^ var_pow var monom
+		)
+		init_str
+		(List.tl vars)
+	      	
+	  )
+	  p
+	  ""
+
+      
     let pp_print fmt (p:t) =
       if p = zero then Format.fprintf fmt "0" else
 
@@ -326,7 +387,6 @@ struct
     let den _ = assert false
     let t_to_int _ = assert false
     let int_to_t _ = assert false
-    
     let non_det_repr _ = assert false 
 end
 
@@ -363,7 +423,8 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
 	 let mem_project = Datatype.never_any_project
 	end
        )
-     let non_det_repr _ _ = assert false
+      let max _ = assert false
+      let min _ = assert false     
      end
     )
     

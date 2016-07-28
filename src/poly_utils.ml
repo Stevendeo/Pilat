@@ -37,9 +37,9 @@ type n_var =
 module Varinfo = 
   struct 
     include Cil_datatype.Varinfo
-    let non_det_repr _ _ = assert false
+    let max _ = assert false
+    let min _ = assert false
   end
-
    
 module N_var =
   struct 
@@ -71,6 +71,8 @@ module N_var =
       { name = "n" ^ (string_of_int (N_id.next ()));
 	min = min;
 	max = max}
+    let max t = t.max
+    let min t = t.min
         
   end 
     

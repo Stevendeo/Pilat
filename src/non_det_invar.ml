@@ -23,39 +23,30 @@
 open Pilat_matrix 
 open Invariant_utils 
 
-let get_objective_from_convergent_invar tr_pmat ev invar = 
-  let pinvar = fvec_to_pvec invar in 
-  let ev_times_invar = 
-    fvec_to_pvec 
-      (Lacaml_D.Vec.map
-	 (fun f -> ev *. f)
-	 invar)
-  in
-  PMat.sub_vec (PMat.mul_vec tr_pmat pinvar) ev_times_invar
-  
+module Make (P_assign : Poly_assign.S) = 
+  struct 
+    module M = P_assign.M
+    module R = P_assign.P.R
+    let get_objective_from_convergent_invar mat ev (invar:M.vec) = 
 
-let get_objectives pmat = 
-  let transposed_pmat = PMat.transpose pmat in
-  let mat_zero = pmat_eval_to_zero pmat in 
-  
-  
-  let invariants = 
-    Invariant_utils.invariant_computation_lacaml mat_zero
-  in
-  
-  List.fold_left
-    (fun acc (lim,invars) -> 
-      match lim with
-	Convergent q ->
-	  let ev_float = 
-	    (Z.to_float (Q.num q)) /. (Z.to_float (Q.den q))
-	  in
-	  (List.map
-	     (get_objective_from_convergent_invar transposed_pmat ev_float)
-	     invars) 
-	  @ acc
-      | _ -> acc
-    )
-    []
-    invariants
-    
+      let ev_times_invar = 
+	M.scal_mul_vec invar (R.float_to_t ev)
+      
+      in
+      let tmat = (M.transpose mat) in
+      let tmattinvar = (M.mul_vec tmat invar) in
+      M.sub_vec tmattinvar ev_times_invar
+	
+    let objective_to_string base (objective:M.vec) = 
+      let rbase = P_assign.reverse_base base in
+      let poly_objective = P_assign.vec_to_poly rbase objective
+      in P_assign.P.to_str poly_objective
+
+    let do_the_job base mat ev (invar:M.vec) = 
+ 
+      let obj = get_objective_from_convergent_invar mat ev invar in 
+
+         (objective_to_string base obj)
+
+    let main_constraint_to_string
+  end
