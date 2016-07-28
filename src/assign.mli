@@ -23,7 +23,7 @@
 module Float_deterministic : Poly_assign.S
 module Q_deterministic : Poly_assign.S
 
-module Float_non_deterministic : Poly_assign.S 
+module Float_non_deterministic : Poly_assign.S with type P.c = Poly_utils.N_poly.t
 module Q_non_deterministic : Poly_assign.S 
 
 module Determinizer : functor (ND_assign :Poly_assign.S) -> 

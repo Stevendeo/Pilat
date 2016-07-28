@@ -30,14 +30,8 @@ module Vmod_id = State_builder.SharedCounter(struct let name = "pilat_vid_counte
 module Xmod_id = State_builder.SharedCounter(struct let name = "pilat_xmod_counter" end)
 module Tab_index = State_builder.SharedCounter(struct let name = "pilat_to_str_counter" end)
 let next_index () = Tab_index.next () - 1
-module type Variable = 
-  sig
-    include Datatype.S_with_collections
-    val max : t -> float
-    val min : t -> float
-  end 
 
-module Make (A : Ring) (V : Variable) : 
+module Make (A : Ring) (V : Pilat_math.Variable) : 
   Polynomial with type c = A.t
 	     and type v = V.t
 	     and type Var.Set.t = V.Set.t =
@@ -388,6 +382,18 @@ struct
     let t_to_int _ = assert false
     let int_to_t _ = assert false
     let non_det_repr _ = assert false 
+
+    let to_nvars p = 
+      Monom.Map.fold
+	(fun monom cst acc -> 
+	  let vars = to_var_set monom in 
+	  List.fold_left
+	    (fun acc2 v -> (Var.to_nvars v) @ (acc2))
+	    (acc@(R.to_nvars cst))  
+	    vars
+	)
+	p
+	[]
 end
 
 
@@ -425,6 +431,7 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
        )
       let max _ = assert false
       let min _ = assert false     
+      let to_nvars _ = assert false
      end
     )
     

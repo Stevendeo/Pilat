@@ -25,14 +25,9 @@ open Cil_datatype
 
 (** 1. Variables used for polynomials *)
 
-type n_var = 	
-  {
-    name:string;
-    min:float;
-    max:float
-  }
+type n_var = Pilat_math.n_var
 
-module N_var : Variable
+module N_var : Variable with type t = n_var
 
 (** 2. Polynomials *) 
 

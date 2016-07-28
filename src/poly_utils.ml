@@ -27,18 +27,15 @@ open Cil_datatype
 
 module N_id = State_builder.SharedCounter(struct let name = "pilat_non_det_var_counter" end)
 
-type n_var = 	
-  {
-    name:string;
-    min:float;
-    max:float
-  }
+type n_var = Pilat_math.n_var
+  
 
 module Varinfo = 
   struct 
     include Cil_datatype.Varinfo
     let max _ = assert false
     let min _ = assert false
+    let to_nvars _ = []
   end
    
 module N_var =
@@ -73,6 +70,7 @@ module N_var =
 	max = max}
     let max t = t.max
     let min t = t.min
+    let to_nvars t = [t]
         
   end 
     

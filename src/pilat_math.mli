@@ -28,6 +28,14 @@
     - The Matrix structure
 *)
 
+
+type n_var = 	
+  {
+    name:string;
+    min:float;
+    max:float
+  }
+
 (** 1. The ring structure *)
 
 module type Ring = sig
@@ -60,6 +68,8 @@ module type Ring = sig
 (** den fl = The smallest int i such that fl*i is an integer.  *)
   val den : t -> t
 
+(** To complete it, we need to add a way to get back a n_var once created *)
+  val to_nvars : t -> n_var list
 end
 
 (** 2. The polynomial structure *)
@@ -70,13 +80,12 @@ sig
   val non_det_repr : float -> float -> t
 end
 *)
-
-
 module type Variable = 
   sig
     include Datatype.S_with_collections
     val max : t -> float
     val min : t -> float
+    val to_nvars : t -> n_var list
   end 
 
 module type Polynomial =
@@ -156,6 +165,7 @@ sig
   val gt : t -> t -> bool
   val compare : t -> t -> int
   val non_det_repr : float -> float -> t
+  val to_nvars : t -> n_var list
 end
 
 (** 3. The matrix structure *)

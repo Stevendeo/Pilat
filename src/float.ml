@@ -57,3 +57,4 @@ let non_det_repr f1 f2 =
 
 let deter f = f
 
+let to_nvars _ = []

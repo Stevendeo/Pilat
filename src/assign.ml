@@ -29,10 +29,11 @@ module Float_deterministic : Poly_assign.S = Poly_assign.Make(Lacaml_matrix)(F_p
 
 module Q_deterministic : Poly_assign.S = Poly_assign.Make(QMat)(QPoly)
 
-module Float_non_deterministic : Poly_assign.S
+module Float_non_deterministic : Poly_assign.S with type P.c = Poly_utils.N_poly.t
   = Poly_assign.Make(PMat)(NF_poly)
 
-module Q_non_deterministic : Poly_assign.S = Poly_assign.Make(PQMat)(NQF_poly)
+module Q_non_deterministic : Poly_assign.S 
+  = Poly_assign.Make(PQMat)(NQF_poly)
 
 
 module Determinizer (ND_assign : Poly_assign.S) = 

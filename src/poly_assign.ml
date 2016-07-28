@@ -99,7 +99,6 @@ module type S = sig
   val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
 
   val loop_matrix : int P.Monom.Map.t -> monom_affect list -> mat
-
 end
 
 module Make (M:Matrix) (Poly:Polynomial with type v = Varinfo.t 

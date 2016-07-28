@@ -225,7 +225,8 @@ object(self)
 			    let module NDI = Non_det_invar.Make(Assign_type) in
 			    match limit with 
 			      Invariant_utils.Convergent ev -> 
-				NDI.do_the_job base mat ev invar 
+				Mat_option.feedback "%s"
+				  (NDI.do_the_job rev_base mat ev invar)
 			    | _ -> ()
 				  
 			(** DEBUG TODO : REMOVE *)
