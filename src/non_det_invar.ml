@@ -20,8 +20,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Pilat_matrix 
-open Invariant_utils 
 open Poly_utils 
 
 module Make (P_assign : Poly_assign.S) = 
@@ -40,6 +38,7 @@ module Make (P_assign : Poly_assign.S) =
 
     let vec_to_poly_string rev_base vec = 
       let poly = P_assign.vec_to_poly rev_base vec
+      in let () = Mat_option.feedback "Poly : %a" P.pp_print poly
       in P_assign.P.to_str poly
 
     let lower_bound (n:N_poly.Var.t) = 
@@ -83,9 +82,21 @@ module Make (P_assign : Poly_assign.S) =
       in
       let max_k = "50" in
       let n = "10" in 
-      prefix ^ " " 
-      ^ max_k ^ " "
+      let suffix = max_k ^ " "
       ^ n ^ " " 
       ^ "\"" ^ obj_str ^ "\" " 
       ^ "\"" ^ invar_str ^ "\" "  ^ nd_cons
+      in
+      let rec size_tab str_index tab_index = 
+	try 
+	  let i = String.index_from suffix str_index '[' in 
+	  let tab_i = String.get suffix (i+1) |> int_of_char in
+	  size_tab (i+2) (max tab_i tab_index)
+	with
+	  Not_found -> tab_index
+      in
+      
+	
+
+      prefix ^ " " ^ string_of_int ((size_tab 0 0) + 1) ^ " " ^ suffix
   end

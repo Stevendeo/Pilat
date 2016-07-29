@@ -1,3 +1,5 @@
+float float_interval(float,float);
+
 int main(int N) {
   double S,S0,S1,E,E0,E1;
   int i,j;
@@ -11,6 +13,7 @@ int main(int N) {
   N = 20;
  
   for (i=1;i<N;i++) {
+    E = float_interval(-1,1);
     E1 = E0;
     E0 = E;
     // E = randum [-1,1]
