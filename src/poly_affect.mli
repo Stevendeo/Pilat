@@ -52,17 +52,19 @@ module F_poly :
 type t = 
   
   Affect of F_poly.v * F_poly.t
-| Loop of body
+| Loop of body list
 
 and body = t list
 
-(** A monomial affectation is equivalent to considering a monomial is a variable modified
+(** A monomial affectation is equivalent to consider that a monomial is a variable modified
     by the affectation. *)
-type monom_affect = F_poly.Monom.t * F_poly.t
+type monom_affect = 
+  
+  LinAffect of F_poly.Monom.t * F_poly.t
+| LinLoop of lin_body list
 
+and lin_body = monom_affect list
 
-(* vvv -- Undefined -- vvv *)
-type if_cond = bool * Cil_types.exp
 
 
 

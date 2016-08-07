@@ -108,7 +108,7 @@ let all_possible_monomials e_deg_hashtbl =
  
   
 let add_monomial_modifications 
-    (p_list:Poly_affect.body) : Poly_affect.monom_affect list * F_poly.Monom.Set.t = 
+    (p_list:Poly_affect.body list) : Poly_affect.lin_body list * F_poly.Monom.Set.t = 
   let module M_set = F_poly.Monom.Set in
   let module M_map = F_poly.Monom.Map in
   let l_size = List.length p_list in
@@ -116,28 +116,30 @@ let add_monomial_modifications
   in
   
   let effective_degree = Varinfo.Hashtbl.create l_size in
-
-  let () = List.iter (* Registration of the monom used in the transformation of each var *)
-    (fun affect -> 
-      match affect with 
-	Affect (v,p) -> 
-	  let useful_monoms = 
-	    M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.one) |> F_poly.deg) > 1)
-	      (F_poly.get_monomials p)
-	  in
-	  let old_bind = 
-	    try 
-	      Varinfo.Hashtbl.find 
-		var_monom_tbl 
-		v 
-	    with 
-	      Not_found -> M_set.empty
-	  in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
-      | Loop _ -> assert false
-    )
-    p_list 
-  in
   
+  let rec reg_monomials affect_list = 
+    List.iter (* Registration of the monomials used in the transformation of each var *)
+      (fun affect -> 
+	match affect with 
+	  Affect (v,p) -> 
+	    let useful_monoms = 
+	      M_set.filter (fun m -> (m |> (F_poly.mono_poly Ring.one) |> F_poly.deg) > 1)
+		(F_poly.get_monomials p)
+	    in
+	    let old_bind = 
+	      try 
+		Varinfo.Hashtbl.find 
+		  var_monom_tbl 
+		  v 
+	      with 
+		Not_found -> M_set.empty
+	    in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
+	| Loop l -> List.iter reg_monomials l
+      )
+      affect_list 
+  in
+  let () = List.iter reg_monomials p_list in
+
   Varinfo.Hashtbl.iter
     (fun v _ -> Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
       "Table contains variable %a with id %i" Varinfo.pretty v v.vid)
@@ -203,7 +205,6 @@ let add_monomial_modifications
   then Mat_option.abort "The effective degree of the loop is %i, this is the minimal degree for finding invariants. Change the invariant degree to %i." min_degree min_degree;
     
  
-  
   let () = Varinfo.Hashtbl.iter 
     (fun v i -> 
       Mat_option.debug ~dkey:dkey_lowerizer ~level:5
@@ -235,35 +236,39 @@ let add_monomial_modifications
       s
       Varinfo.Map.empty
   in
-  (List.fold_right
-    (fun affect acc  -> 
-      match affect with
-	Affect (v,poly) -> 
-      
-	  let monoms_modified = Varinfo.Map.find v modification_map
-	  in 
-	  
-	  M_set.fold
-	    (fun monom acc2 -> 
-	      let semi_poly = F_poly.mono_poly 1. monom
-	      in
-	      let compo = (F_poly.compo semi_poly v poly) in
-	      Mat_option.debug ~dkey:dkey_lowerizer ~level:3
-		"%a = %a"
-		F_poly.Monom.pretty monom
-		F_poly.pp_print compo;
-	      (monom,compo)::acc2
-	    )
-	    monoms_modified
-	    acc
-      | Loop _ -> assert false
-    )
-    p_list
-    []),s
+  let rec linearize affect_list = 
+    (List.fold_right
+       (fun affect acc  -> 
+	 match affect with
+	   Affect (v,poly) -> 
+	     
+	     let monoms_modified = Varinfo.Map.find v modification_map
+	     in 
+	     
+	     M_set.fold
+	       (fun monom acc2 -> 
+		 let semi_poly = F_poly.mono_poly 1. monom
+		 in
+		 let compo = (F_poly.compo semi_poly v poly) in
+		 Mat_option.debug ~dkey:dkey_lowerizer ~level:3
+		   "%a = %a"
+		   F_poly.Monom.pretty monom
+		   F_poly.pp_print compo;
+		 LinAffect(monom,compo)::acc2
+	       )
+	       monoms_modified
+	       acc
+	 | Loop l -> LinLoop (List.map linearize l) :: acc
+       )
+       affect_list
+       [])
+  in
+  
+  (List.map linearize p_list),s
    
 (** 2. CIL2Poly  *)
 
-exception Loop_break 
+exception Loop_break of stmt
 
 let poly_hashtbl = Stmt.Hashtbl.create 12
 
@@ -314,12 +319,16 @@ let instr_to_poly_assign varinfo_used : Cil_types.instr -> Poly_affect.t option 
   | Skip _ -> None
   | _ -> assert false
 
-let register_poly = Stmt.Hashtbl.replace poly_hashtbl   
+let register_poly : Cil_types.stmt -> Poly_affect.t option -> unit = 
+  Stmt.Hashtbl.replace poly_hashtbl   
 
-let stmt_to_poly_assign varinfo_used s : Poly_affect.t option = 
+(* Loop stmt -> Loop break *)
+let loop_break_tbl = Stmt.Hashtbl.create 3
+
+let rec stmt_to_poly_assign varinfo_used s : Poly_affect.t option = 
   begin
   try 
-    Stmt.Hashtbl.find poly_hashtbl s 
+    Stmt.Hashtbl.find poly_hashtbl s
   with 
     Not_found -> 
       match s.skind with
@@ -328,18 +337,45 @@ let stmt_to_poly_assign varinfo_used s : Poly_affect.t option =
 	    "Instruction"
 	  in
 	  begin
-	    match instr_to_poly_assign varinfo_used i with 
-	      Some p -> register_poly s (Some p); Some p
-	    | None -> register_poly s None; None
+	    let instr = instr_to_poly_assign varinfo_used i in
+	    register_poly s instr; instr
+
 	  end
-      | Cil_types.Loop _ -> Mat_option.abort "Nested loop are not allowed yet."
-      | Break _ -> raise Loop_break
+      | Cil_types.Loop (_,b,_,_,_) -> 
+	let () = 
+	  Mat_option.debug ~dkey:dkey_stmt
+	    "Inner loop"
+	  in
+	let res = 
+	    Some(Loop (block_to_poly_lists varinfo_used b))
+	in
+	register_poly s res; res
+
+      | Break _ -> raise (Loop_break s)
       | _ -> None
   end
 
-let block_to_poly_lists varinfo_used block : Poly_affect.body list = 
-  let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
+and block_to_poly_lists varinfo_used block : Poly_affect.body list = 
+
+  (* The first statement of a block loop is the entry of the loop. *)
+  let first_block_stmt = (List.hd block.bstmts) in
+  let () = Mat_option.debug ~dkey:dkey_stmt ~level:2
+      "First stmt of the loop : %a." 
+      Stmt.pretty first_block_stmt;
+    List.iter
+      (fun s -> 
+	Mat_option.debug ~dkey:dkey_stmt ~level:3
+	  "Its successors : %a" 
+	  Stmt.pretty s;)
+      first_block_stmt.succs
   in
+  
+  let head = List.hd first_block_stmt.preds (* It must be the entry of the loop *)
+  in
+  Mat_option.debug ~dkey:dkey_stmt ~level:2
+      "Loop head : %a" 
+      Stmt.pretty head
+    ;
   let rec dfs stmt = 
     Mat_option.debug ~dkey:dkey_stmt ~level:2
       "Stmt %a studied" 
@@ -361,23 +397,40 @@ let block_to_poly_lists varinfo_used block : Poly_affect.body list =
 		
 	try
 
-	  let poly_opt = stmt_to_poly_assign varinfo_used stmt in
-
+	  let poly_list = stmt_to_poly_assign varinfo_used stmt in
+	  let next_stmt =  
+	    match stmt.skind with
+	      Cil_types.Loop (_,_,_,_,break) -> 
+		begin
+		  try (Extlib.the break) with
+		    Invalid_argument _ (* Extlib.the *) -> 
+		      let () =  
+			Mat_option.feedback "CFG error, loop are not prepared. Use of memoizers"
+		      in
+		      try 
+			Stmt.Hashtbl.find loop_break_tbl stmt 
+		      with 
+			Not_found -> 
+			  Mat_option.abort "Nested loop that does not end not supported"
+			
+		end
+	    | _ -> stmt in
+		
 	  let future_lists = 
 	    List.fold_left
 	      (fun acc succ -> (dfs succ) @ acc)
 	      []
-	      stmt.succs
+	      next_stmt.succs
 	  in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:3
 	    "List of paths : %i" (List.length future_lists) ;
-	  let (++) elt l = List.map (fun li -> elt :: li) l
+	  let (++) elt l = List.map (fun li -> elt :: li) l (* Adds an element to all the lists *)
 	  in
-	  match poly_opt with 
+	  	  
+	  match poly_list with 
 	    None -> 
 	      Mat_option.debug ~dkey:dkey_stmt ~level:3
-		"No polynom generated from this stmt"
-	      ;
+		"No polynom generated from stmt %a" Printer.pp_stmt stmt	      ;
 	      future_lists
 	  | Some (Affect (_,p) as aff) ->
 	    Mat_option.debug ~dkey:dkey_stmt 
@@ -385,10 +438,13 @@ let block_to_poly_lists varinfo_used block : Poly_affect.body list =
 	      F_poly.pp_print p;
 
 	    aff ++ future_lists
-	  | Some (Loop _) -> assert false
+	  
+	  | Some (Poly_affect.Loop _ as loop) -> loop ++ future_lists
+	    
 
 	with
-	  Loop_break -> []
+	  Loop_break b -> 
+	    let () = Stmt.Hashtbl.add loop_break_tbl head b in []
       end 
   in
     
@@ -399,44 +455,90 @@ let block_to_poly_lists varinfo_used block : Poly_affect.body list =
 
 (** 3. Matrix from poly *)
  
-let lacaml_loop_matrix 
-    (base:int F_poly.Monom.Map.t) 
-    (all_modifs :(F_poly.Monom.t * F_poly.t) list)  = 
+let rec matrices_for_a_loop base all_modifs = 
   
+  let matrices = lacaml_loop_matrix base all_modifs in
+
+  (** In order to consider all the behaviors of the loop, we need to 
+      consider as many matrices as they are monomials assigned in a body. 
+      An over approximation is to consider all the variables in 
+      the loop. *)
+  let number_of_iterations = F_poly.Monom.Map.cardinal base 
+  in
+  List.fold_left
+    (fun acc loop_mat -> 
+      let rec matrices_to_succ_powers acc mat i = 
+	match i with
+	  0 -> acc
+	| _ -> mat :: (matrices_to_succ_powers acc (Lacaml_D.gemm mat loop_mat) (i-1))
+      in
+      matrices_to_succ_powers acc loop_mat number_of_iterations
+    )
+    []
+    matrices
+
+and lacaml_loop_matrix 
+    (base : int F_poly.Monom.Map.t) 
+    (all_modifs : Poly_affect.lin_body)  = 
+  
+  (** Multiplies a matrix to each entries of a list. *)
+  let (++) (mat : Lacaml_D.mat) (mat_list:Lacaml_D.mat list) = 
+    List.map (Lacaml_D.gemm mat) mat_list 
+  
+  in 
   let mat_size = F_poly.Monom.Map.cardinal base in
-  try 
-    List.fold_left
-      (fun acc (v,poly_affect) -> 
-	let new_matrix = 
-	  (snd
-	     (F_poly.to_lacal_mat 
-		~base 
-		v 
-		poly_affect)
-	  ) in 
-	
-	Mat_option.debug ~dkey:dkey_loop_mat ~level:4
-	  "New matrix for %a = %a :"
-          F_poly.Monom.pretty v
-	  F_poly.pp_print poly_affect;
-	
-	Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
-	  Lacaml_D.pp_mat new_matrix
-	  Lacaml_D.pp_mat acc;
-	
-	Lacaml_D.gemm 
-	  new_matrix
-	  acc 
-      )
-      (Lacaml_D.Mat.identity mat_size)
-      all_modifs
-  with
-    Poly_affect.Incomplete_base -> 
-      Mat_option.abort "The matrix base is incomplete, you need to add more variables"
+    try 
+      List.fold_left
+	(fun (acc : Lacaml_D.mat list) affect -> 
+	  match affect with
+	    LinAffect (v,poly_affect) ->
+	      
+	      let new_matrix = 
+		(snd
+		   (F_poly.to_lacal_mat 
+		      ~base 
+		      v 
+		      poly_affect)
+		) in 
+	      
+	      Mat_option.debug ~dkey:dkey_loop_mat ~level:4
+		"New matrices for %a = %a :"
+		F_poly.Monom.pretty v
+		F_poly.pp_print poly_affect;
+	      
+	      List.iter
+		(fun acc_mat -> 
+		  Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
+		    Lacaml_D.pp_mat new_matrix
+		    Lacaml_D.pp_mat acc_mat) acc;
+	      
+	      new_matrix ++ acc 
+	  | LinLoop b_list -> 
+	    let matrices_for_each_path = 
+	      List.fold_left
+		(fun acc body -> (matrices_for_a_loop base body) @ acc)
+		[]
+		b_list
+		
+	    in 
+	    List.fold_left
+	      (fun acc2 new_mat -> (new_mat ++ acc) @ acc2
+	      )
+	      acc (* If [], then we don't consider the case where the loop is not taken. *)
+	      matrices_for_each_path
+	      
+										    
+	)
+	[(Lacaml_D.Mat.identity mat_size)]
+	all_modifs
+    with
+      Poly_affect.Incomplete_base -> 
+	Mat_option.abort "The matrix base is incomplete, you need to add more variables"
+  
 
 let loop_matrix = 
   lacaml_loop_matrix
 
 let loop_qmat v m = 
   let m = loop_matrix v m in
-  Pilat_matrix.lacaml_to_qmat m
+  List.map (Pilat_matrix.lacaml_to_qmat) m

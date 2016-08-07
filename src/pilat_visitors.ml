@@ -83,23 +83,13 @@ class fundec_updater prj =
 object(self)
   inherit (Visitor.frama_c_copy prj)
     
-  val prj_globals = 
-    List.fold_left
-      (fun acc glob -> 
-	match glob with
-	  GVarDecl (v,_) | GVar (v,_,_) -> (v :: acc)
-	| _ -> acc
-      )
-      []
-      ((Ast.get ()).globals)
-    
+   (* TODO : There is still a problem, after the stmt is added to the cfg the cfg is unusable
+     for other tools*) 
 
-  (* TODO : There is still a problem, after the stmt is added to the cfg the cfg is unusable
-     for other tools *) 
-
-  method! vfunc _ =
-    DoChildrenPost (fun f -> let () = File.must_recompute_cfg f in f)
-    
+  (*method! vfunc _ =
+    DoChildrenPost (fun f -> let () = Cfg.clearCFGinfo f in f) 
+ 
+  method! vfile _ = DoChildrenPost (fun f -> let () = Cfg.clearFileCFG f in f)*) 
       
   method! vstmt_aux s = 
     let kf = (Extlib.the self#current_kf) in
@@ -133,8 +123,8 @@ object(self)
 	    let stmt = Cil.mkStmtCfg ~ref_stmt:s ~before:false ~new_stmtkind in
 	    stmt.ghost <- true;
 	    let () = Mat_option.debug ~dkey:dkey_stmt 
-	      "Adding stmt %a to the cfg before %a" 
-	      Printer.pp_stmt stmt Printer.pp_stmt s
+	      "Adding stmt %a of id %i to the cfg before %a" 
+	      Printer.pp_stmt stmt stmt.sid Printer.pp_stmt s
 	      
 	    in stmt)
 	  new_stmtkinds
@@ -149,65 +139,41 @@ object(self)
 	  (Block
 	     {battrs = [];
 	      blocals = [];
-	      bstmts =  (s_list@[s])
+	      bstmts =  (s_list @[s])
 	     }
 	  )
       in
+      
       let rec fundec_stmt_zipper left right = 
 	match right with
-	  [] -> assert false
+	  [] -> raise Not_found
 	| hd :: tl -> 
+	  let () = 
+	    Mat_option.debug ~dkey:dkey_stmt ~level:5
+	      "Does %i = %i ? %b"
+	      hd.sid s.sid (hd.sid = s.sid) in
 	  if Cil_datatype.Stmt.equal hd s
 	  then fundec.sbody.bstmts <- ((List.rev left) @ (s_list@right))
 	  else fundec_stmt_zipper ((List.hd right)::left) tl
       in
-      
-      let () = fundec_stmt_zipper [] fundec.sbody.bstmts 
+      let () = 
+	Mat_option.debug ~dkey:dkey_stmt ~level:3
+	  "Search of %a.%i in" Cil_datatype.Stmt.pretty s s.sid;
+	List.iter 
+	  (fun s -> 
+	    Mat_option.debug ~dkey:dkey_stmt ~level:3
+	      "-- %a.%i\n" Cil_datatype.Stmt.pretty s s.sid)
+	  fundec.sbody.bstmts in
+      let () = 
+	try 
+	  fundec_stmt_zipper [] fundec.sbody.bstmts 
+	with Not_found -> 
+	  Mat_option.feedback 
+	    "Statement %a not in fundec. Problem in CFG ?" Cil_datatype.Stmt.pretty s
       in
       ChangeDoChildrenPost (new_block, fun i -> i)
   
     with Not_found (* Stmt.Hashtbl.find stmt_init_table s *) -> DoChildren
-    (*
-    List.iter 
-      (fun ref_stmt -> 
-	try 
-	  let new_stmtkinds = Stmt.Hashtbl.find stmt_init_table ref_stmt
-	  in
-	  List.iter
-	    (fun new_stmtkind -> 
-	      
-	      let new_stmt = Cil.mkStmtCfg ~before:false ~new_stmtkind ~ref_stmt 
-	      in(*
-	      let () = (** Stmt registration *)
-		Kernel_function.register_stmt 
-		(Extlib.the self#current_kf) 
-		new_stmt 
-		(Kernel_function.find_all_enclosing_blocks ref_stmt)
-	      in*)
-	      let () = 
-		Mat_option.debug ~dkey:dkey_fundec "Adding %a to the CFG before %a" 
-		  Printer.pp_stmt new_stmt
-		  Printer.pp_stmt ref_stmt
-	      in
-	      fundec.sallstmts <- new_stmt :: fundec.sallstmts;
-	      new_stmt.ghost <- true;
-	      let rec fundec_stmt_zipper left right = 
-		match right with
-		  [] -> assert false
-		| hd :: tl -> 
-		  if Stmt.equal hd ref_stmt
-		  then fundec.sbody.bstmts <- ((List.rev left) @ (new_stmt:: right))
-		  else fundec_stmt_zipper ((List.hd right)::left) tl
-	      in
-	      
-	      fundec_stmt_zipper [] fundec.sbody.bstmts 
-	    )
-	    new_stmtkinds
-	with 
-	  Not_found -> ()
-      )
-      fundec.sallstmts;
-    
-    ChangeDoChildrenPost (fundec,(fun i -> i))*)
+   
      
 end
