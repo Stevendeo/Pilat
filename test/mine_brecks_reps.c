@@ -1,5 +1,3 @@
-#include <time.h>
-
 int main(){
   float x,y;
   int N = 1000;
