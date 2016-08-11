@@ -1,6 +1,5 @@
-int main(){
-  int a=50000,b=1000;
-  int x,y,z=0;
+int prodbin(int a, int b){
+  int x,y,z;
 
   x = a;
   y = b;

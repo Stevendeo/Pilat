@@ -30,6 +30,7 @@ open Poly_affect
 let dkey_stmt = Mat_option.register_category "main:loop_analyser"
 let dkey_time = Mat_option.register_category "main:timer"
 let dkey_base = Mat_option.register_category "main:base"
+let dkey_annot = Mat_option.register_category "main:annot"
 
 let output_fun chan = Printf.fprintf chan "%s\n" 
   
@@ -205,11 +206,17 @@ object(self)
 	      lin_affects) in
 	  if Mat_option.Prove.get () 
 	  then
-	    let () = Mat_option.feedback "Proving invariants" in
+	    let () = Mat_option.feedback "Proving invariants of stmt %a" 
+	    Printer.pp_stmt stmt 
+	    in
 	    let open Property_status in
+	    
 	    List.iter
 	      (fun annot ->
 		let status = 
+		  Mat_option.debug ~dkey:dkey_annot
+		    "Annotation : %a"
+		    Printer.pp_code_annotation annot;
 		  List.fold_left 
 		    (fun acc mat -> 
 		      match acc with
@@ -329,15 +336,17 @@ let run () =
      !Mat_option.nullspace_timer
      !Mat_option.ev_timer
      !Mat_option.char_poly_timer;
-   
-  let cout = open_out filename in
-  let fmt = Format.formatter_of_out_channel cout in
-  Kernel.Unicode.without_unicode
-    (fun () ->
-      File.pretty_ast ~prj ~fmt ();
-      close_out cout;
-      Mat_option.feedback "C file generation      : done\n";
-    ) ()
+
+  if not(Mat_option.Prove.get ()) then 
+    let cout = open_out filename in
+    let fmt = Format.formatter_of_out_channel cout in
+    Kernel.Unicode.without_unicode
+      (fun () ->
+	File.pretty_ast ~prj ~fmt ();
+	close_out cout;
+	Mat_option.feedback "C file generation      : done\n";
+      ) ()
+      
 
 
 let () = Db.Main.extend run
