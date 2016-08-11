@@ -121,22 +121,25 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
 	  if z_use then 
 	    try
 	      assert (Z.equal Z.one (Q.den vec_array.(row)));
-	    let term_cst = 
-	      Logic_const.term 
-		(TConst 
-		   (Integer 
-		      (Integer.of_int 
-			 (Q.to_int cst),(Some (Q.to_string cst))))) Linteger 
-	    in
+	    
 	    let monom_term = 
-	      
-	      Logic_const.term
-		(TBinOp
-		   (Mult,
- 		    term_cst,
-		    monomial_to_mul_term monom)
-		) Linteger 
-		
+	      if Q.equal cst Q.one 
+	      then (monomial_to_mul_term monom)
+	      else 
+		let term_cst = 
+		  Logic_const.term 
+		    (TConst 
+		       (Integer 
+			  (Integer.of_int 
+			     (Q.to_int cst),(Some (Q.to_string cst))))) Linteger 
+		in
+		Logic_const.term
+		  (TBinOp
+		     (Mult,
+ 		      term_cst,
+		      monomial_to_mul_term monom)
+		  ) Linteger 
+		  
 	    in
 	    let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
 	      "Creates term : %a" Printer.pp_term monom_term in
@@ -154,27 +157,28 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
 		  
 	  else
 	    let cst = ((Z.to_float (Q.num cst)) /. (Z.to_float (Q.den cst))) in
-	    let lreal:Cil_types.logic_real = 
-	      {
-		r_literal = string_of_float cst;
-		r_nearest = cst;
-		r_upper = cst; 
-		r_lower = cst;		  
-	      }  in
-	    
-	    let term_cst = 
-	      Logic_const.term 
-		(TConst (LReal lreal)) Lreal in
-	    
-	    let monom_term = 
-	      
-	      Logic_const.term
-		(TBinOp
-		   (Mult,
- 		    term_cst,
-		    monomial_to_mul_term monom)
-		) Lreal
+	    	    
+	    let monom_term =
+	      if cst = 1. then monomial_to_mul_term monom
+	      else 
+		let lreal:Cil_types.logic_real = 
+		  {
+		    r_literal = string_of_float cst;
+		    r_nearest = cst;
+		    r_upper = cst; 
+		    r_lower = cst;		  
+		  }  in
 		
+		let term_cst = 
+		  Logic_const.term 
+		    (TConst (LReal lreal)) Lreal in
+		Logic_const.term
+		  (TBinOp
+		     (Mult,
+ 		      term_cst,
+		      monomial_to_mul_term monom)
+		  ) Lreal
+		  
 	    in
 	    if acc = zero then monom_term else
 	      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Lreal
