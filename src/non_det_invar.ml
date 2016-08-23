@@ -87,16 +87,21 @@ module Make (P_assign : Poly_assign.S) =
       ^ "\"" ^ obj_str ^ "\" " 
       ^ "\"" ^ invar_str ^ "\" "  ^ nd_cons
       in
-      let rec size_tab str_index tab_index = 
+      let regexp = Str.regexp "\\[.\\]" in
+      let rec max_tab_index str_index tab_index = 
 	try 
-	  let i = String.index_from suffix str_index '[' in 
-	  let tab_i = String.get suffix (i+1) |> int_of_char in
-	  size_tab (i+2) (max tab_i tab_index)
+	  let new_index = Str.search_forward regexp suffix str_index in
+	  let index_str = Str.matched_string suffix in
+	  let index_int = 
+	    String.sub 
+	      index_str 
+	      1 
+	      (String.length index_str - 2) |> int_of_string in 
+	  max_tab_index (new_index + 3) (max tab_index index_int)
+	  
 	with
 	  Not_found -> tab_index
       in
       
-	
-
-      prefix ^ " " ^ string_of_int ((size_tab 0 0) + 1) ^ " " ^ suffix
+      prefix ^ " " ^ string_of_int ((max_tab_index 0 0) + 1) ^ " " ^ suffix
   end
