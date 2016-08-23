@@ -191,7 +191,10 @@ struct
 	p1
 	zero
     
-    let div _ _ = assert false
+    let div p1 p2 = 
+      assert ((Monom.Map.cardinal p1 = 1) && (Monom.Map.cardinal p2 = 1));
+      let c1 = coef p1 empty_monom and c2 = coef p2 empty_monom in
+      let c1oc2 = R.div c1 c2 in const c1oc2
 
     let rec pow_ring (c:c) (n:int) : c = 
       match n with
