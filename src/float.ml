@@ -36,7 +36,11 @@ let gt = (>)
 let compare = Pervasives.compare
 let pp_print fmt i = 
   Format.fprintf fmt "%.3f" i 
-let to_str = string_of_float
+let to_str f = 
+
+  let sign = if f > 0. then "+" else "" in
+
+  sign ^ (string_of_float f)
 
 let t_to_float f = f
 let float_to_t f = f
