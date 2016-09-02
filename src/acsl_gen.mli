@@ -26,11 +26,11 @@ open Invariant_utils
 module Make: functor (A:Poly_assign.S) -> 
 sig
   
+  module Invar_utils : S with type mat = A.mat and type invar = A.M.vec inv
+
   val add_loop_annots_zarith : 
-    kernel_function 
-    -> stmt 
-    -> int A.P.Monom.Map.t 
-    -> q_invar list
-    -> unit
+    Cil_types.kernel_function ->
+    Cil_types.stmt ->
+    A.P.Monom.t A.Imap.t -> Invar_utils.invar list -> unit
 
 end

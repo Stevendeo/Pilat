@@ -125,6 +125,10 @@ let var_list () =
     Cil_datatype.Varinfo.Set.empty
     list
 
+(** File in which the optimization result is saved *)
+
+let k_file = "k.k"
+
 (** Timers *)
 
 let whole_rel_time = ref 0.

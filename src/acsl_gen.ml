@@ -23,10 +23,9 @@
 (* Logic_const.new_code_annotation *)
 open Cil_types
 open Invariant_utils
-open Poly_utils
-open Pilat_matrix
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
+let dkey_term2pred = Mat_option.register_category "acsl_gen:term_list_to_predicate"  
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
 let dkey_zero = Mat_option.register_category "acsl_gen:iszero"  
 
@@ -35,6 +34,8 @@ let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ())
 
 module Make(A:Poly_assign.S) =
 struct 
+
+  module Invar_utils = Invariant_utils.Make(A)
 
 let to_code_annot (preds:predicate named list) = 
   
@@ -98,30 +99,30 @@ let monomial_to_mul_term (m:A.P.Monom.t) =
 
 (** Zarith *)
 
-let vec_to_term_zarith (base:int A.P.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
+let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
 
   let z_use = Mat_option.Use_zarith.get () in
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
-    "Vector given : %a" Pilat_matrix.QMat.pp_vec vec in
-  let vec = 
+    "Vector given : %a" A.M.pp_vec vec in
+(*  let vec = 
     if z_use
     then Invariant_utils.integrate_vec vec 
     else vec 
-  in
+  in*)
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
-  let vec_array = Pilat_matrix.QMat.vec_to_array vec in 
-  A.P.Monom.Map.fold
-    (fun monom row acc -> 
+  let vec_array = A.M.vec_to_array vec in 
+  A.Imap.fold
+    (fun row monom acc -> 
       let cst = 
 	
 	vec_array.(row) 
       
       in
-      if Q.equal Q.zero cst then acc else
+      if A.P.R.equal A.P.R.zero cst then acc else
       
 	
-	  if z_use then 
+	  (*if z_use then 
 	    try
 	      assert (Z.equal Z.one (Q.den vec_array.(row)));
 	    let term_cst = 
@@ -155,8 +156,8 @@ let vec_to_term_zarith (base:int A.P.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) 
 		in
 		acc
 		  
-	  else
-	    let cst = ((Z.to_float (Q.num cst)) /. (Z.to_float (Q.den cst))) in
+	  else*)
+	    let cst = A.P.R.t_to_float cst in
 	    let lreal:Cil_types.logic_real = 
 	      {
 		r_literal = string_of_float cst;
@@ -182,11 +183,11 @@ let vec_to_term_zarith (base:int A.P.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) 
 	    if acc = zero then monom_term else
 	      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Lreal
     )
-    base
+    rev_base
     zero
 
 (** Searches if a term is never equals to zero with Value. Fails if so. *)
-let value_search_of_non_zero term_list stmt=
+let value_search_of_non_zero term_list stmt =
   List.find
     (fun t -> 
       let e = 
@@ -314,15 +315,20 @@ let add_k_stmt new_ghost_var sum_term stmt =
     if the limit is divergent, then each ei is a divergent invariant
     else, we use the general invariant *)
 
-let term_list_to_predicate term_list limit fundec stmt = 
+let (term_list_to_predicate : 
+    ?deter:bool -> ?rev_base:A.P.Monom.t A.Imap.t -> ?mat: A.M.t -> ?ev:float
+  -> (A.M.vec *  term) list -> limit -> fundec -> stmt -> predicate named list) = 
 
+  fun ?(deter=true) ?(rev_base) ?(mat) ?(ev) term_list limit fundec stmt ->  
+  assert (deter || 
+	    ((rev_base <> None) && (mat <> None) && (ev <> None)));
   match limit with
     Altern | Zero -> (** general invariant *)
       let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
       in
       let term = 
 	List.fold_left
-	  (fun acc term -> 
+	  (fun acc (_,term) -> 
 	    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
 	    in
 	    new_ghost_var.vghost <- true;     
@@ -356,109 +362,111 @@ let term_list_to_predicate term_list limit fundec stmt =
       in
       
       [Logic_const.unamed pred]
-  | _ -> 
-    let operator = 
-      match limit with
-      | Convergent _ -> Rle
-      | Divergent _ -> Rge
-      | One -> Req
-      | _ -> assert false
-    in
-    List.map
-      (fun term -> 
-	let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TFloat (FFloat,[]))
-	in
-	new_ghost_var.vghost <- true;     
-	let lvar = Cil.cvar_to_lvar new_ghost_var in
-        let term_gvar = 
-	  Logic_const.term
-	    (TLval ((TVar lvar),TNoOffset)) Lreal
-	in
-	let () = add_k_stmt new_ghost_var term stmt
-	in
-	
-	let pred = 
-	Prel
-	  (operator,
-	   term,
-	   term_gvar)
-	in Logic_const.unamed pred
-      ) term_list
-      	
-(* Sum (term_list) = k*t  *)
-let term_list_to_simple_predicate t term_list fundec stmt = 
-  
-  assert (not (term_is_zero t));
-  let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
-  in
-
-  let sum_term = 
-    List.fold_left
-      (fun acc term -> 
-	if Cil_datatype.Term.equal t term
-	then acc
-	else if acc = zero 
-	then term 
-	else 
-	    Logic_const.term
-	      (TBinOp (PlusA,acc,term)) Linteger 
-	      
-      )
-      zero
-      term_list
-  in
-
-  let kt = 
-    
-    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
-    in
-    new_ghost_var.vghost <- true;     
-    let lvar = Cil.cvar_to_lvar new_ghost_var in
-    let term_gvar = 
-      Logic_const.term
-	(TLval ((TVar lvar),TNoOffset)) Linteger 
-    in
-    let term =  
-      Logic_const.term
-	(TBinOp
-	   (Mult,
- 	    term_gvar,
-	    t) 
-	) Linteger
-    in
-    
-    let () = add_k_stmt new_ghost_var sum_term stmt
-    in
-    term
+  |  _ -> 
+    if 
+      not(deter) && (match limit with Convergent _ -> true | _ -> false)
+    then 
+      let module NDI = Non_det_invar.Make(A) in
+      List.map
+	(fun (invar,term) -> 
+	  let () = 
+	    Mat_option.feedback "Searching for a value of k. May take some time..." in
+	  let cmd_line =  
+	    NDI.do_the_job 
+	      (Extlib.the rev_base) 
+	      (Extlib.the mat)
+	      (Extlib.the ev)
+	      invar
+	  in
+	  
+	  let () = ignore (Sys.command (cmd_line ^ " > " ^ Mat_option.k_file)) in
+	  let in_channel = open_in "k.k" in
+	  
+	  let k = ref "" in 
+	  let () = 
+	    try 
+	      while true do 
+		k := input_line in_channel
+	      done
+	    with End_of_file -> close_in in_channel
+	  in
+	  let k_float = float_of_string !k in
+	  let k_real = 
+	    {
+	      r_literal = !k;
+	      r_nearest = k_float;
+	      r_upper = k_float;
+	      r_lower = k_float	      
+	    } in
+	  let pred = 
+	    Prel
+	      (Rle,
+	       term,
+	       Logic_const.term 
+		 (TConst (LReal k_real)) Lreal) 
+	  in Logic_const.unamed pred	    
+	) term_list
+    else
       
-  in
-  
-  let pred = 
-    Prel
-      (Req,
-       sum_term,
-       kt)
-  in
-  
-  Logic_const.unamed pred
-    
+      let operator = 
+	match limit with
+	| Convergent _ -> Rle
+	| Divergent _ -> Rge
+	| One -> Req
+	| _ -> assert false
+      in
+      List.map
+	(fun (_,term) -> 
+	  	    
+	  let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TFloat (FFloat,[]))
+	  in
+	  new_ghost_var.vghost <- true;     
+	  let lvar = Cil.cvar_to_lvar new_ghost_var in
+          let term_gvar = 
+	    Logic_const.term
+	      (TLval ((TVar lvar),TNoOffset)) Lreal
+	  in
+	  let () = add_k_stmt new_ghost_var term stmt
+	  in
+	  
+	  let pred = 
+	    Prel
+	      (operator,
+	       term,
+	       term_gvar)
+	  in Logic_const.unamed pred
+	) term_list
+     
 let vec_space_to_predicate_zarith
+    ?(deter=true) ?(rev_base) ?(mat) ?(ev)
+
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
-    (base:int A.P.Monom.Map.t) 
-    (invar : q_invar) 
+    (rev_base: A.P.Monom.t A.Imap.t) 
+    (invar : Invar_utils.invar) 
     : predicate named list =
 
   let limit,vec_list = invar in
   
   let term_list = 
     List.map
-      (vec_to_term_zarith base) vec_list in
-
+      (fun vec -> vec,vec_to_term_zarith rev_base vec) vec_list in
+  if deter 
+  then 
       term_list_to_predicate term_list limit fundec stmt
+  else 
+      term_list_to_predicate 
+	~deter 
+	~rev_base
+        ~mat
+	~ev 
+	term_list limit fundec stmt
 
 let add_loop_annots_zarith
-    (kf:kernel_function) (stmt:stmt) (base:int A.P.Monom.Map.t) (vec_lists : q_invar list) = 
+    (kf:kernel_function) 
+    (stmt:stmt) 
+    (rev_base:A.P.Monom.t A.Imap.t) 
+    (vec_lists : Invar_utils.invar list) = 
 
   let fundec = match kf.fundec with
       Definition(f,_) -> f
@@ -467,7 +475,7 @@ let add_loop_annots_zarith
   let annots =   
     List.fold_left 
       (fun acc invar -> 
-	(to_code_annot (vec_space_to_predicate_zarith fundec stmt base invar)) @ acc
+	(to_code_annot (vec_space_to_predicate_zarith fundec stmt rev_base invar)) @ acc
       )
       []
       vec_lists

@@ -38,10 +38,38 @@ type 'v inv = limit * 'v list
 
 type q_invar = Pilat_matrix.QMat.vec inv
 
+module type S = 
+sig 
+  
+(** An invariant is an eigenspace, represented by its base with
+    a vec list. 
+    When an eigenspace is associated to an eigenvalue strictly 
+    lower to one, the invariant is convergent 
+    (<e,X> < k => <e,MX> <k).
+    When it is higher to one, it is divergent
+    (<e,X> > k => <e,MX> > k).
+*)
+  type mat
+  type invar
+    
+  val lim_to_string : limit -> string
+    
+(** Returns the rational eigenspaces union of the floating matrix 
+    as a list of bases. If assignments are non deterministic, the boolean 
+    must be set to true *)
+  val invariant_computation : bool -> mat -> invar list
+    
+(** Intersects two union of vectorial spaces. *)
+  val intersection_invariants :  invar list -> invar list -> invar list
+
+  val zarith_invariant : invar -> q_invar
+end
+
 module Make (A : Poly_assign.S) =  
 struct 
   module Ring = A.P.R
       
+  type mat = A.mat
   type invar = A.M.vec inv
 
 (** 0. Limit utility *)

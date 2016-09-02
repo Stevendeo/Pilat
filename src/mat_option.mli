@@ -49,7 +49,12 @@ val emitter : Emitter.t
 val non_det_name : string
 
 (** List of variables studied *)
+
 val var_list : unit -> Cil_datatype.Varinfo.Set.t
+
+(** File in which the optimization result is saved *)
+
+val k_file : string
 
 (** Timers *)
 
