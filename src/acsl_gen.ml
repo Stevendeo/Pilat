@@ -25,8 +25,8 @@ open Cil_types
 open Invariant_utils
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
-(*let dkey_term2pred = Mat_option.register_category "acsl_gen:term_list_to_predicate"  
-*)
+let dkey_term2pred = Mat_option.register_category "acsl_gen:term_list_to_predicate"  
+
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
 let dkey_zero = Mat_option.register_category "acsl_gen:iszero"  
 
@@ -119,48 +119,11 @@ let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
     (fun row monom acc -> 
       let cst = 
 	
-	vec_array.(row) 
+	vec_array.(row) |> A.P.R.t_to_float
       
       in
-      if A.P.R.equal A.P.R.zero cst then acc else
+      if cst = 0. then acc else
       
-	
-	  (*if z_use then 
-	    try
-	      assert (Z.equal Z.one (Q.den vec_array.(row)));
-	    let term_cst = 
-	      Logic_const.term 
-		(TConst 
-		   (Integer 
-		      (Integer.of_int 
-			 (Q.to_int cst),(Some (Q.to_string cst))))) Linteger 
-	    in
-	    let monom_term = 
-	      
-	      Logic_const.term
-		(TBinOp
-		   (Mult,
- 		    term_cst,
-		    monomial_to_mul_term monom)
-		) Linteger 
-		
-	    in
-	    let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
-	      "Creates term : %a" Printer.pp_term monom_term in
-	    
-	    if acc = zero then monom_term else
-	      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
-    
-	    with
-	      Z.Overflow -> 
-		let () = Mat_option.feedback 
-		  "The constant %a was too big to be used for an invariant. Skip this term." 
-		  Q.pp_print cst
-		in
-		acc
-		  
-	  else*)
-	    let cst = A.P.R.t_to_float cst in
 	    let lreal:Cil_types.logic_real = 
 	      {
 		r_literal = string_of_float cst;
@@ -404,6 +367,9 @@ let term_list_to_predicate
 	      invar
 	  in
 	 
+	  let () = 
+	    Mat_option.debug ~level:2 ~dkey:dkey_term2pred "Command line = %s" cmd_line in
+
 	  let () = ignore (Sys.command (cmd_line ^ " > " ^ Mat_option.k_file)) in
 	  let in_channel = open_in "k.k" in
 	  
