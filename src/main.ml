@@ -199,8 +199,6 @@ object(self)
 	    let whole_loop_invar = 
 	    List.fold_left
 	      (fun acc (mat : Assign_type.mat) -> 
-		if acc = Some [] then Some [] 
-		else	  
 		  let () = 
 		    Mat_option.debug ~dkey:dkey_stmt ~level:3 
 		      "New mat : %a" Assign_type.M.pp_print mat
@@ -219,42 +217,67 @@ object(self)
 			  Assign_type.print_vec rev_base invar;
 			  Mat_option.debug ~dkey:dkey_stmt "__\n";
 			  
-			  if not assign_is_deter
+			  (*if not assign_is_deter
 			  then 
 			    let module NDI = Non_det_invar.Make(Assign_type) in
 			    match limit with 
 			      Invariant_utils.Convergent ev -> 
 				Mat_option.debug ~dkey:dkey_stmt "Command line for k :\n %s"
 				  (NDI.do_the_job rev_base mat ev invar)
-			    | _ -> ()
+			    | _ -> ()*)
 				  
 			)invars;	    
 		      
 
 
 		    ) invar;
-		   match acc with
-		     None -> Some invar
-		   | Some l ->  
-		     Some (Invariant_maker.intersection_invariants invar l) 		  
 		  
+		  (mat,invar) :: acc
+		  		  
 	      )
-	      None
+	      []
 	      matrices
 	    in
 	    
-	    let () = Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time 
-
-	    in
 	    let module Annot_generator = Acsl_gen.Make(Assign_type) in 
-		match whole_loop_invar with 
-		  None -> DoChildren 
-		| Some i ->  
-		  let z_invars = 
-		    List.map 
-		      Invariant_maker.zarith_invariant 
-		      i in
-		  Annot_generator.add_loop_annots_zarith kf stmt base z_invars; DoChildren
+
+	    let () = (** Intersecting the invariants if necessary *)
+	      if whole_loop_invar = [] then () 
+	      else if (assign_is_deter || List.length whole_loop_invar >= 2)
+	      then
+		let invar_inter = 
+		  List.fold_left
+		    (fun acc (_,invar) -> 
+		      if acc = Some [] then Some [] else
+	    		match acc with
+			  None -> Some invar
+			| Some l ->  
+			  Some (Invariant_maker.intersection_invariants invar l))
+		    
+		    None
+		    whole_loop_invar 
+		in
+		let () = 
+		  Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time 
+		in
+		Annot_generator.add_loop_annots
+		  assign_is_deter
+		  kf
+		  stmt
+		  rev_base
+		  (Extlib.the invar_inter)
+	      else 
+		(* Non deterministic case *)
+		let mat,invar = List.hd whole_loop_invar
+		in
+		Annot_generator.add_loop_annots
+		  assign_is_deter
+		  ~mat
+		  kf
+		  stmt
+		  rev_base
+		  invar
+	    in DoChildren
 		  
       end (* Loop *)
     | _ -> DoChildren 

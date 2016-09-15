@@ -34,6 +34,8 @@ module type S = sig
 			 and type Var.Set.t = Varinfo.Set.t
 
   module M : Matrix with type elt = P.c
+
+  module R : Ring with type t = P.c
   (** Takes a monomial and its affectation, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.

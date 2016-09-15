@@ -25,7 +25,8 @@ open Cil_types
 open Invariant_utils
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
-let dkey_term2pred = Mat_option.register_category "acsl_gen:term_list_to_predicate"  
+(*let dkey_term2pred = Mat_option.register_category "acsl_gen:term_list_to_predicate"  
+*)
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
 let dkey_zero = Mat_option.register_category "acsl_gen:iszero"  
 
@@ -101,10 +102,12 @@ let monomial_to_mul_term (m:A.P.Monom.t) =
 
 let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
 
-  let z_use = Mat_option.Use_zarith.get () in
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
     "Vector given : %a" A.M.pp_vec vec in
-(*  let vec = 
+  (*
+    
+  let z_use = Mat_option.Use_zarith.get () in
+    let vec = 
     if z_use
     then Invariant_utils.integrate_vec vec 
     else vec 
@@ -187,7 +190,7 @@ let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
     zero
 
 (** Searches if a term is never equals to zero with Value. Fails if so. *)
-let value_search_of_non_zero term_list stmt =
+(*let value_search_of_non_zero term_list stmt =
   List.find
     (fun t -> 
       let e = 
@@ -228,7 +231,6 @@ let non_zero_search_from_scratch term_list =
     )
     term_list
 
-    
 (** Returns (Some t) if t is never equal to zero, None else*)
 let test_never_zero (stmt : stmt) (term_list : term list) : term option =
   try Some (
@@ -241,6 +243,7 @@ let test_never_zero (stmt : stmt) (term_list : term list) : term option =
 	
   with
     Not_found -> None
+*)
 let get_inst_loc = function
   | Set (_, _, l)
   | Call (_, _, _, l)
@@ -315,15 +318,17 @@ let add_k_stmt new_ghost_var sum_term stmt =
     if the limit is divergent, then each ei is a divergent invariant
     else, we use the general invariant *)
 
-let (term_list_to_predicate : 
-    ?deter:bool -> ?rev_base:A.P.Monom.t A.Imap.t -> ?mat: A.M.t -> ?ev:float
-  -> (A.M.vec *  term) list -> limit -> fundec -> stmt -> predicate named list) = 
+let term_list_to_predicate 
+    (deter : bool) 
+    ?(mat : A.M.t option)
+    (term_list : (A.M.vec *  term) list)
+    (limit : limit) 
+    (rev_base : A.P.Monom.t A.Imap.t)
+    (fundec  : fundec)
+    (stmt : stmt)  =
 
-  fun ?(deter=true) ?(rev_base) ?(mat) ?(ev) term_list limit fundec stmt ->  
-  assert (deter || 
-	    ((rev_base <> None) && (mat <> None) && (ev <> None)));
-  match limit with
-    Altern | Zero -> (** general invariant *)
+  match limit,deter with
+    Altern,_ | Zero,_ -> (** general invariant *)
       let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
       in
       let term = 
@@ -362,10 +367,30 @@ let (term_list_to_predicate :
       in
       
       [Logic_const.unamed pred]
-  |  _ -> 
-    if 
-      not(deter) && (match limit with Convergent _ -> true | _ -> false)
-    then 
+
+  | Convergent ev, false -> 
+    
+    let make_pred k term = 
+      let pred = 
+	Prel
+	  (Rle,
+	   term,
+	   Logic_const.term k Lreal) 
+      in Logic_const.unamed pred
+    in
+    begin (* Matching mat *)
+      match mat with 
+	None -> (* This is the intersection of two invariants for non deterministic, existential*) 
+	  List.map
+	    (fun (_,term) -> 
+	      let k = (Cil.make_temp_logic_var Lreal) in
+	      let pred = make_pred (TLval (TVar k, TNoOffset)) term in 
+	      (Logic_const.unamed  
+		 (Pexists
+		    ([k],pred)))
+	    )term_list
+	    
+    | Some m -> 
       let module NDI = Non_det_invar.Make(A) in
       List.map
 	(fun (invar,term) -> 
@@ -373,12 +398,12 @@ let (term_list_to_predicate :
 	    Mat_option.feedback "Searching for a value of k. May take some time..." in
 	  let cmd_line =  
 	    NDI.do_the_job 
-	      (Extlib.the rev_base) 
-	      (Extlib.the mat)
-	      (Extlib.the ev)
+	      rev_base
+	      m
+	      ev
 	      invar
 	  in
-	  
+	 
 	  let () = ignore (Sys.command (cmd_line ^ " > " ^ Mat_option.k_file)) in
 	  let in_channel = open_in "k.k" in
 	  
@@ -398,15 +423,11 @@ let (term_list_to_predicate :
 	      r_upper = k_float;
 	      r_lower = k_float	      
 	    } in
-	  let pred = 
-	    Prel
-	      (Rle,
-	       term,
-	       Logic_const.term 
-		 (TConst (LReal k_real)) Lreal) 
-	  in Logic_const.unamed pred	    
+	  make_pred (TConst (LReal k_real)) term
+	    
 	) term_list
-    else
+    end (* Matching mat *)
+  | _,_ -> 
       
       let operator = 
 	match limit with
@@ -438,8 +459,8 @@ let (term_list_to_predicate :
 	) term_list
      
 let vec_space_to_predicate_zarith
-    ?(deter=true) ?(rev_base) ?(mat) ?(ev)
-
+    (deter : bool) 
+    (mat : A.M.t option) 
     (fundec: Cil_types.fundec)
     (stmt: Cil_types.stmt)
     (rev_base: A.P.Monom.t A.Imap.t) 
@@ -453,16 +474,26 @@ let vec_space_to_predicate_zarith
       (fun vec -> vec,vec_to_term_zarith rev_base vec) vec_list in
   if deter 
   then 
-      term_list_to_predicate term_list limit fundec stmt
+      term_list_to_predicate 
+	true
+	term_list 
+	limit 
+	rev_base
+	fundec 
+	stmt
   else 
       term_list_to_predicate 
-	~deter 
-	~rev_base
-        ~mat
-	~ev 
-	term_list limit fundec stmt
+        false
+        ~mat:(Extlib.the mat)
+	term_list 
+	limit 
+	rev_base
+	fundec 
+	stmt
 
-let add_loop_annots_zarith
+let add_loop_annots  
+    (deter : bool) 
+    ?(mat : A.M.t option) 
     (kf:kernel_function) 
     (stmt:stmt) 
     (rev_base:A.P.Monom.t A.Imap.t) 
@@ -472,10 +503,27 @@ let add_loop_annots_zarith
       Definition(f,_) -> f
     | Declaration _ -> assert false
   in
+  let vec_lists = (* if we use zarith, we try to simplify the invariants by "integrating" them. *)
+  if (Mat_option.Use_zarith.get ())
+  then 
+      List.map
+        Invar_utils.integrate_invar
+	vec_lists
+    
+    
+  else vec_lists in
+    
   let annots =   
     List.fold_left 
       (fun acc invar -> 
-	(to_code_annot (vec_space_to_predicate_zarith fundec stmt rev_base invar)) @ acc
+	(to_code_annot (
+	  vec_space_to_predicate_zarith 
+	    deter 
+	    mat
+	    fundec 
+	    stmt
+	    rev_base
+	    invar)) @ acc
       )
       []
       vec_lists

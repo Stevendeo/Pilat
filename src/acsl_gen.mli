@@ -28,9 +28,13 @@ sig
   
   module Invar_utils : S with type mat = A.mat and type invar = A.M.vec inv
 
-  val add_loop_annots_zarith : 
+  val add_loop_annots :  
+    bool ->
+    ?mat:A.M.t ->
     Cil_types.kernel_function ->
     Cil_types.stmt ->
-    A.P.Monom.t A.Imap.t -> Invar_utils.invar list -> unit
-
+    A.P.Monom.t A.Imap.t -> 
+    Invar_utils.invar list -> unit
+    
+    
 end

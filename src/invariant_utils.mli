@@ -58,6 +58,9 @@ sig
   val intersection_invariants :  invar list -> invar list -> invar list
 
   val zarith_invariant : invar -> q_invar
+  val to_invar : q_invar -> invar 
+
+  val integrate_invar : invar -> invar
 end
 
 module Make : functor 
@@ -68,4 +71,3 @@ module Make : functor
   (** After the integration, there is no fraction left on the vector expression. *)
   val integrate_vec : q_vec -> q_vec
     *)
-val integrate_vec : QMat.vec -> QMat.vec

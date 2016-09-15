@@ -1,5 +1,5 @@
-int main(){
-  int n;
+int sqrt(int n){
+  
   
    int a,su,t;
 
@@ -16,4 +16,8 @@ int main(){
     
     return a;
     
+}
+
+int main(){
+  return sqrt(16);
 }

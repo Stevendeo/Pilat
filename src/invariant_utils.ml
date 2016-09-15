@@ -63,6 +63,8 @@ sig
   val intersection_invariants :  invar list -> invar list -> invar list
 
   val zarith_invariant : invar -> q_invar
+  val to_invar : q_invar -> invar
+  val integrate_invar : invar -> invar
 end
 
 module Make (A : Poly_assign.S) =  
@@ -293,10 +295,22 @@ let vec_zarith (vec:A.M.vec) : QMat.vec =
      arr)
   |> QMat.vec_from_array
 
+let to_vec (vec:QMat.vec) : A.M.vec = 
+  let arr = QMat.vec_to_array vec in 
+  (Array.map 
+      (fun elt -> 
+	elt 
+	  |> Qring.t_to_float 
+	  |> A.R.float_to_t) 
+    arr)
+  |> A.M.vec_from_array
+
 let zarith_invariant ((lim,inv):invar) = 
   lim, (List.map vec_zarith inv)
 
-end 
+let to_invar ((lim,inv):q_invar) = 
+  lim, (List.map to_vec inv)
+
 
 let integrate_vec (qvec : QMat.vec) : QMat.vec = 
   
@@ -308,3 +322,11 @@ let integrate_vec (qvec : QMat.vec) : QMat.vec =
       let den = Q.den elt in 
       let () = prod_den := (Q.mul !prod_den (Q.of_bigint den)) in
       Q.mul elt !prod_den)  
+
+let integrate_invar  ((lim,inv):invar) = 
+  lim, 
+  (List.map 
+     (fun vec -> vec |> vec_zarith |> integrate_vec |> to_vec)) inv
+  
+
+end 

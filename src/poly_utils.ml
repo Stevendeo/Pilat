@@ -21,7 +21,6 @@
 (**************************************************************************)
 
 open Pilat_math
-open Cil_datatype
 
 (** 1. Variables used for polynomials *)
 
