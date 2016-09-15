@@ -22,6 +22,7 @@
 
 open Pilat_math
 open Cil_datatype
+open Pilat_math
 
 (** 1. Variables used for polynomials *)
 
@@ -33,6 +34,15 @@ module N_var : Variable with type t = n_var
 
 (** Polynomials for deterministic assignments *)
 
+end
+
+
+(** Multivariables float polynomials  *)
+module F_poly : 
+  Extended_Poly with type c = Ring.t and type v = var
+
+(** Polynomial affectation *)
+type t = 
   
 (** Polynomial with rational coefficients *)
 module QPoly : Polynomial with type c = Q.t 
@@ -54,7 +64,4 @@ module NF_poly : Polynomial with type c = N_poly.t
 			    and type Var.Set.t = Varinfo.Set.t
 
 
-module NQF_poly : Polynomial with type c = NQ_poly.t
-			    and type v = Varinfo.t 
-			    and type Var.Set.t = Varinfo.Set.t
 

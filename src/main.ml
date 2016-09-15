@@ -22,11 +22,15 @@
 
 open Cil_types
 open Cil
+open Pilat_matrix
+open Poly_affect
 
 (*open Logic_const
 *)
 let dkey_stmt = Mat_option.register_category "main:loop_analyser"
 let dkey_time = Mat_option.register_category "main:timer"
+let dkey_base = Mat_option.register_category "main:base"
+let dkey_annot = Mat_option.register_category "main:annot"
 
 let output_fun chan = Printf.fprintf chan "%s\n" 
   
@@ -54,7 +58,6 @@ object(self)
   method! vstmt_aux stmt =
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
-      
     | Cil_types.Loop (_,b,_,_,_) -> 
       
       let t0 = Sys.time() in
@@ -102,6 +105,7 @@ object(self)
 	| Some poly_lists -> 
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 	  
+	  let varinfos_used = Pilat_visitors.varinfo_registerer b in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 	  
 	  Cil_datatype.Varinfo.Set.iter
@@ -163,11 +167,14 @@ object(self)
 	    List.iter
 	      (fun annot ->
 		let status = 
+		  Mat_option.debug ~dkey:dkey_annot
+		    "Annotation : %a"
+		    Printer.pp_code_annotation annot;
 		  List.fold_left 
 		    (fun acc mat -> 
 		      match acc with
 			False_and_reachable | False_if_reachable -> acc
-		      | Dont_know | True -> 
+		    | Dont_know | True -> 
 		      begin
 			match Prover.prove_annot mat base annot with
 			  True -> acc
@@ -231,6 +238,10 @@ object(self)
 
 
 		    ) invar;
+		   match acc with
+		     None -> Some invar
+		   | Some l ->  
+		     Some (Invariant_utils.intersection_invariants invar l) 		  
 		  
 		  (mat,invar) :: acc
 		  		  
@@ -325,15 +336,17 @@ let run () =
      !Mat_option.nullspace_timer
      !Mat_option.ev_timer
      !Mat_option.char_poly_timer;
-   
-  let cout = open_out filename in
-  let fmt = Format.formatter_of_out_channel cout in
-  Kernel.Unicode.without_unicode
-    (fun () ->
-      File.pretty_ast ~prj ~fmt ();
-      close_out cout;
-      Mat_option.feedback "C file generation      : done\n";
-    ) ()
+
+  if not(Mat_option.Prove.get ()) then 
+    let cout = open_out filename in
+    let fmt = Format.formatter_of_out_channel cout in
+    Kernel.Unicode.without_unicode
+      (fun () ->
+	File.pretty_ast ~prj ~fmt ();
+	close_out cout;
+	Mat_option.feedback "C file generation      : done\n";
+      ) ()
+      
 
 
 let () = Db.Main.extend run

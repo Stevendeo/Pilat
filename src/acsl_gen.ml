@@ -99,9 +99,17 @@ let monomial_to_mul_term (m:A.P.Monom.t) =
 
 
 (** Zarith *)
+exception Bad_invariant 
 
-let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
+let possible_monomial monom = 
+  let vars = Poly_affect.F_poly.to_var_set monom in 
+  List.for_all
+    (fun var -> not(var.vtemp))
+    vars
 
+let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
+
+ 
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
     "Vector given : %a" A.M.pp_vec vec in
   (*
@@ -193,7 +201,7 @@ let non_zero_search_from_scratch term_list =
 	Var_found -> false
     )
     term_list
-
+    
 (** Returns (Some t) if t is never equal to zero, None else*)
 let test_never_zero (stmt : stmt) (term_list : term list) : term option =
   try Some (
