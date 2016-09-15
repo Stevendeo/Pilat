@@ -92,6 +92,13 @@ let monomial_to_mul_term m =
 
 
 (** Zarith *)
+exception Bad_invariant 
+
+let possible_monomial monom = 
+  let vars = Poly_affect.F_poly.to_var_set monom in 
+  List.for_all
+    (fun var -> not(var.vtemp))
+    vars
 
 let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
 
@@ -116,76 +123,75 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
       
       in
       if Q.equal Q.zero cst then acc else
-      
-	
-	  if z_use then 
-	    try
-	      assert (Z.equal Z.one (Q.den vec_array.(row)));
-	    
-	    let monom_term = 
-	      if Q.equal cst Q.one 
-	      then (monomial_to_mul_term monom)
-	      else 
-		let term_cst = 
-		  Logic_const.term 
-		    (TConst 
-		       (Integer 
-			  (Integer.of_int 
-			     (Q.to_int cst),(Some (Q.to_string cst))))) Linteger 
-		in
-		Logic_const.term
-		  (TBinOp
-		     (Mult,
- 		      term_cst,
-		      monomial_to_mul_term monom)
-		  ) Linteger 
-		  
-	    in
-	    let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
-	      "Creates term : %a" Printer.pp_term monom_term in
-	    
-	    if acc = zero then monom_term else
-	      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
-    
-	    with
-	      Z.Overflow -> 
-		let () = Mat_option.feedback 
-		  "The constant %a was too big to be used for an invariant. Skip this term." 
-		  Q.pp_print cst
-		in
-		acc
-		  
-	  else
-	    let cst = ((Z.to_float (Q.num cst)) /. (Z.to_float (Q.den cst))) in
-	    	    
-	    let monom_term =
-	      if cst = 1. then monomial_to_mul_term monom
-	      else 
-		let lreal:Cil_types.logic_real = 
-		  {
-		    r_literal = string_of_float cst;
-		    r_nearest = cst;
-		    r_upper = cst; 
-		    r_lower = cst;		  
-		  }  in
+      if not (possible_monomial monom) then raise Bad_invariant
+      else if z_use then 
+	try
+	  assert (Z.equal Z.one (Q.den vec_array.(row)));
+	  
+	  let monom_term = 
+	    if Q.equal cst Q.one 
+	    then (monomial_to_mul_term monom)
+	    else 
+	      let term_cst = 
+		Logic_const.term 
+		  (TConst 
+		     (Integer 
+			(Integer.of_int 
+			   (Q.to_int cst),(Some (Q.to_string cst))))) Linteger 
+	      in
+	      Logic_const.term
+		(TBinOp
+		   (Mult,
+ 		    term_cst,
+		    monomial_to_mul_term monom)
+		) Linteger 
 		
-		let term_cst = 
-		  Logic_const.term 
-		    (TConst (LReal lreal)) Lreal in
-		Logic_const.term
-		  (TBinOp
-		     (Mult,
- 		      term_cst,
-		      monomial_to_mul_term monom)
-		  ) Lreal
-		  
+	  in
+	  let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
+	    "Creates term : %a" Printer.pp_term monom_term in
+	  
+	  if acc = zero then monom_term else
+	    Logic_const.term (TBinOp (PlusA,acc,monom_term)) Linteger 
+	      
+	with
+	  Z.Overflow -> 
+	    let () = Mat_option.feedback 
+	      "The constant %a was too big to be used for an invariant. Skip this term." 
+	      Q.pp_print cst
 	    in
-	    if acc = zero then monom_term else
-	      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Lreal
+	    acc
+	      
+      else
+	let cst = ((Z.to_float (Q.num cst)) /. (Z.to_float (Q.den cst))) in
+	
+	let monom_term =
+	  if cst = 1. then monomial_to_mul_term monom
+	  else 
+	    let lreal:Cil_types.logic_real = 
+	      {
+		r_literal = string_of_float cst;
+		r_nearest = cst;
+		r_upper = cst; 
+		r_lower = cst;		  
+	      }  in
+	    
+	    let term_cst = 
+	      Logic_const.term 
+		(TConst (LReal lreal)) Lreal in
+	    Logic_const.term
+	      (TBinOp
+		 (Mult,
+ 		  term_cst,
+		  monomial_to_mul_term monom)
+	      ) Lreal
+	      
+	in
+	if acc = zero then monom_term else
+	  Logic_const.term (TBinOp (PlusA,acc,monom_term)) Lreal
     )
     base
     zero
-
+    
 (** Searches if a term is never equals to zero with Value. Fails if so. *)
 let value_search_of_non_zero term_list stmt=
   List.find
@@ -453,8 +459,8 @@ let vec_space_to_predicate_zarith
   let limit,vec_list = invar in
   
   let term_list = 
-    List.map
-      (vec_to_term_zarith base) vec_list in
+    List.fold_left
+      (fun acc vec -> try vec_to_term_zarith base vec :: acc with Bad_invariant -> acc) [] vec_list in
 
   (* If a term is always different to 0, then a stronger result is possible *)
 (*
