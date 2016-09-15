@@ -415,6 +415,8 @@ let term_list_to_predicate
 	      done
 	    with End_of_file -> close_in in_channel
 	  in
+	  let () = 
+	    Mat_option.feedback "k = %s" !k in
 	  let k_float = float_of_string !k in
 	  let k_real = 
 	    {
