@@ -102,12 +102,12 @@ let monomial_to_mul_term (m:A.P.Monom.t) =
 exception Bad_invariant 
 
 let possible_monomial monom = 
-  let vars = Poly_affect.F_poly.to_var_set monom in 
+  let vars = A.P.to_var_set monom in 
   List.for_all
     (fun var -> not(var.vtemp))
     vars
 
-let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_matrix.QMat.vec) =
+let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
 
  
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
@@ -130,7 +130,9 @@ let vec_to_term_zarith (base:int Poly_affect.F_poly.Monom.Map.t) (vec : Pilat_ma
 	vec_array.(row) |> A.P.R.t_to_float
       
       in
-      if cst = 0. then acc else
+      if cst = 0. then acc 
+      else if not(possible_monomial monom) then raise Bad_invariant
+      else 
       
 	    let lreal:Cil_types.logic_real = 
 	      {
@@ -446,8 +448,10 @@ let vec_space_to_predicate_zarith
   let limit,vec_list = invar in
   
   let term_list = 
-    List.map
-      (fun vec -> vec,vec_to_term_zarith rev_base vec) vec_list in
+    List.fold_left
+      (fun acc vec -> try (vec,vec_to_term_zarith rev_base vec) :: acc with Bad_invariant -> acc) 
+      [] 
+      vec_list in
   if deter 
   then 
       term_list_to_predicate 

@@ -22,8 +22,6 @@
 
 open Cil_types
 open Cil
-open Pilat_matrix
-open Poly_affect
 
 (*open Logic_const
 *)
@@ -105,7 +103,7 @@ object(self)
 	| Some poly_lists -> 
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 	  
-	  let varinfos_used = Pilat_visitors.varinfo_registerer b in
+	  let varinfos_used,nd_var = Pilat_visitors.varinfo_registerer b in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 	  
 	  Cil_datatype.Varinfo.Set.iter
@@ -115,6 +113,7 @@ object(self)
 		~level:3
 		"%a" 
 		Printer.pp_varinfo v) varinfos_used ;
+
 	  Cil_datatype.Varinfo.Map.iter
 	    (fun v (f1,f2) -> 
 	      Mat_option.debug 
@@ -238,10 +237,7 @@ object(self)
 
 
 		    ) invar;
-		   match acc with
-		     None -> Some invar
-		   | Some l ->  
-		     Some (Invariant_utils.intersection_invariants invar l) 		  
+		   	  
 		  
 		  (mat,invar) :: acc
 		  		  
