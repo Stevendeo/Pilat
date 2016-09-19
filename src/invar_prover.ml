@@ -130,10 +130,10 @@ let predicate_to_vector (base:int F_poly.Monom.Map.t) (pred:predicate) =
 	res.{pos}<-F_poly.coef poly m
       with Not_found -> 
 	let () = Mat_option.feedback 
-	  "Monomial %a not in the base in argument."
+	  "Monomial %a not in the base in argument. Considered constant"
 	  F_poly.pp_print (F_poly.mono_poly 1. m)
 	in
-	raise Bad_invariant
+	(*raise Bad_invariant*) ()
     ) p_monoms; res
 
 (* This exception is raised to stop the iteration of the next function when we can conclude

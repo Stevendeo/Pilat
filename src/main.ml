@@ -300,8 +300,8 @@ let run () =
     Mat_option.feedback
       "Welcome to Frama-C's Pilat invariant generator"
   in 
-  let file = Ast.get () in
-  let () = Cfg.clearFileCFG file ; Cfg.computeFileCFG file 
+  let file = Ast.get () (*in
+  let () = Cfg.clearFileCFG file ; Cfg.computeFileCFG file *)
 
   in
   let filename = 
