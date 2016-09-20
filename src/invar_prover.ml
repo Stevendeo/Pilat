@@ -141,7 +141,6 @@ let predicate_to_vector (base:int F_poly.Monom.Map.t) (pred:predicate) =
 	else  
 	  Mat_option.feedback 
 	    "Considered constant."
-	(*raise Bad_invariant*)
     ) p_monoms; res
 
 (* This exception is raised to stop the iteration of the next function when we can conclude
