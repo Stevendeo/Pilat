@@ -305,19 +305,22 @@ let rec exp_to_poly exp =
       | _ -> assert false
     end
   | CastE (_,e) -> exp_to_poly e
-  | _ -> assert false
+  | _ -> Mat_option.abort "Expression %a not supported" Printer.pp_exp exp
 
 let instr_to_poly_assign varinfo_used : Cil_types.instr -> Poly_affect.t option = 
   function
-  | Set (l,e,_) -> begin
+  | Set (l,e,_) as i -> begin
     match fst l with 
       Var v -> 
 	if Cil_datatype.Varinfo.Set.mem v varinfo_used 
 	then Some (Affect (v,(exp_to_poly e)))
 	else None 
-    | _ -> assert false end
+    | _ ->  Mat_option.abort 
+      "Assignment %a not supported" Printer.pp_instr i end
   | Skip _ -> None
-  | _ -> assert false
+  | i -> 
+    Mat_option.abort 
+      "Instruction %a not supported" Printer.pp_instr i
 
 let register_poly : Cil_types.stmt -> Poly_affect.t option -> unit = 
   Stmt.Hashtbl.replace poly_hashtbl   
