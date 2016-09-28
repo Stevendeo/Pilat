@@ -96,7 +96,7 @@ object(self)
     let fundec = match kf.fundec with
 	  Definition (f,_) -> f
 	| Declaration _ -> assert false in
-
+(*
     let () = (* Adding annotations *)
       try 
 	let annots = Cil_datatype.Stmt.Hashtbl.find loop_annot_table s in
@@ -110,29 +110,32 @@ object(self)
 	)annots
      
       with Not_found (* Stmt.Hashtbl.find loop_annot_table s *) -> ()
-    in
+    in*)
     try 
       let new_stmtkinds = Cil_datatype.Stmt.Hashtbl.find stmt_init_table s 
       in
       
       let () = Cil_datatype.Stmt.Hashtbl.remove stmt_init_table s in
       
-      let s_list = 
-	List.map
-	  (fun new_stmtkind -> 	  
-	    let stmt = Cil.mkStmtCfg ~ref_stmt:s ~before:false ~new_stmtkind in
+      let s_list,_ = 
+	List.fold_left
+	  (fun (acc_stmts, next_stmt) new_stmtkind -> 
+	    
+	    let stmt = Cil.mkStmt(*Cfg ~ref_stmt:next_stmt ~before:true ~*)new_stmtkind in
 	    stmt.ghost <- true;
 	    let () = Mat_option.debug ~dkey:dkey_stmt 
 	      "Adding stmt %a of id %i to the cfg before %a" 
-	      Printer.pp_stmt stmt stmt.sid Printer.pp_stmt s
+	      Printer.pp_stmt stmt stmt.sid Printer.pp_stmt next_stmt
 	      
-	    in stmt)
+	    in (stmt::acc_stmts,stmt))
+	  ([],s)
 	  new_stmtkinds
       in
-
+(*
       let () = 
-	fundec.sallstmts <- s_list@fundec.sallstmts;
+	fundec.sallstmts <- s_list;
       in 
+*)
       
       let new_block = 
 	Cil.mkStmt ~ghost:false ~valid_sid:true
@@ -143,7 +146,7 @@ object(self)
 	     }
 	  )
       in
-      
+      fundec.sallstmts <- new_block :: s_list@fundec.sallstmts;
       let rec fundec_stmt_zipper left right = 
 	match right with
 	  [] -> raise Not_found
