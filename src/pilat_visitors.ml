@@ -79,36 +79,6 @@ let register_annot_list table loop_stmt annots =
 
 let register_annot = register_annot_list loop_annot_table
 
-(** oppose_var_if_neg v generates the instruction if (v<0) v = -v;  *)
-
-let oppose_var_if_neg varinfo =
-  let lval_var = (Var varinfo, NoOffset) in 
-  let exp_zero = Cil_types.Const (CInt64 (Integer.zero,IInt,Some "0")) in
-  let var_exp = Lval lval_var in 
-  let cond_exp = 
-    Cil.mkBinOp 
-      ~loc:varinfo.vdecl 
-      Cil_types.Lt
-      (Cil.new_exp ~loc:varinfo.vdecl var_exp)
-      (Cil.new_exp ~loc:varinfo.vdecl exp_zero) 
-  
-  and minus_var_instr = 
-      Set (
-	lval_var, 
-	(Cil.mkBinOp 
-	   ~loc:varinfo.vdecl 
-	   Cil_types.MinusA
-	   (Cil.new_exp ~loc:varinfo.vdecl exp_zero)
-	   (Cil.new_exp ~loc:varinfo.vdecl var_exp)), varinfo.vdecl)
-  in
-  let skind = 
-    If (cond_exp, 
-	Cil.mkBlock [Cil.mkStmtOneInstr ~ghost:true ~valid_sid:true minus_var_instr], 
-	Cil.mkBlock [], 
-	varinfo.vdecl)
-  in
-  mkStmt ~ghost:true ~valid_sid:true skind
-	
 
 class fundec_updater prj = 
 object(self)
@@ -127,7 +97,7 @@ object(self)
     let fundec = match kf.fundec with
 	  Definition (f,_) -> f
 	| Declaration _ -> assert false in
-(*
+
     let () = (* Adding annotations *)
       try 
 	let annots = Cil_datatype.Stmt.Hashtbl.find loop_annot_table s in
@@ -141,7 +111,7 @@ object(self)
 	)annots
      
       with Not_found (* Stmt.Hashtbl.find loop_annot_table s *) -> ()
-    in*)
+    in
     try 
       let new_stmtkinds = Cil_datatype.Stmt.Hashtbl.find stmt_init_table s 
       in
@@ -152,7 +122,7 @@ object(self)
 	List.fold_left
 	  (fun (acc_stmts, next_stmt) new_stmtkind -> 
 	    
-	    let stmt = Cil.mkStmt(*Cfg ~ref_stmt:next_stmt ~before:true ~*)new_stmtkind in
+	    let stmt = Cil.mkStmtCfg ~ref_stmt:next_stmt ~before:true ~new_stmtkind in
 	    stmt.ghost <- true;
 	    let () = Mat_option.debug ~dkey:dkey_stmt 
 	      "Adding stmt %a of id %i to the cfg before %a" 

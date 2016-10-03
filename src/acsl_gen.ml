@@ -317,7 +317,7 @@ let oppose_var_if_neg lval_var exp loc =
   in
     If (cond_exp, 
 	Cil.mkBlock [Cil.mkStmtOneInstr ~ghost:true ~valid_sid:true minus_var_instr], 
-	Cil.mkBlock [], 
+	Cil.mkBlock [Cil.mkStmtOneInstr ~ghost:true ~valid_sid:true (Set (lval_var, exp, loc))], 
 	loc)
 
 let k_first_value inv_type lval term loc = 
