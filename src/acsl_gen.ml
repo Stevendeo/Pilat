@@ -294,7 +294,33 @@ let rec get_stmt_loc s = match s.skind with
     k can be computed from the initial values of the variables. Returns 
     the assignment to add just before the loop starts. *)
 
-let k_first_value lval term loc = 
+(** oppose_var_if_neg lval generates the instruction if (v<0) v = -v;  *)
+
+let oppose_var_if_neg lval_var exp loc =
+
+  let exp_zero = Cil_types.Const (CInt64 (Integer.zero,IInt,Some "0")) in
+  let cond_exp = 
+    Cil.mkBinOp 
+      ~loc
+      Cil_types.Lt
+      (Cil.copy_exp exp)
+      (Cil.new_exp ~loc exp_zero) 
+  
+  and minus_var_instr = 
+      Set (
+	lval_var, 
+	(Cil.mkBinOp 
+	   ~loc
+	   Cil_types.MinusA
+	   (Cil.new_exp ~loc exp_zero)
+	   (Cil.copy_exp exp)), loc)
+  in
+    If (cond_exp, 
+	Cil.mkBlock [Cil.mkStmtOneInstr ~ghost:true ~valid_sid:true minus_var_instr], 
+	Cil.mkBlock [], 
+	loc)
+
+let k_first_value inv_type lval term loc = 
   let exp = !Db.Properties.Interp.term_to_exp ~result:None term in 
   Mat_option.debug 
     ~dkey:dkey_term ~level:2 
@@ -303,11 +329,18 @@ let k_first_value lval term loc =
     Printer.pp_term term
     Printer.pp_exp exp;
   
-    Instr(Set (lval,exp,loc))
- 
-let add_k_stmt new_ghost_var sum_term stmt =
+  match inv_type with
+    Convergent | Divergent -> 
+      oppose_var_if_neg lval exp loc
+  | One -> 
+      Instr (Set (lval, exp, loc))
+  | _ -> assert false
+    
+  
+let add_k_stmt inv_type new_ghost_var sum_term stmt =
   let init_k = 
     k_first_value 
+      inv_type
       (Var new_ghost_var,NoOffset) 
       sum_term 
       (get_stmt_loc stmt)
@@ -381,7 +414,7 @@ let term_list_to_predicate term_list limit fundec stmt =
 	  Logic_const.term
 	    (TLval ((TVar lvar),TNoOffset)) Lreal
 	in
-	let () = add_k_stmt new_ghost_var term stmt
+	let () = add_k_stmt limit new_ghost_var term stmt
 	in
 	
 	let pred = 
@@ -391,63 +424,6 @@ let term_list_to_predicate term_list limit fundec stmt =
 	   term_gvar)
 	in Logic_const.unamed pred
       ) term_list
-      	
-(* Sum (term_list) = k*t  *)
-let term_list_to_simple_predicate t term_list fundec stmt = 
-  
-  assert (not (term_is_zero t));
-  let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
-  in
-
-  let sum_term = 
-    List.fold_left
-      (fun acc term -> 
-	if Cil_datatype.Term.equal t term
-	then acc
-	else if acc = zero 
-	then term 
-	else 
-	    Logic_const.term
-	      (TBinOp (PlusA,acc,term)) Linteger 
-	      
-      )
-      zero
-      term_list
-  in
-
-  let kt = 
-    
-    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
-    in
-    new_ghost_var.vghost <- true;     
-    let lvar = Cil.cvar_to_lvar new_ghost_var in
-    let term_gvar = 
-      Logic_const.term
-	(TLval ((TVar lvar),TNoOffset)) Linteger 
-    in
-    let term =  
-      Logic_const.term
-	(TBinOp
-	   (Mult,
- 	    term_gvar,
-	    t) 
-	) Linteger
-    in
-    
-    let () = add_k_stmt new_ghost_var sum_term stmt
-    in
-    term
-      
-  in
-  
-  let pred = 
-    Prel
-      (Req,
-       sum_term,
-       kt)
-  in
-  
-  Logic_const.unamed pred
     
 let vec_space_to_predicate_zarith
     (fundec: Cil_types.fundec)
