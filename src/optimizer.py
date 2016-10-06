@@ -61,7 +61,7 @@ def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c,guess) :
     print_debug (1,"Does " + str(f(min)) + " > " + str(k*(-1-ev)) + " and " 
            + str(f(max)) + " < " + str(k*(1-ev)))
     
-    if (f(min) - error_allowed > (-1-ev) * k) and (f(max) + error_allowed < (1-ev)*k):
+    if (f(min) - error_allowed > (ev - 1) * k) and (f(max) + error_allowed < (1-ev)*k):
         print_debug (1,"Yes !")
         up_k = k
         
