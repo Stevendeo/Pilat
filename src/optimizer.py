@@ -133,8 +133,6 @@ while (i < v):
     i = i+1
     minimize_guess.append(max_k)
 
-
-
 k=find_k(ev,objective,poly,non_det_c,max_k,N, minimize_guess)
 
 print k
