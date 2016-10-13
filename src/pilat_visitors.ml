@@ -157,7 +157,7 @@ object(self)
 	  (Block
 	     {battrs = [];
 	      blocals = [];
-	      bstmts =  s_list@[s]
+	      bstmts =  s::s_list
 	     }
 	  )
       in
@@ -185,12 +185,10 @@ object(self)
 	    (* This is where we insert s_list in the fundec body *)
 
 	      Mat_option.debug ~dkey:dkey_stmt ~level:2
-		"Adding the statement list to the fundec body";
-
-	      print_stmt_list fundec.sbody.bstmts;
-	      fundec.sbody.bstmts <- ((List.rev left) @ (s_list @[s]@(List.tl right)));
-	    in print_stmt_list fundec.sbody.bstmts;
-
+		"Adding the statement list to the fundec" in
+	      let res = ((List.rev left) @ (new_block::s::s_list@(List.tl right))) in 
+	      print_stmt_list res;
+	      res 
 
 	  else fundec_stmt_zipper ((List.hd right)::left) tl
       in
@@ -204,8 +202,8 @@ object(self)
 	  fundec.sbody.bstmts in
       let () = 
 	try 
-	  fundec_stmt_zipper [] fundec.sbody.bstmts;
-	  fundec_stmt_zipper [] fundec.sallstmts
+	  fundec.sbody.bstmts <- fundec_stmt_zipper [] fundec.sbody.bstmts;
+	  fundec.sallstmts <- fundec_stmt_zipper [] fundec.sallstmts
 	with Not_found -> 
 	  Mat_option.feedback 
 	    "Statement %a not in fundec. Problem in CFG ?" Cil_datatype.Stmt.pretty s
