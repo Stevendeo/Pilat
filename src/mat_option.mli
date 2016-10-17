@@ -75,3 +75,5 @@ val ev_timer : float ref
 val char_poly_timer : float ref
 
 val proof_timer : float ref
+
+val optimizer_timer : float ref

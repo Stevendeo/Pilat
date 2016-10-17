@@ -221,17 +221,7 @@ object(self)
 		      List.iter
 			(fun invar ->  
 			  Assign_type.print_vec rev_base invar;
-			  Mat_option.debug ~dkey:dkey_stmt "__\n";
-			  
-			  (*if not assign_is_deter
-			  then 
-			    let module NDI = Non_det_invar.Make(Assign_type) in
-			    match limit with 
-			      Invariant_utils.Convergent ev -> 
-				Mat_option.debug ~dkey:dkey_stmt "Command line for k :\n %s"
-				  (NDI.do_the_job rev_base mat ev invar)
-			    | _ -> ()*)
-				  
+			  Mat_option.debug ~dkey:dkey_stmt "__\n";						  
 			)invars;	    
 		      
 

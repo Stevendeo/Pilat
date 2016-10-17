@@ -367,7 +367,7 @@ let term_list_to_predicate
       let module NDI = Non_det_invar.Make(A) in
       List.map
 	(fun (invar,term) -> 
-	  let () = 
+	  (*let () = 
 	    Mat_option.feedback "Searching for a value of k. May take some time..." in
 	  let cmd_line =  
 	    NDI.do_the_job 
@@ -392,11 +392,18 @@ let term_list_to_predicate
 	    with End_of_file -> close_in in_channel
 	  in
 	  let () = 
-	    Mat_option.feedback "k = %s" !k in
-	  let k_float = float_of_string !k in
+	    Mat_option.feedback "k = %s" !k in*)
+	  let k = 
+	    NDI.do_the_job 
+	      rev_base
+	      m
+	      ev
+	      invar
+	  in
+	  let k_float = float_of_string k in
 	  let k_real = 
 	    {
-	      r_literal = !k;
+	      r_literal = k;
 	      r_nearest = k_float;
 	      r_upper = k_float;
 	      r_lower = k_float	      

@@ -22,6 +22,8 @@
 
 open Poly_utils 
 
+let dkey = Mat_option.register_category "ndi:do_the_job"
+
 module Make (P_assign : Poly_assign.S) = 
   struct 
     module M = P_assign.M
@@ -60,6 +62,7 @@ module Make (P_assign : Poly_assign.S) =
 	N_poly.Var.Set.empty
       
     let do_the_job rev_base (mat:M.t) (ev:float) (invar:M.vec) = 
+      let time = Sys.time () in
       let (minus_one:R.t) = R.sub R.zero R.one in 
       let objective = 
 	M.scal_mul_vec (get_objective_from_convergent_invar mat ev (invar:M.vec)) minus_one
@@ -102,6 +105,34 @@ module Make (P_assign : Poly_assign.S) =
 	with
 	  Not_found -> tab_index
       in
-      
-      prefix ^ " " ^ string_of_int ((max_tab_index 0 0) + 1) ^ " " ^ suffix
+      let res = 
+	prefix ^ " " ^ string_of_int ((max_tab_index 0 0) + 1) ^ " " ^ suffix
+      in
+      let () = 
+	    Mat_option.feedback "Searching for a value of k. May take some time..." in
+	 
+	  let () = 
+	    Mat_option.debug ~level:3 ~dkey "Command line = %s" res in
+
+	  let () = ignore (Sys.command (res ^ " > " ^ Mat_option.k_file)) in
+	  let in_channel = open_in "k.k" in
+	  
+	  let k = ref "" in 
+	  let () = 
+	    try 
+	      while true do 
+		k := input_line in_channel
+	      done
+	    with End_of_file -> close_in in_channel
+	  in
+	  let () = 
+	    Mat_option.feedback "k = %s" !k; 
+	    let time = 
+	      Sys.time () -. time in 
+	    Mat_option.debug ~dkey ~level:2
+	      "Time for optimizing : %f" time;
+	    Mat_option.optimizer_timer := time +. !Mat_option.optimizer_timer;
+	  in
+	  !k
+
   end

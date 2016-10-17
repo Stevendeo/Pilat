@@ -81,7 +81,7 @@ def find_k(ev, f, poly,non_det_c,max_k,N,guess) :
     while (low_k != 0): # then for k = max_k, the condition is not respected.
         low_k = 0.
         up_k = 2.*up_k #up_k didn't change
-        new_window(ev, f, mf, poly, up_k, low_k, up_k, non_det_c,guess)
+        low_k,up_k = new_window(ev, f, mf, poly, up_k, low_k, up_k, non_det_c,guess)
     k = max_k/2
     i = 0
     while(i < N):
