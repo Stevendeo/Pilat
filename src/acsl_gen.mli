@@ -37,6 +37,7 @@ sig
     A.P.Monom.t A.Imap.t -> 
     Invar_utils.invar list -> 
     'a Varinfo.Map.t -> 
+    int -> 
     unit
     
     

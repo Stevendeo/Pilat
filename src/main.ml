@@ -66,6 +66,10 @@ object(self)
 	    stmt.sid in
 	
 	let (varinfos_used,nd_var) = Pilat_visitors.varinfo_registerer b in
+	let num_variables = 
+	  Cil_datatype.Varinfo.Set.cardinal varinfos_used + Cil_datatype.Varinfo.Map.cardinal nd_var 
+	in
+	  
 	let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 	
 	Cil_datatype.Varinfo.Set.iter
@@ -264,6 +268,7 @@ object(self)
 		  rev_base
 		  (Extlib.the invar_inter)
 		  Cil_datatype.Varinfo.Map.empty
+		  num_variables
 	      else 
 		(* Non deterministic case *)
 		let mat,invar = List.hd whole_loop_invar
@@ -276,6 +281,7 @@ object(self)
 		  rev_base
 		  invar
 		  nd_var
+		  num_variables
 	    in DoChildren
 		  
       end (* Loop *)

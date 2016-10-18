@@ -61,7 +61,7 @@ module Make (P_assign : Poly_assign.S) =
 	arr
 	N_poly.Var.Set.empty
       
-    let do_the_job rev_base (mat:M.t) (ev:float) (invar:M.vec) = 
+    let do_the_job rev_base (mat:M.t) (ev:float) (invar:M.vec) (num_vars:int) = 
       let time = Sys.time () in
       let (minus_one:R.t) = R.sub R.zero R.one in 
       let objective = 
@@ -90,23 +90,9 @@ module Make (P_assign : Poly_assign.S) =
       ^ "\"" ^ obj_str ^ "\" " 
       ^ "\"" ^ invar_str ^ "\" "  ^ nd_cons
       in
-      let regexp = Str.regexp "\\[.\\]" in
-      let rec max_tab_index str_index tab_index = 
-	try 
-	  let new_index = Str.search_forward regexp suffix str_index in
-	  let index_str = Str.matched_string suffix in
-	  let index_int = 
-	    String.sub 
-	      index_str 
-	      1 
-	      (String.length index_str - 2) |> int_of_string in 
-	  max_tab_index (new_index + 3) (max tab_index index_int)
-	  
-	with
-	  Not_found -> tab_index
-      in
+      
       let res = 
-	prefix ^ " " ^ string_of_int ((max_tab_index 0 0) + 1) ^ " " ^ suffix
+	prefix ^ " " ^ (string_of_int (num_vars + 2)) ^ " " ^ suffix
       in
       let () = 
 	    Mat_option.feedback "Searching for a value of k. May take some time..." in

@@ -240,7 +240,8 @@ let term_list_to_predicate
     (limit : limit) 
     (rev_base : A.P.Monom.t A.Imap.t)
     (fundec  : fundec)
-    (stmt : stmt)  =
+    (stmt : stmt)  
+    (num_vars:int) =
 
   match limit,deter with
     Altern,_ | Zero,_ -> (** general invariant *)
@@ -316,6 +317,7 @@ let term_list_to_predicate
 	      m
 	      ev
 	      invar
+	      num_vars
 	  in
 	  let k_float = float_of_string k in
 	  let k_real = 
@@ -368,6 +370,7 @@ let vec_space_to_predicate_zarith
     (rev_base: A.P.Monom.t A.Imap.t) 
     (invar : Invar_utils.invar) 
     (nd_vars : 'a Varinfo.Map.t) 
+    (num_vars : int)
     : predicate named list =
 
   let limit,vec_list = invar in
@@ -386,6 +389,7 @@ let vec_space_to_predicate_zarith
 	rev_base
 	fundec 
 	stmt
+	num_vars
   else 
       term_list_to_predicate 
         false
@@ -395,6 +399,7 @@ let vec_space_to_predicate_zarith
 	rev_base
 	fundec 
 	stmt
+	num_vars
 
 let add_loop_annots  
     (deter : bool) 
@@ -404,6 +409,7 @@ let add_loop_annots
     (rev_base:A.P.Monom.t A.Imap.t) 
     (vec_lists : Invar_utils.invar list) 
     (nd_vars : 'a Varinfo.Map.t)
+    (num_vars:  int)
     = 
 
   let fundec = match kf.fundec with
@@ -432,6 +438,7 @@ let add_loop_annots
 	    rev_base
 	    invar
 	    nd_vars
+	    num_vars
 	 )) @ acc
       )
       []
