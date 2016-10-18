@@ -107,7 +107,7 @@ object(self)
     let fundec = match kf.fundec with
 	  Definition (f,_) -> f
 	| Declaration _ -> assert false in
-(*
+
     let () = (* Adding annotations *)
       try 
 	let annots = Cil_datatype.Stmt.Hashtbl.find loop_annot_table s in
@@ -121,7 +121,7 @@ object(self)
 	)annots
      
       with Not_found (* Stmt.Hashtbl.find loop_annot_table s *) -> ()
-    in*)
+    in
     try 
       let succ = List.hd s.succs in
       let new_stmtkinds = Cil_datatype.Stmt.Hashtbl.find stmt_init_table succ
@@ -186,7 +186,7 @@ object(self)
 
 	      Mat_option.debug ~dkey:dkey_stmt ~level:2
 		"Adding the statement list to the fundec" in
-	      let res = ((List.rev left) @ (new_block::s::s_list@(List.tl right))) in 
+	      let res = ((List.rev left) @ (s::new_block::s_list@(List.tl right))) in 
 	      print_stmt_list res;
 	      res 
 
