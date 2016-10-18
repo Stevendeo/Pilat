@@ -13,7 +13,7 @@ int main(){
     
     x0 = tx0;
     x1 = tx1;
-    printf("x = %f, y = %f\n",x0, x1);
+    //printf("x = %f, y = %f\n",x0, x1);
     
   }
 
