@@ -20,7 +20,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(* Logic_const.new_code_annotation *)
 open Cil_types
 open Invariant_utils
 
@@ -112,14 +111,7 @@ let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
  
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
     "Vector given : %a" A.M.pp_vec vec in
-  (*
-    
-  let z_use = Mat_option.Use_zarith.get () in
-    let vec = 
-    if z_use
-    then Invariant_utils.integrate_vec vec 
-    else vec 
-  in*)
+
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
   let vec_array = A.M.vec_to_array vec in 
@@ -162,61 +154,6 @@ let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
     rev_base
     zero
 
-(** Searches if a term is never equals to zero with Value. Fails if so. *)
-(*let value_search_of_non_zero term_list stmt =
-  List.find
-    (fun t -> 
-      let e = 
-	!Db.Properties.Interp.term_to_exp ~result:None t in
-      let vals = 
-	!Db.Value.eval_expr 
-	  ~with_alarms:CilE.warn_none_mode 
-	  (Db.Value.get_stmt_state stmt)
-	  e
-      in
-      (Cvalue.V.contains_zero vals)
-    )
-    term_list
-
-(** Searches if a term does not contains variables. By construction, ther should not be 
-    a term equal to 0. Fails if we find a term. *)
-
-exception Var_found
-let non_zero_search_from_scratch term_list =
-
-  let var_visitor = 
-    object
-      inherit Visitor.frama_c_inplace
-      method! vvrbl _ = raise Var_found
-
-    end
-  in
-  List.find
-    (fun t ->
-      try 
-	begin
-	  if term_is_zero t then false else
-	    let () = ignore (Cil.visitCilTerm (var_visitor :> Cil.cilVisitor) t) in
-	  true
-	end
-      with   
-	Var_found -> false
-    )
-    term_list
-    
-(** Returns (Some t) if t is never equal to zero, None else*)
-let test_never_zero (stmt : stmt) (term_list : term list) : term option =
-  try Some (
-    if Db.Value.is_computed ()
-    then
-      value_search_of_non_zero term_list stmt
-    else
-      non_zero_search_from_scratch term_list
-  )
-	
-  with
-    Not_found -> None
-*)
 let get_inst_loc = function
   | Set (_, _, l)
   | Call (_, _, _, l)
@@ -367,32 +304,7 @@ let term_list_to_predicate
       let module NDI = Non_det_invar.Make(A) in
       List.map
 	(fun (invar,term) -> 
-	  (*let () = 
-	    Mat_option.feedback "Searching for a value of k. May take some time..." in
-	  let cmd_line =  
-	    NDI.do_the_job 
-	      rev_base
-	      m
-	      ev
-	      invar
-	  in
-	 
-	  let () = 
-	    Mat_option.debug ~level:2 ~dkey:dkey_term2pred "Command line = %s" cmd_line in
 
-	  let () = ignore (Sys.command (cmd_line ^ " > " ^ Mat_option.k_file)) in
-	  let in_channel = open_in "k.k" in
-	  
-	  let k = ref "" in 
-	  let () = 
-	    try 
-	      while true do 
-		k := input_line in_channel
-	      done
-	    with End_of_file -> close_in in_channel
-	  in
-	  let () = 
-	    Mat_option.feedback "k = %s" !k in*)
 	  let k = 
 	    NDI.do_the_job 
 	      rev_base
@@ -516,15 +428,7 @@ let add_loop_annots
       vec_lists
       
   in
-
+  
   Pilat_visitors.register_annot stmt annots
-
-  (*List.iter (
-    fun annot -> 
-      let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot 
-      in 
-      let ip = Property.ip_of_code_annot_single kf stmt annot in 
-      Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
-  )annots
-  *)  
+ 
 end
