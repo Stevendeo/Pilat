@@ -21,6 +21,7 @@
 (**************************************************************************)
 
 open Cil_types 
+open Cil_datatype
 open Invariant_utils 
 
 module Make: functor (A:Poly_assign.S) -> 
@@ -34,7 +35,9 @@ sig
     Cil_types.kernel_function ->
     Cil_types.stmt ->
     A.P.Monom.t A.Imap.t -> 
-    Invar_utils.invar list -> unit
+    Invar_utils.invar list -> 
+    'a Varinfo.Map.t -> 
+    unit
     
     
 end

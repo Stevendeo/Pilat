@@ -22,6 +22,7 @@
 
 open Cil_types
 open Invariant_utils
+open Cil_datatype
 
 let dkey_term = Mat_option.register_category "acsl_gen:term"  
 let dkey_term2pred = Mat_option.register_category "acsl_gen:term_list_to_predicate"  
@@ -100,13 +101,17 @@ let monomial_to_mul_term (m:A.P.Monom.t) =
 (** Zarith *)
 exception Bad_invariant 
 
-let possible_monomial monom = 
+let possible_monomial monom nd_vars = 
   let vars = A.P.to_var_set monom in 
   List.for_all
-    (fun var -> not(var.vtemp))
+    (fun var -> not(var.vtemp) && not (Varinfo.Map.mem var nd_vars))
     vars
 
-let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
+let vec_to_term_zarith 
+    (rev_base:A.P.Monom.t A.Imap.t) 
+    (vec : A.M.vec) 
+    (nd_vars : 'a Varinfo.Map.t)
+    =
 
  
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
@@ -123,7 +128,7 @@ let vec_to_term_zarith (rev_base:A.P.Monom.t A.Imap.t) (vec : A.M.vec) =
       
       in
       if cst = 0. then acc 
-      else if not(possible_monomial monom) then raise Bad_invariant
+      else if not(possible_monomial monom nd_vars) then raise Bad_invariant
       else 
       
 	    let lreal:Cil_types.logic_real = 
@@ -362,13 +367,14 @@ let vec_space_to_predicate_zarith
     (stmt: Cil_types.stmt)
     (rev_base: A.P.Monom.t A.Imap.t) 
     (invar : Invar_utils.invar) 
+    (nd_vars : 'a Varinfo.Map.t) 
     : predicate named list =
 
   let limit,vec_list = invar in
   
   let term_list = 
     List.fold_left
-      (fun acc vec -> try (vec,vec_to_term_zarith rev_base vec) :: acc with Bad_invariant -> acc) 
+      (fun acc vec -> try (vec,vec_to_term_zarith rev_base vec nd_vars) :: acc with Bad_invariant -> acc) 
       [] 
       vec_list in
   if deter 
@@ -396,7 +402,9 @@ let add_loop_annots
     (kf:kernel_function) 
     (stmt:stmt) 
     (rev_base:A.P.Monom.t A.Imap.t) 
-    (vec_lists : Invar_utils.invar list) = 
+    (vec_lists : Invar_utils.invar list) 
+    (nd_vars : 'a Varinfo.Map.t)
+    = 
 
   let fundec = match kf.fundec with
       Definition(f,_) -> f
@@ -422,7 +430,9 @@ let add_loop_annots
 	    fundec 
 	    stmt
 	    rev_base
-	    invar)) @ acc
+	    invar
+	    nd_vars
+	 )) @ acc
       )
       []
       vec_lists

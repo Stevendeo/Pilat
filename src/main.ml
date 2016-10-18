@@ -263,6 +263,7 @@ object(self)
 		  stmt
 		  rev_base
 		  (Extlib.the invar_inter)
+		  Cil_datatype.Varinfo.Map.empty
 	      else 
 		(* Non deterministic case *)
 		let mat,invar = List.hd whole_loop_invar
@@ -274,6 +275,7 @@ object(self)
 		  stmt
 		  rev_base
 		  invar
+		  nd_var
 	    in DoChildren
 		  
       end (* Loop *)
