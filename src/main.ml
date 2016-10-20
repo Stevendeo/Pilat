@@ -67,7 +67,7 @@ object(self)
 	
 	let (varinfos_used,nd_var) = Pilat_visitors.varinfo_registerer b in
 	let num_variables = 
-	  Cil_datatype.Varinfo.Set.cardinal varinfos_used + Cil_datatype.Varinfo.Map.cardinal nd_var 
+	  Cil_datatype.Varinfo.Set.cardinal varinfos_used 
 	in
 	  
 	let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";

@@ -443,10 +443,20 @@ let rec exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
 	  try 
 	    let (low,up) = Varinfo.Map.find v nd_var 
 	    in
+	    
 	    let new_rep = (P.R.non_det_repr low up) in 
+
+	    
+	  let () = 
+	    Mat_option.debug ~dkey:dkey_stmt ~level:2
+	      "Variable %a non deterministic, first use. Representant : %a"
+	      Varinfo.pretty v 
+	      P.R.pp_print new_rep
+	  in
+
 	    let () = Cil_datatype.Varinfo.Hashtbl.add non_det_var_memoizer v new_rep
 	    in
-	    P.const (P.R.non_det_repr low up)
+	    P.const new_rep
 	  with
 	    Not_found (* Varinfo.Map.find *) -> 
 	      P.monomial P.R.one [v,1]
@@ -504,7 +514,9 @@ let stmt_to_poly_assign varinfo_used nd_var s : t option =
 	  in
 	  begin
 	    match instr_to_poly_assign varinfo_used nd_var i with 
-	      Some p -> register_poly s (Some p); Some p
+	      Some p -> 
+		register_poly s (Some p); 
+		Some p
 	    | None -> register_poly s None; None
 	  end
       | Cil_types.Loop _ -> Mat_option.abort "Nested loop are not allowed yet."
@@ -631,6 +643,7 @@ let loop_matrix
     (all_modifs :monom_affect list) : mat = 
   
   let mat_size = P.Monom.Map.cardinal base in
+  
   try 
     List.fold_left
       (fun acc (v,poly_affect) -> 
