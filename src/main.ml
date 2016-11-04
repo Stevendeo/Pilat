@@ -241,7 +241,7 @@ object(self)
 	    in
 	    
 	    let module Annot_generator = Acsl_gen.Make(Assign_type) in 
-
+	    
 	    let () = (** Intersecting the invariants if necessary *)
 	      if whole_loop_invar = [] then () 
 	      else if (assign_is_deter || List.length whole_loop_invar >= 2)
@@ -257,9 +257,11 @@ object(self)
 		    
 		    None
 		    whole_loop_invar 
+		
 		in
+		
 		let () = 
-		  Mat_option.whole_rel_time := Sys.time() -. t0 +. ! Mat_option.whole_rel_time 
+		  Mat_option.whole_rel_time := Sys.time() -. t0 +. !Mat_option.whole_rel_time 
 		in
 		Annot_generator.add_loop_annots
 		  assign_is_deter
@@ -272,6 +274,9 @@ object(self)
 	      else 
 		(* Non deterministic case *)
 		let mat,invar = List.hd whole_loop_invar
+		in	
+		let () = 
+		  Mat_option.whole_rel_time := Sys.time() -. t0 +. !Mat_option.whole_rel_time 
 		in
 		Annot_generator.add_loop_annots
 		  assign_is_deter
@@ -282,7 +287,9 @@ object(self)
 		  invar
 		  nd_var
 		  num_variables
-	    in DoChildren
+	    in 
+	    
+	    DoChildren
 		  
       end (* Loop *)
     | _ -> DoChildren 
