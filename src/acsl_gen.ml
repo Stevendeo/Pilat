@@ -31,7 +31,7 @@ let dkey_zero = Mat_option.register_category "acsl_gen:iszero"
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
-let to_code_annot (preds:predicate named list) = 
+let to_code_annot (preds:predicate list) = 
   
   List.map 
     (fun pred -> 
@@ -454,7 +454,7 @@ let vec_space_to_predicate_zarith
     (stmt: Cil_types.stmt)
     (base:int Poly_affect.F_poly.Monom.Map.t) 
     (invar : Invariant_utils.invar) 
-    : predicate named list =
+    : predicate list =
 
   let limit,vec_list = invar in
   
@@ -484,14 +484,14 @@ let add_loop_annots_zarith kf stmt base vec_lists =
       vec_lists
       
   in
-
-  Pilat_visitors.register_annot stmt annots
-
-  (*List.iter (
+  
+  (*Pilat_visitors.register_annot stmt annots
+  *)
+  List.iter (
     fun annot -> 
       let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot 
       in 
       let ip = Property.ip_of_code_annot_single kf stmt annot in 
       Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
   )annots
-  *)  
+   

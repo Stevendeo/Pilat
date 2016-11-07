@@ -98,9 +98,9 @@ object(self)
   (*method! vfunc _ =
     DoChildrenPost (fun f -> let () = Cfg.clearCFGinfo f in f) 
  
-  method! vfile _ = DoChildrenPost (fun f -> let () = Cfg.clearFileCFG f in f)*) 
+  method! vfile _ = DoChildrenPost (fun f -> let () = Cfg.clearFileCFG f in f)
   method! vvdec v = ChangeToPost (v, fun v -> v)
-  method! vvrbl v = ChangeToPost (v, fun v -> v)
+  method! vvrbl v = ChangeToPost (v, fun v -> v)*) 
 
   method! vstmt_aux s = 
     let kf = (Extlib.the self#current_kf) in
@@ -212,6 +212,6 @@ object(self)
   
     with 
       Not_found (* Stmt.Hashtbl.find stmt_init_table s *) -> DoChildren
-    | Failure "hd" -> DoChildren
+    | Failure _ (*"hd"*) -> DoChildren
      
 end

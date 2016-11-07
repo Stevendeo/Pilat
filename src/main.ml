@@ -325,7 +325,7 @@ let run () =
       File.must_recompute_cfg f;
     | _ -> ())
     file.globals;
-
+  
   Mat_option.debug ~dkey:dkey_time 
     "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
  

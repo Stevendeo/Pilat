@@ -114,7 +114,7 @@ let rec poly_of_term t = match t.term_node with
   
 
 let poly_of_pred (pred:predicate) = 
-  match pred with
+  match pred.pred_content with
     Prel (_,tl,tr) -> 
       F_poly.sub (poly_of_term tl) (poly_of_term tr)
   | _ -> assert false
@@ -197,5 +197,5 @@ let prove_invariant (mat:Lacaml_D.Mat.t) (base:int F_poly.Monom.Map.t) (pred:pre
 let prove_annot mat map annot = 
   match annot.annot_content with
     AInvariant (_,_,p) -> 
-      prove_invariant mat map p.content
+      prove_invariant mat map p
   | _ -> raise Bad_invariant
