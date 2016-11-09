@@ -361,7 +361,7 @@ let rec stmt_to_poly_assign varinfo_used s : Poly_affect.t option =
 and block_to_poly_lists varinfo_used block : Poly_affect.body list = 
 
   (* The first statement of a block loop is the entry of the loop. *)
-  let first_block_stmt = (List.hd block.bstmts) in
+  let first_block_stmt = try (List.hd block.bstmts) with Failure _ -> Cil.dummyStmt in
   let () = Mat_option.debug ~dkey:dkey_stmt ~level:2
       "First stmt of the loop : %a." 
       Stmt.pretty first_block_stmt;
@@ -373,7 +373,9 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
       first_block_stmt.succs
   in
   
-  let head = List.hd first_block_stmt.preds (* It must be the entry of the loop *)
+  let head = try List.hd first_block_stmt.preds  with Failure _ -> Cil.dummyStmt 
+  (* It must be the entry of the loop *)
+  
   in
   Mat_option.debug ~dkey:dkey_stmt ~level:2
       "Loop head : %a" 
@@ -451,7 +453,7 @@ and block_to_poly_lists varinfo_used block : Poly_affect.body list =
       end 
   in
     
-  let res = dfs (List.hd head.succs)
+  let res = try dfs (List.hd head.succs) with Failure s -> assert (s = "hd"); [] 
   in
   Mat_option.debug ~dkey:dkey_stmt ~level:5
     "How many paths ? %i" (List.length res); res
