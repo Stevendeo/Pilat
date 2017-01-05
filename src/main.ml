@@ -22,6 +22,7 @@
 
 open Cil_types
 open Cil
+open Pilat_matrix
 
 (*open Logic_const
 *)
@@ -52,7 +53,7 @@ let read_file chan =
 let loop_analyzer () = 
 object(self)
   inherit Visitor.frama_c_inplace
-    
+
   method! vstmt_aux stmt =
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
@@ -60,10 +61,17 @@ object(self)
       
       let t0 = Sys.time() in
 
+      
       begin (* Loop treatment *)
 	let () = 	
-	  Mat_option.debug ~dkey:dkey_stmt "Loop ided %i studied"
-	    stmt.sid in
+	  Mat_option.debug ~dkey:dkey_stmt "Loop %a studied"
+	    Cil_datatype.Stmt.pretty stmt;
+	  List.iter
+	    (fun s -> 
+	      Mat_option.debug ~dkey:dkey_stmt ~level:5 "Stmt in loop = %a"
+		Cil_datatype.Stmt.pretty s;)
+	    b.bstmts
+	in
 	
 	let (varinfos_used,nd_var) = Pilat_visitors.varinfo_registerer b in
 	let num_variables = 
@@ -136,8 +144,7 @@ object(self)
 		  ((v, (Assign_type.P.monomial Assign_type.P.R.one [v,1]))):: acc )
 	      varinfos_used
 	      []
-	      
-	    
+	      	    
 	  in
 	  let assigns,bases_for_each_loop = 
 	    List.fold_left
@@ -155,7 +162,6 @@ object(self)
 	  
 	  let base = Assign_type.monomial_base bases_for_each_loop 
 	  in
-	  
 	  let rev_base = Assign_type.reverse_base base in
 
 	  let matrices = 
@@ -227,9 +233,6 @@ object(self)
 			  Assign_type.print_vec rev_base invar;
 			  Mat_option.debug ~dkey:dkey_stmt "__\n";						  
 			)invars;	    
-		      
-
-
 		    ) invar;
 		   	  
 		  
@@ -313,7 +316,6 @@ let run () =
     let vis = loop_analyzer () in
     Cil.visitCilFile (vis :> Cil.cilVisitor) file
   in
-
   let prj = 
     File.create_project_from_visitor 
       "new_pilat_project" 

@@ -117,7 +117,7 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t) =
 	
 
     let poly_of_pred (pred:predicate) = 
-      match pred with
+      match pred.pred_content with
 	Prel (_,tl,tr) -> 
 	  A.P.sub (poly_of_term tl) (poly_of_term tr)
       | _ -> assert false
@@ -193,7 +193,7 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t) =
     let prove_annot mat map annot = 
       match annot.annot_content with
 	AInvariant (_,_,p) -> 
-	  prove_invariant mat map p.content
+	  prove_invariant mat map p
       | _ -> raise Bad_invariant
 
   end

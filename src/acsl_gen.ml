@@ -38,7 +38,7 @@ struct
 
   module Invar_utils = Invariant_utils.Make(A)
 
-let to_code_annot (preds:predicate named list) = 
+let to_code_annot (preds:predicate list) = 
   
   List.map 
     (fun pred -> 
@@ -371,7 +371,7 @@ let vec_space_to_predicate_zarith
     (invar : Invar_utils.invar) 
     (nd_vars : 'a Varinfo.Map.t) 
     (num_vars : int)
-    : predicate named list =
+    : predicate list =
 
   let limit,vec_list = invar in
   
@@ -445,7 +445,15 @@ let add_loop_annots
       vec_lists
       
   in
-  
+(*
   Pilat_visitors.register_annot stmt annots
- 
+*)
+  List.iter (
+    fun annot -> 
+      let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot 
+      in 
+      let ip = Property.ip_of_code_annot_single kf stmt annot in 
+      Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
+  )annots
+    
 end

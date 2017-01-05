@@ -91,9 +91,6 @@ object(self)
 
 let stmt_init_table = Cil_datatype.Stmt.Hashtbl.create 42
 
-let loop_annot_table = Cil_datatype.Stmt.Hashtbl.create 42
-
-
 let register_stmt loop_stmt init =
   let old_bind = 
     try 
@@ -102,111 +99,71 @@ let register_stmt loop_stmt init =
       Not_found -> [] in 
   Cil_datatype.Stmt.Hashtbl.replace stmt_init_table loop_stmt (init :: old_bind)
 
-let register_annot_list table loop_stmt annots = 
-    let old_bind = 
-    try 
-      Cil_datatype.Stmt.Hashtbl.find table loop_stmt 
-    with 
-      Not_found -> [] in 
-  Cil_datatype.Stmt.Hashtbl.replace table loop_stmt (annots@old_bind)
-
-let register_annot = register_annot_list loop_annot_table
-
+let print_stmt_list sl = 
+Mat_option.debug ~dkey:dkey_stmt ~level:4
+  "\nBEGIN\n";
+  List.iter
+    (fun s -> Mat_option.debug ~dkey:dkey_stmt ~level:4
+      "-- %a" Printer.pp_stmt s
+    )sl;
+    
+Mat_option.debug ~dkey:dkey_stmt ~level:4
+  "\nEND\n";
 class fundec_updater prj = 
-object(self)
+object
   inherit (Visitor.frama_c_copy prj)
     
    (* TODO : There is still a problem, after the stmt is added to the cfg the cfg is unusable
      for other tools*) 
 
-  (*method! vfunc _ =
-    DoChildrenPost (fun f -> let () = Cfg.clearCFGinfo f in f) 
- 
-  method! vfile _ = DoChildrenPost (fun f -> let () = Cfg.clearFileCFG f in f)*) 
-      
-  method! vstmt_aux s = 
-    let kf = (Extlib.the self#current_kf) in
-    let fundec = match kf.fundec with
-	  Definition (f,_) -> f
-	| Declaration _ -> assert false in
+  method! vfunc _ =
+    DoChildrenPost (fun f -> let () = File.must_recompute_cfg f in f) 
 
-    let () = (* Adding annotations *)
-      try 
-	let annots = Cil_datatype.Stmt.Hashtbl.find loop_annot_table s in
-	let () = Cil_datatype.Stmt.Hashtbl.remove loop_annot_table s in
-	List.iter (
-	  fun annot -> 
-	    let () = Annotations.add_code_annot Mat_option.emitter ~kf s annot 
-	    in 
-	    let ip = Property.ip_of_code_annot_single kf s annot in 
-	    Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
-	)annots
-     
-      with Not_found (* Stmt.Hashtbl.find loop_annot_table s *) -> ()
-    in
+  method! vstmt_aux s = 
     try 
-      let new_stmtkinds = Cil_datatype.Stmt.Hashtbl.find stmt_init_table s 
+      let succ = List.hd s.succs in
+      let new_stmtkinds = Cil_datatype.Stmt.Hashtbl.find stmt_init_table succ
       in
+      let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 
+	"Statement %a has statements to add."
+	Printer.pp_stmt s;
+       Cil_datatype.Stmt.Hashtbl.remove stmt_init_table succ in
       
-      let () = Cil_datatype.Stmt.Hashtbl.remove stmt_init_table s in
-      
-      let s_list = 
-	List.map
-	  (fun new_stmtkind -> 	  
-	    let stmt = Cil.mkStmtCfg ~ref_stmt:s ~before:false ~new_stmtkind in
+      let s_list,_ = 
+	List.fold_left
+	  (fun (acc_stmts, next_stmt) new_stmtkind -> 
+	    
+	    let stmt = 
+	      Cil.mkStmt(*Cfg ~ref_stmt:next_stmt ~before:true ~*)
+		~valid_sid:true 
+		new_stmtkind in
+	    
 	    stmt.ghost <- true;
+	    next_stmt.succs <- [stmt];
+	    (*next_stmt.preds <- stmt :: next_stmt.preds;*)
 	    let () = Mat_option.debug ~dkey:dkey_stmt 
-	      "Adding stmt %a of id %i to the cfg before %a" 
-	      Printer.pp_stmt stmt stmt.sid Printer.pp_stmt s
+	      "Adding stmt %a of id %i to the cfg after %a" 
+	      Printer.pp_stmt stmt stmt.sid Printer.pp_stmt next_stmt;
 	      
-	    in stmt)
+	    in (stmt::acc_stmts,stmt))
+	  ([],s)
 	  new_stmtkinds
       in
 
-      let () = 
-	fundec.sallstmts <- s_list@fundec.sallstmts;
-      in 
-      
       let new_block = 
 	Cil.mkStmt ~ghost:false ~valid_sid:true
 	  (Block
 	     {battrs = [];
 	      blocals = [];
-	      bstmts =  (s_list @[s])
+	      bstmts =  s::s_list
 	     }
 	  )
       in
       
-      let rec fundec_stmt_zipper left right = 
-	match right with
-	  [] -> raise Not_found
-	| hd :: tl -> 
-	  let () = 
-	    Mat_option.debug ~dkey:dkey_stmt ~level:5
-	      "Does %i = %i ? %b"
-	      hd.sid s.sid (hd.sid = s.sid) in
-	  if Cil_datatype.Stmt.equal hd s
-	  then fundec.sbody.bstmts <- ((List.rev left) @ (s_list@right))
-	  else fundec_stmt_zipper ((List.hd right)::left) tl
-      in
-      let () = 
-	Mat_option.debug ~dkey:dkey_stmt ~level:3
-	  "Search of %a.%i in" Cil_datatype.Stmt.pretty s s.sid;
-	List.iter 
-	  (fun s -> 
-	    Mat_option.debug ~dkey:dkey_stmt ~level:3
-	      "-- %a.%i\n" Cil_datatype.Stmt.pretty s s.sid)
-	  fundec.sbody.bstmts in
-      let () = 
-	try 
-	  fundec_stmt_zipper [] fundec.sbody.bstmts 
-	with Not_found -> 
-	  Mat_option.feedback 
-	    "Statement %a not in fundec. Problem in CFG ?" Cil_datatype.Stmt.pretty s
-      in
       ChangeDoChildrenPost (new_block, fun i -> i)
   
-    with Not_found (* Stmt.Hashtbl.find stmt_init_table s *) -> DoChildren
-   
+    with 
+      Not_found (* Stmt.Hashtbl.find stmt_init_table s *) -> DoChildren
+    | Failure _ (*"hd"*) -> DoChildren
      
 end
