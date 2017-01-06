@@ -24,7 +24,8 @@ from sage.all import *
 
 # This is an heuristic over the possible error of the minimize/maximize 
 # functions
-error_allowed = 0.05
+
+epsilon = 0.05
 
 def print_debug(level,s) :
     if debug >= level : 
@@ -33,12 +34,12 @@ def print_debug(level,s) :
 def minimize(f,constr,k,guess): 
     min = minimize_constrained(f,constr,guess)
     min2 = minimize_constrained(f,constr,min)
-    while (abs(f(min2) - f(min)) > error_allowed):
+    while (abs(f(min2) - f(min)) > epsilon):
         min = min2 
         minimize_constrained(f,constr,min2)
     return min2
     
-def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c,guess) : 
+def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c,guess, error_allowed) : 
     
     print_debug(1,"k tested : " + str(k))
     polypk = lambda x : poly(x) + k
@@ -72,21 +73,21 @@ def new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c,guess) :
     
     return low_k, up_k
         
-def find_k(ev, f, poly,non_det_c,max_k,N,guess) :
+def find_k(ev, f, poly,non_det_c,max_k,N,guess, error_allowed) :
     low_k = 0.
     up_k = max_k
     mf = lambda x : -1 * f(x)
     # We first check if max_k is a good upper bound :
-    low_k,up_k = new_window(ev, f, mf, poly, up_k, low_k, up_k, non_det_c,guess)
+    low_k,up_k = new_window(ev, f, mf, poly, up_k, low_k, up_k, non_det_c,guess, error_allowed)
     while (low_k != 0): # then for k = max_k, the condition is not respected.
         low_k = 0.
         up_k = 2.*up_k #up_k didn't change
-        low_k,up_k = new_window(ev, f, mf, poly, up_k, low_k, up_k, non_det_c,guess)
+        low_k,up_k = new_window(ev, f, mf, poly, up_k, low_k, up_k, non_det_c,guess, error_allowed)
     k = max_k/2
     i = 0
     while(i < N):
         i = i+1
-        low_k,up_k=new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c,guess)
+        low_k,up_k=new_window(ev, f, mf, poly, k, low_k, up_k, non_det_c,guess, error_allowed)
         k = (low_k + up_k)/2
     return up_k
 
@@ -94,7 +95,7 @@ import sys
 
 
 # Exemple of use : 
-# sage optimizer.py 0 0.9248 3 23 10 "-2.72*x[2]*(x[0]-x[1]) - 2*x[2]*x[2]" "- x[0]*x[0] - x[1]*x[1]" "x[2]+0.1" "- x[2] + 0.1"
+# sage optimizer.py 0 0.9248 3 23 10 0.05 "-2.72*x[2]*(x[0]-x[1]) - 2*x[2]*x[2]" "- x[0]*x[0] - x[1]*x[1]" "x[2]+0.1" "- x[2] + 0.1"
 
 # debug is the level of verbosity of the script
 debug = eval(sys.argv[1])
@@ -111,16 +112,19 @@ max_k = eval(sys.argv[4])
 # N is the number of iterations of the refinement loop
 N = eval(sys.argv[5])
 
+# Sometimes, the min/max function is imprecise and can return false results. This is to avoid such # results, but returns approximations instead of exact results.
+error_allowed = eval(sys.argv[6])
+
 # objective is the objective function to optimize
-objective = eval("lambda x :" + sys.argv[6])
+objective = eval("lambda x :" + sys.argv[7])
 
 # poly is the polynomial constraint
-poly = eval("lambda x :" + sys.argv[7])
+poly = eval("lambda x :" + sys.argv[8])
 
 # non_det_c is the list of constraints over the non deterministic assignments
 non_det_c = []
 
-i = 8
+i = 9
 
 while(i<len(sys.argv)):
     non_det_c.append(eval("lambda x :" + sys.argv[i]))
@@ -133,6 +137,6 @@ while (i < v):
     i = i+1
     minimize_guess.append(max_k)
 
-k=find_k(ev,objective,poly,non_det_c,max_k,N, minimize_guess)
+k=find_k(ev,objective,poly,non_det_c,max_k,N, minimize_guess,error_allowed)
 
 print k

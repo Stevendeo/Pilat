@@ -22,6 +22,8 @@
 
 include Plugin.S
 
+(** 1. Parameters *)
+
 module Enabled: Parameter_sig.Bool
  
 module Degree: Parameter_sig.Int
@@ -37,6 +39,11 @@ module Ev_leq: Parameter_sig.Int
 module Var_focus : Parameter_sig.String
 
 module Prove : Parameter_sig.Bool
+
+
+module Optim_start: Parameter_sig.String
+module Optim_iters: Parameter_sig.String
+module Optim_epsilon: Parameter_sig.String
 
 (** Tools for ACSL generation *)
 

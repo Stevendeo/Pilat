@@ -46,7 +46,7 @@ module NameConst = String
     let option_name = "-pilat-const-name"
     let arg_name = "str"
     let default = "__PILAT__"
-    let help = "sets the name of the constants used in invariants (default" ^ default ^ ")"
+    let help = "sets the name of the constants used in invariants (default " ^ default ^ ")"
    end)
 
 module Output_C_File =
@@ -88,6 +88,34 @@ module Prove =
       let option_name = "-pilat-prove"
       let help = "when on, tries to prove already existing loop invariants"
      end)
+
+
+
+module Optim_start = String
+    (struct
+        let option_name = "-pilat-optim-start"  
+	let default = "50"
+	let help = "sets the initial value of k during the optimisation (default "^ default ^")"
+	let arg_name = "n"
+     end)
+
+module Optim_iters = String
+    (struct
+        let option_name = "-pilat-optim-iters" 
+	let default = "10"
+	let help = "sets the maximal number of iterations performed during the optimisation (default "^ default ^ ")"
+	let arg_name = "n"
+     end)
+
+module Optim_epsilon = String 
+  (struct 
+    let option_name = "-pilat-optim-epsilon"
+    let arg_name = "str"
+    let default = "0.05"
+    let help = "Tolerance of error during optimization (default " ^ default ^ ")"
+   end)
+
+
 
 (** Tools for ACSL generation *)
 

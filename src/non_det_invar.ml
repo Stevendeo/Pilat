@@ -83,10 +83,16 @@ module Make (P_assign : Poly_assign.S) =
       
       let prefix = "sage optimizer.py 0 " ^ (string_of_float ev) 
       in
-      let max_k = "50" in
-      let n = "10" in 
+
+      (* These value are purely heuristic *)
+      let max_k = Mat_option.Optim_start.get() in
+      let n = Mat_option.Optim_iters.get() in 
+      let error_allowed = Mat_option.Optim_epsilon.get() in 
+
+
       let suffix = max_k ^ " "
       ^ n ^ " " 
+      ^ error_allowed ^ " " 
       ^ "\"" ^ obj_str ^ "\" " 
       ^ "\"" ^ invar_str ^ "\" "  ^ nd_cons
       in
