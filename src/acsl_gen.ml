@@ -244,10 +244,19 @@ let term_list_to_predicate
     (num_vars:int) =
 
   match limit,deter with
-    Altern,_ | Zero,_ -> (** general invariant *)
-      let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
-      in
-      let term = 
+  | Zero,_ -> (* invar.X = 0 is an invariant *) 
+
+    let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
+    in
+    List.map
+      (fun (_,term) -> Logic_const.unamed (Prel(Req,term,zero)))
+      term_list
+
+  | Altern,_ -> 
+
+    let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
+    in
+    let term = 
 	List.fold_left
 	  (fun acc (_,term) -> 
 	    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
