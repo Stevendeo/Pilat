@@ -9,3 +9,9 @@ int main(){
   return 0;
   
 }
+
+/* 
+Invariants generated :
+      |-6. * x + 1. * y| <= cst;
+
+*/

@@ -23,6 +23,7 @@
 open Cil_types
 open Cil
 
+let dkey_var = Mat_option.register_category "pilat_vis:varinfo_reg"
 let dkey_stmt = Mat_option.register_category "pilat_vis:stmt"
 
 let float_of_const c = 
@@ -57,20 +58,43 @@ object(self)
 	match self#current_stmt with 
 	  None -> DoChildren (* This case might be useless *)
 	| Some {skind = If _ } -> DoChildren
-	| Some {skind = Instr (Call(Some(Var nd,_),{ enode = Lval(Var v,NoOffset) },args,_))} -> 
+	| Some ({skind = Instr (Call(Some(Var nd,_),{ enode = Lval(Var v,NoOffset) },args,_))} as s)-> 
 	  let () = 
 	    if v.vorig_name = Mat_option.non_det_name && (List.length args) = 2 
 	    then 
+	      let () = Mat_option.debug ~dkey:dkey_var 
+		"Non deterministic call : %s"
+		v.vorig_name in
+	      
 	      let fst_arg = List.hd args and snd_arg = List.hd (List.tl args) in 
 	      non_det_variables := 
 		Cil_datatype.Varinfo.Map.add 
 		nd
 		((arg_exp fst_arg),arg_exp snd_arg)
 		!non_det_variables
-	    else Mat_option.abort "Function call in the loop : undefined behavior."
+	    else 
+	      if Cil_datatype.Varinfo.Set.mem v focused_vinfo then
+	  
+		Mat_option.abort "Function call %a in the loop modifying a studied variable : undefined behavior."
+		  Printer.pp_stmt s
 	  in
 	  DoChildren
-	| _ -> 
+	| Some ({skind = Instr (Call (Some (Var v,_),_,_,_))}as s) -> 
+	  if Cil_datatype.Varinfo.Set.mem v focused_vinfo then
+	  
+	  Mat_option.abort "Function call %a in the loop modifying a studied variable : undefined behavior."
+	    Printer.pp_stmt s
+	    
+	  else DoChildren
+
+	| Some {skind = Instr (Call _)} -> 
+	  Mat_option.feedback "Function call in the loop without assignment : assert it does nothing."; DoChildren;
+	| s -> 
+	  let () = Mat_option.debug ~dkey:dkey_var 
+	    "Variable %s added by statement %a"
+	    v.vorig_name 
+	    Printer.pp_stmt (Extlib.the s)
+	  in
 	  let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
 	  in
 	  SkipChildren      

@@ -4,7 +4,7 @@ int main(){
   float x,y;
   float k;
   while(x < 4){
-    k=float_interval(-0.1,0.1);
+    k=float_interval(-0.1,0.1); /* 0 */
     x = 0.68 * (x-y) + k;
     y = 2*0.68*y + x;
 

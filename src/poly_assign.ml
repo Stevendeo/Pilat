@@ -493,11 +493,18 @@ let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> t option =
     if P.Var.Set.mem v varinfo_used 
     then Some (Assign (v,(exp_to_poly ~nd_var e)))
     else None 
-  | Call(_,{enode = Lval(Var v,NoOffset) },_,_) -> 
-    assert (v.vorig_name = Mat_option.non_det_name); None
-      
+  | Call(_,{enode = Lval(Var v,NoOffset) },_,_) as i -> 
+    if (v.vorig_name = Mat_option.non_det_name) then None
+    else 
+      let () = Mat_option.feedback
+	"Call %a not supported, assuming no effect"
+	Printer.pp_instr i in
+      None
   | Skip _ -> None
-  | _ -> assert false
+  | i -> 
+    Mat_option.abort
+      "Instruction %a not supported"
+      Printer.pp_instr i
 
 let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl   
 
