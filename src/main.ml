@@ -57,7 +57,7 @@ object(self)
   method! vstmt_aux stmt =
     let kf = Extlib.the self#current_kf in
     match stmt.skind with
-    | Cil_types.Loop (_,b,_,_,_) -> 
+    | Cil_types.Loop (_,b,_,_,breaks) -> 
       
       let t0 = Sys.time() in
 
@@ -104,7 +104,7 @@ object(self)
 	in
 	(** 1st step : Computation of the block as a list of list of polynomials assignments. *)
 	let polys_opt = 
-	try Some (Assign_type.block_to_poly_lists varinfos_used ~nd_var b)
+	try Some (Assign_type.block_to_poly_lists varinfos_used ~nd_var breaks b)
 	with Poly_assign.Not_solvable -> None 
 	in
 	
@@ -151,23 +151,22 @@ object(self)
 	      (fun (acc_assign,acc_base) p_list -> 
 		let assign,m_set = 
 		  Assign_type.add_monomial_modifications 
-		    (basic_assigns@p_list) in 
+		    [(basic_assigns@p_list)] in 
 				
-		let acc_assign = assign :: acc_assign and  
+		let acc_assign = assign @ acc_assign and  
 		    acc_base = Assign_type.P.Monom.Set.union acc_base m_set in
 		(acc_assign,acc_base))
 	      ([],Assign_type.P.Monom.Set.empty)
 	      poly_lists
 	  in
-	  
 	  let base = Assign_type.monomial_base bases_for_each_loop 
 	  in
 	  let rev_base = Assign_type.reverse_base base in
-
-	  let matrices = 
-	    List.map
-	      (Assign_type.loop_matrix base)
-	      assigns in
+	  let matrices = 	    
+	    List.flatten
+ 	      (List.map
+ 		 (Assign_type.loop_matrix base)
+ 		 assigns) in
 	  if Mat_option.Prove.get () 
 	  then
 	    let () = Mat_option.feedback "Proving invariants" in
@@ -306,7 +305,15 @@ let run () =
       "Welcome to Frama-C's Pilat invariant generator"
   in 
   let file = Ast.get () 
-  in
+  in  
+  List.iter
+    (function
+    |GFun (f,_) -> 
+      Cfg.prepareCFG f;
+      Cfg.clearCFGinfo f;
+      Cfg.cfgFun f;
+    | _ -> ())
+    file.globals;
   let filename = 
     let fname = Mat_option.Output_C_File.get () in 
     if  fname = "" then file.fileName ^ "_annot.c" else fname

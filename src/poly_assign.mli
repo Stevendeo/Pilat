@@ -59,8 +59,14 @@ module type S = sig
 
   (** A monomial affectation is equivalent to considering a monomial is a variable modified
     by the affectation. *)
-  type monom_affect = monomial * p
 
+
+type monom_assign = 
+  
+  LinAssign of monomial * p
+| LinLoop of lin_body list
+
+and lin_body = monom_assign list
   (** 2. Ast to matrix translators *)  
 
 (** Returns a polynomial representing the expression in argument *)
@@ -73,13 +79,14 @@ module type S = sig
   val block_to_poly_lists : 
     Cil_datatype.Varinfo.Set.t -> 
     ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> 
+    Cil_types.stmt option -> 
     Cil_types.block -> 
     body list
 
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
   val add_monomial_modifications : 
-    body -> monom_affect list * P.Monom.Set.t
+    body list -> lin_body list * P.Monom.Set.t
 
 
   module Imap : Map.S with type key = int
@@ -92,7 +99,7 @@ module type S = sig
 
   val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
 
-  val loop_matrix : int P.Monom.Map.t -> monom_affect list -> mat
+  val loop_matrix : int P.Monom.Map.t -> monom_assign list -> mat list
 
 end
   

@@ -69,7 +69,12 @@ module type S = sig
 
   (** A monomial affectation is equivalent to considering a monomial is a variable modified
     by the affectation. *)
-  type monom_affect = monomial * p
+type monom_assign = 
+  
+  LinAssign of monomial * p
+| LinLoop of lin_body list
+
+and lin_body = monom_assign list
 
   (** 2. Ast to matrix translators *)  
 
@@ -78,6 +83,7 @@ module type S = sig
   val block_to_poly_lists : 
     P.Var.Set.t -> 
     ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> 
+    Cil_types.stmt option -> 
     Cil_types.block -> 
     body list
 (** Returns a list of list of polynomial affectations. Each list correspond to a the 
@@ -86,7 +92,7 @@ module type S = sig
     Raises Not_solvable if a statement of the loop is not solvable. *)
 
   val add_monomial_modifications : 
-    body -> monom_affect list * P.Monom.Set.t
+    body list -> lin_body list * P.Monom.Set.t
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
 
@@ -100,7 +106,7 @@ module type S = sig
 
   val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
 
-  val loop_matrix : int P.Monom.Map.t -> monom_affect list -> mat
+  val loop_matrix : int P.Monom.Map.t -> monom_assign list -> mat list
 end
 
 module Make (M:Matrix) (Poly:Polynomial with type v = Varinfo.t 
@@ -181,7 +187,13 @@ struct
 
   (** A monomial affectation is equivalent to considering a monomial is a variable modified
     by the affectation. *)
-  type monom_affect = monomial * p
+
+type monom_assign = 
+  
+  LinAssign of P.Monom.t * P.t
+| LinLoop of lin_body list
+
+and lin_body = monom_assign list
 
 (** 2. Ast to matrix translator *)
 
@@ -259,42 +271,43 @@ let all_possible_monomials e_deg_hashtbl =
   
   M_set.add (P.mono_minimal []) (M_set.union res basis)
  
-  
+    
 let add_monomial_modifications 
-    (p_list:body) : monom_affect list * P.Monom.Set.t = 
-
+    (p_list:body list) : lin_body list * P.Monom.Set.t = 
   let module M_set = P.Monom.Set in
   let module M_map = P.Monom.Map in
   let l_size = List.length p_list in
-  let var_monom_tbl = P.Var.Hashtbl.create l_size
+  let var_monom_tbl = Varinfo.Hashtbl.create l_size
   in
   
   let effective_degree = P.Var.Hashtbl.create l_size in
-
-  let () = List.iter (* Registration of the monom used in the transformation of each var *)
-    (fun affect -> 
-      match affect with 
-	Assign (v,p) -> 
-	  let useful_monoms = 
-	    M_set.filter (fun m -> (m |> (P.mono_poly P.R.one) |> P.deg) > 1)
-	      (P.get_monomials p)
-	  in
-	  let old_bind = 
-	    try 
-	      P.Var.Hashtbl.find 
-		var_monom_tbl 
-		v 
-	    with 
-	      Not_found -> M_set.empty
-	  in P.Var.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
-      | Loop _ -> assert false
-    )
-    p_list 
-  in
   
-  P.Var.Hashtbl.iter
+  let rec reg_monomials affect_list = 
+    List.iter (* Registration of the monomials used in the transformation of each var *)
+      (fun affect -> 
+	match affect with 
+	  Assign (v,p) -> 
+	    let useful_monoms = 
+	      M_set.filter (fun m -> (m |> (P.mono_poly R.one) |> P.deg) > 1)
+		(P.get_monomials p)
+	    in
+	    let old_bind = 
+	      try 
+		Varinfo.Hashtbl.find 
+		  var_monom_tbl 
+		  v 
+	      with 
+		Not_found -> M_set.empty
+	    in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
+	| Loop l -> List.iter reg_monomials l
+      )
+      affect_list 
+  in
+  let () = List.iter reg_monomials p_list in
+
+  Varinfo.Hashtbl.iter
     (fun v _ -> Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
-      "Table contains variable %a" P.Var.pretty v)
+      "Table contains variable %a with id %i" Varinfo.pretty v v.vid)
     var_monom_tbl;
 
   let compute_effective_degree v = 
@@ -303,16 +316,16 @@ let add_monomial_modifications
       Mat_option.debug ~dkey:dkey_lowerizer ~level:2 
 	"Vars seen so far :";
       P.Var.Set.iter 
-	(Mat_option.debug ~dkey:dkey_lowerizer ~level:2 "%a" P.Var.pretty) 
+	(Mat_option.debug ~dkey:dkey_lowerizer ~level:2 "%a" Varinfo.pretty) 
 	seen_vars;
 
-      if P.Var.Hashtbl.mem effective_degree v
-      then P.Var.Hashtbl.find effective_degree v
+      if  P.Var.Hashtbl.mem effective_degree v
+      then  P.Var.Hashtbl.find effective_degree v
       else if P.Var.Set.mem v seen_vars 
       then raise Not_solvable
       else 
 	begin 
-	  let monoms = try P.Var.Hashtbl.find var_monom_tbl v with Not_found -> M_set.empty in
+	  let monoms = try Varinfo.Hashtbl.find var_monom_tbl v with Not_found -> M_set.empty in
 	  Mat_option.debug ~dkey:dkey_lowerizer ~level:3
 	    "Monoms :\n";
 	  M_set.iter
@@ -327,7 +340,7 @@ let add_monomial_modifications
 		      acc_deg 
 		      + 
 			(__compute_degree 
-			   (P.Var.Set.add v seen_vars) 
+			   (Varinfo.Set.add v seen_vars) 
 			   v2)
 		      *
 		        P.deg_of_var m v2)
@@ -344,10 +357,10 @@ let add_monomial_modifications
 	  in deg
 	end
     in
-    __compute_degree P.Var.Set.empty v
+    __compute_degree Varinfo.Set.empty v
   in
 
-  let min_degree = P.Var.Hashtbl.fold
+  let min_degree = Varinfo.Hashtbl.fold
     (fun v _ acc -> 
       max acc (compute_effective_degree v)
     ) var_monom_tbl 0
@@ -357,12 +370,11 @@ let add_monomial_modifications
   then Mat_option.abort "The effective degree of the loop is %i, this is the minimal degree for finding invariants. Change the invariant degree to %i." min_degree min_degree;
     
  
-  
   let () = P.Var.Hashtbl.iter 
     (fun v i -> 
       Mat_option.debug ~dkey:dkey_lowerizer ~level:5
-	"P.Var %a has degree %i"
-	P.Var.pretty v i 
+	"Varinfo %a of id %i has degree %i"
+	Varinfo.pretty v v.vid i 
     ) effective_degree
   in
  
@@ -379,42 +391,46 @@ let add_monomial_modifications
 	List.fold_left
 	  (fun acc v -> 
 	    let old_bind = 
-	      try P.Var.Map.find v acc with Not_found -> M_set.empty
+	      try Varinfo.Map.find v acc with Not_found -> M_set.empty
 	    in
-	    P.Var.Map.add v (M_set.add monom old_bind) acc
+	    Varinfo.Map.add v (M_set.add monom old_bind) acc
 	  )
 	  map
 	  (P.to_var_set monom)
       )
       s
-      P.Var.Map.empty
+      Varinfo.Map.empty
   in
-  (List.fold_right
-    (fun affect acc  -> 
-      match affect with
-	Assign (v,poly) -> 
-      
-	  let monoms_modified = P.Var.Map.find v modification_map
-	  in 
-	  
-	  M_set.fold
-	    (fun monom acc2 -> 
-	      let semi_poly = P.mono_poly P.R.one monom
-	      in
-	      let compo = (P.compo semi_poly v poly) in
-	      Mat_option.debug ~dkey:dkey_lowerizer ~level:3
-		"%a = %a"
-		P.Monom.pretty monom
-		P.pp_print compo;
-	      (monom,compo)::acc2
-	    )
-	    monoms_modified
-	    acc
-      | Loop _ -> assert false
-    )
-    p_list
-    []),s
-   
+  let rec linearize affect_list = 
+    (List.fold_right
+       (fun affect acc  -> 
+	 match affect with
+	   Assign (v,poly) -> 
+	     
+	     let monoms_modified = Varinfo.Map.find v modification_map
+	     in 
+	     
+	     M_set.fold
+	       (fun monom acc2 -> 
+		 let semi_poly = P.mono_poly R.one monom
+		 in
+		 let compo = (P.compo semi_poly v poly) in
+		 Mat_option.debug ~dkey:dkey_lowerizer ~level:3
+		   "%a = %a"
+		   P.Monom.pretty monom
+		   P.pp_print compo;
+		 LinAssign(monom,compo)::acc2
+	       )
+	       monoms_modified
+	       acc
+	 | Loop l -> LinLoop (List.map linearize l) :: acc
+       )
+       affect_list
+       [])
+  in
+  
+  (List.map linearize p_list),s
+  
 (** 2. CIL2Poly  *)
 
 exception Loop_break 
@@ -423,7 +439,7 @@ let poly_hashtbl = Cil_datatype.Stmt.Hashtbl.create 12
 
 let non_det_var_memoizer = Cil_datatype.Varinfo.Hashtbl.create 2
 
-let rec exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
+let exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
   let float_of_const c = 
     match c with
       CInt64 (i,_,_) -> Integer.to_float i
@@ -508,14 +524,19 @@ let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> t option =
 
 let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl   
 
-let stmt_to_poly_assign varinfo_used nd_var s : t option = 
-  begin
+let rec stmt_to_poly_assign varinfo_used nd_var break s : t option = 
+  
   try 
     Stmt.Hashtbl.find poly_hashtbl s 
   with 
     Not_found -> 
       match s.skind with
-	Instr i -> 
+	Instr i -> 	
+	  if break = None then None 
+	  else 
+	    if Stmt.equal s (Extlib.the break)
+	    then raise Loop_break
+	    else 
 	  let () = Mat_option.debug ~dkey:dkey_stmt
 	    "Instruction"
 	  in
@@ -526,17 +547,49 @@ let stmt_to_poly_assign varinfo_used nd_var s : t option =
 		Some p
 	    | None -> register_poly s None; None
 	  end
-      | Cil_types.Loop _ -> Mat_option.abort "Nested loop are not allowed yet."
+      | Cil_types.Loop (_,b,_,_,break) -> 
+	
+	if Cil_datatype.Varinfo.Map.is_empty nd_var
+	then 
+	  let () =
+	    Mat_option.debug ~dkey:dkey_stmt
+	      "Nested loop";
+	    List.iter
+	      (fun s -> 
+		Mat_option.debug ~dkey:dkey_stmt ~level:2
+		  "-- %a"
+		  Printer.pp_stmt s)
+	      b.bstmts
+	    ;
+	    
+	  in
+	  Some (Loop (block_to_poly_lists varinfo_used break b))
+	else 
+	    Mat_option.abort 
+	      "Non deterministic nested loop are not allowed"   
       | Break _ -> raise Loop_break
-      | _ -> None
-  end
+      | _ -> 
 
-let block_to_poly_lists 
+	    None
+
+and block_to_poly_lists 
     varinfo_used 
     ?(nd_var = Cil_datatype.Varinfo.Map.empty) 
+    break
     block : body list = 
-  let head = List.hd (List.hd block.bstmts).preds (* It must be the entry of the loop *)
+  let head = 
+    try 
+      List.hd 
+	(List.hd block.bstmts).preds with Failure _ ->  
+	  Mat_option.feedback 
+	    "Error incoming : head of the block is %a" Printer.pp_stmt (List.hd block.bstmts);
+
+	  failwith "hd"
+(* It must be the entry of the loop *)
   in
+  let () = 
+    Mat_option.debug ~dkey:dkey_stmt "Loop head : %a"
+      Printer.pp_stmt head in
   let rec dfs stmt = 
     Mat_option.debug ~dkey:dkey_stmt ~level:2
       "Stmt %a studied" 
@@ -558,13 +611,26 @@ let block_to_poly_lists
 		
 	try
 
-	  let poly_opt = stmt_to_poly_assign varinfo_used nd_var stmt in
+	  let poly_opt = stmt_to_poly_assign varinfo_used nd_var break stmt in
+
+	  let succs = 
+	  match stmt.skind with
+	    Cil_types.Loop(_,_,_,_,None) -> 
+	      assert false
+	  | Cil_types.Loop(_,_,_,_,Some s) -> s.succs
+	  | _ -> 
+	      stmt.succs in    
 
 	  let future_lists = 
 	    List.fold_left
-	      (fun acc succ -> (dfs succ) @ acc)
+	      (fun acc succ -> 		
+		Mat_option.debug ~dkey:dkey_stmt ~level:4
+		  "Successor of %a analyzed :\n %a"
+		  Printer.pp_stmt stmt
+		  Printer.pp_stmt succ;
+		(dfs succ) @ acc)
 	      []
-	      stmt.succs
+	      succs
 	  in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:3
 	    "List of paths : %i" (List.length future_lists) ;
@@ -573,7 +639,8 @@ let block_to_poly_lists
 	  match poly_opt with 
 	    None -> 
 	      Mat_option.debug ~dkey:dkey_stmt ~level:3
-		"No polynom generated from this stmt"
+		"No polynom generated from stmt %a"
+		Printer.pp_stmt stmt
 	      ;
 	      future_lists
 	  | Some (Assign (_,p) as aff) ->
@@ -582,7 +649,7 @@ let block_to_poly_lists
 	      P.pp_print p;
 
 	    aff ++ future_lists
-	  | Some (Loop _) -> assert false
+	  | Some ((Loop _) as l) -> l ++ future_lists
 
 	with
 	  Loop_break -> []
@@ -643,42 +710,66 @@ let vec_to_poly rev_base vec =
     )
     rev_base
     P.zero
-  
-
-let loop_matrix 
-    (base: int P.Monom.Map.t) 
-    (all_modifs :monom_affect list) : mat = 
-  
-  let mat_size = P.Monom.Map.cardinal base in
-  
-  try 
-    List.fold_left
-      (fun acc (v,poly_affect) -> 
-	let new_matrix = 
-	  (snd
-	     (to_mat 
-		~base 
-		v 
-		poly_affect)
-	  ) in 
-	
-	Mat_option.debug ~dkey:dkey_loop_mat ~level:4
-	  "New matrix for %a = %a :"
-          P.Monom.pretty v
-	  P.pp_print poly_affect;
-	
-	Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
-	  M.pp_print new_matrix
-	  M.pp_print acc;
-	
-        M.mul
-	  new_matrix
-	  acc 
-      )
-      (M.identity mat_size)
-      all_modifs
-  with
-    Incomplete_base -> 
-      Mat_option.abort "The matrix base is incomplete, you need to add more variables"
+ let rec matrices_for_a_loop base all_modifs =     
+   let matrices = loop_matrix base all_modifs in   
+(** In order to consider all the behaviors of the loop, we need to       consider as many matrices as they are monomials assigned in a body.       An over approximation is to consider all the variables in       the loop. *)   
+   let number_of_iterations = P.Monom.Map.cardinal base   in   
+   List.fold_left     
+     (fun acc loop_mat ->       
+       let rec matrices_to_succ_powers acc mat i = 	
+	 match i with 	  
+	   0 -> acc 	
+	 | _ -> mat :: (matrices_to_succ_powers acc (M.mul mat loop_mat) (i-1))       
+       in       
+       matrices_to_succ_powers acc loop_mat number_of_iterations     
+     )     
+     []     
+     matrices 
+ and loop_matrix     
+    (base : int P.Monom.Map.t)     
+    (all_modifs : lin_body)  =     
+  (** Multiplies a matrix to each entries of a list. *)   
+  let (++) (mat : M.t) (mat_list:M.t list) =     
+    List.map (M.mul mat) mat_list     in   
+  let mat_size = P.Monom.Map.cardinal base in     
+  try       
+    List.fold_left 	
+      (fun (acc : M.t list) affect -> 	  
+	match affect with
+ 	  LinAssign (v,poly_affect) -> 	      	      
+	    let new_matrix = 		
+	      (snd
+ 		 (to_mat
+ 		    ~base
+		    v
+		    poly_affect) 		
+	      ) in
+ 	    Mat_option.debug ~dkey:dkey_loop_mat ~level:4
+ 	      "New matrices for %a = %a :"
+ 	      P.Monom.pretty v
+ 	      P.pp_print poly_affect; 	      	      
+	    List.iter
+ 	      (fun acc_mat -> 		  
+		Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
+ 		 M.pp_print new_matrix
+ 		  M.pp_print acc_mat) acc;
+ 	    new_matrix ++ acc 	  
+	| LinLoop b_list -> 	    
+	  let matrices_for_each_path = 	      
+	    List.fold_left
+ 	      (fun acc body -> (matrices_for_a_loop base body) @ acc) 		
+	      [] 		
+	      b_list 			    
+	  in 	    
+	  List.fold_left 	      
+	    (fun acc2 new_mat -> (new_mat ++ acc) @ acc2 	      
+	    ) 	      
+	    acc (* If [], then we don't consider the case where the loop is not taken. *) 	      matrices_for_each_path
+      ) 	
+      [(M.identity mat_size)] 	
+      all_modifs     
+  with       
+    Incomplete_base -> 	
+      Mat_option.abort "The matrix base is incomplete, you need to add more variables"   
 
 end

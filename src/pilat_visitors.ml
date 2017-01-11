@@ -52,7 +52,7 @@ let varinfo_registerer block =
   let visitor = 
 object(self)
       inherit Visitor.frama_c_inplace
-	
+
       method! vvrbl v = 
 		
 	match self#current_stmt with 
