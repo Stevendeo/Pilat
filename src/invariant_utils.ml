@@ -208,7 +208,8 @@ let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) =
 	   (fun acc v ->  
 	     let trunc_v = 
 	       A.M.create_vec b2_length
-		 (fun i -> A.M.get_coef_vec (i + b1_length) v) in
+		 (fun i -> 
+		   A.M.get_coef_vec (i + b1_length-1) v) in
 	     trunc_v :: acc	  
 	   )
 	   []
