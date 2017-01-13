@@ -20,22 +20,29 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module Float_deterministic : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
-			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
-
-module Q_deterministic : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
-			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
-
-module Float_non_deterministic : Poly_assign.S with type P.c = Poly_utils.N_poly.t 
-					       and type P.v = Cil_datatype.Varinfo.t
-			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
+open Cil_datatype
+open Pilat_math
 
 
-module Q_non_deterministic : Poly_assign.S  with type P.v = Cil_datatype.Varinfo.t
-			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
-
-
-module Determinizer : functor (ND_assign :Poly_assign.S) -> 
-  sig
-    val nd_mat_to_d_mat : ND_assign.M.t -> Float_deterministic.M.t
-  end 
+module Make: functor 
+     (Assign : Poly_assign.S with type P.v = Varinfo.t 
+			     and type P.Var.Map.key = Varinfo.t
+			     and type P.Var.Set.t = Varinfo.Set.t
+     )-> 
+sig 
+  
+  (** 1. Utils *)
+  (** Returns a polynomial representing the expression in argument *)
+  val exp_to_poly : ?nd_var:(float*float) Varinfo.Map.t  -> Cil_types.exp -> Assign.P.t
+    
+  (** Returns a list of list of polynomial affectations. Each list correspond to a the 
+      succession of affectations for each possible path in the loop, while omitting 
+      variable absent of the set in argument
+      Raises Not_solvable if a statement of the loop is not solvable. *)
+  val block_to_poly_lists : 
+    Assign.P.Var.Set.t -> 
+    ?nd_var:(float*float) Varinfo.Map.t -> 
+    Cil_types.stmt option -> 
+    Cil_types.block -> 
+    Assign.body list
+end

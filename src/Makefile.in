@@ -18,6 +18,7 @@ PLUGIN_CMO 	:= mat_option\
 		poly_assign\
 		assign\
 		invariant_utils\
+		cil2assign\
 		invar_prover\
 		non_det_invar\
 		acsl_gen\

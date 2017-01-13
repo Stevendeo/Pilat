@@ -65,9 +65,3 @@ end
 
 module Make : functor 
     (A : Poly_assign.S) -> S with type invar = A.M.vec inv and type mat = A.mat
-
-
-    (*
-  (** After the integration, there is no fraction left on the vector expression. *)
-  val integrate_vec : q_vec -> q_vec
-    *)

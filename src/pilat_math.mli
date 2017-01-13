@@ -151,7 +151,7 @@ sig
 
   val deter : t -> float (** Pilat use : returning a random value in the polynomial image *)
 
-  (** Only required for Pilat's ring. Undefined behavior *)  
+  (** Only required to match Pilat's ring. Undefined behavior *)  
   val div : t -> t -> t 
   val den : t -> t
   val approx : t -> t

@@ -73,7 +73,7 @@ object(self)
 	    b.bstmts
 	in
 	
-	let (varinfos_used,nd_var) = Pilat_visitors.varinfo_registerer b in
+	let (varinfos_used,nd_var) = Pilat_visitors.studied_variables b in
 	let num_variables = 
 	  Cil_datatype.Varinfo.Set.cardinal varinfos_used 
 	in
@@ -90,7 +90,10 @@ object(self)
 
 	let assign_is_deter = Cil_datatype.Varinfo.Map.is_empty nd_var
 	in
-	let (module Assign_type : Poly_assign.S) = 
+	let (module Assign_type : 
+	    Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
+			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
+			  ) = 
 	  
 
 	  match (Mat_option.Use_zarith.get ()), assign_is_deter with
@@ -103,8 +106,10 @@ object(self)
 	  | false, false -> (module Assign.Float_non_deterministic)
 	in
 	(** 1st step : Computation of the block as a list of list of polynomials assignments. *)
+	let module Cil_parser = Cil2assign.Make(Assign_type) in
+	
 	let polys_opt = 
-	try Some (Assign_type.block_to_poly_lists varinfos_used ~nd_var breaks b)
+	try Some (Cil_parser.block_to_poly_lists varinfos_used ~nd_var breaks b)
 	with Poly_assign.Not_solvable -> None 
 	in
 	
@@ -114,9 +119,7 @@ object(self)
 
 	| Some poly_lists -> 
 	  Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
-	  
-	  let varinfos_used,nd_var = Pilat_visitors.varinfo_registerer b in
-	  Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
+	 
 	  
 	  Cil_datatype.Varinfo.Set.iter
 	    (fun v -> 
@@ -229,8 +232,9 @@ object(self)
 			  "Invariant %s %i :" (Invariant_maker.lim_to_string limit)  (i + 1) in
 		      List.iter
 			(fun invar ->  
-			  Assign_type.print_vec rev_base invar;
-			  Mat_option.debug ~dkey:dkey_stmt "__\n";						  
+			  Mat_option.debug ~dkey:dkey_stmt
+			    "%a\n__"
+			  Assign_type.print_vec (rev_base,invar);						  
 			)invars;	    
 		    ) invar;
 		   	  

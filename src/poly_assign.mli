@@ -30,17 +30,18 @@ module type S = sig
 
   (** 1. Utils *)
 
-  module P : Polynomial with type v = Varinfo.t
-			 and type Var.Set.t = Varinfo.Set.t
+  module P : Polynomial
 
   module M : Matrix with type elt = P.c
 
   module R : Ring with type t = P.c
-  (** Takes a monomial and its affectation, returns a matrix and its base. 
+  (** Takes a monomial and its assignment, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
       Raises Incomplete_base if unconsidered variables are necessary for the matrix.
   *)
+  module Var = P.Var
+    
   val to_mat : ?base:int P.Monom.Map.t -> P.Monom.t -> P.t -> int P.Monom.Map.t * M.t
 
   type mat = M.t (** Matrix in which the affectation will be translated *)
@@ -51,27 +52,27 @@ module type S = sig
   type m_set = P.Monom.Set.t
   type p = P.t
 
-  type t = 
-    Assign of var * p
-  | Loop of body list 
 
+  type t = 
+    Assign of Var.t * P.t
+  | Loop of body list 
+      
   and body = t list
 
   (** A monomial affectation is equivalent to considering a monomial is a variable modified
     by the affectation. *)
 
-
-type monom_assign = 
-  
-  LinAssign of monomial * p
-| LinLoop of lin_body list
-
-and lin_body = monom_assign list
+  type monom_assign = 
+    
+    LinAssign of monomial * p
+  | LinLoop of lin_body list
+      
+  and lin_body = monom_assign list
   (** 2. Ast to matrix translators *)  
-
-(** Returns a polynomial representing the expression in argument *)
-  val exp_to_poly : ?nd_var: (float*float) Cil_datatype.Varinfo.Map.t -> Cil_types.exp -> P.t
-
+    (*
+  (** Returns a polynomial representing the expression in argument *)
+  val exp_to_poly : ?nd_var: (float*float) Cil_datatype.Var.Map.t -> Cil_types.exp -> P.t
+    
 (** Returns a list of list of polynomial affectations. Each list correspond to a the 
     succession of affectations for each possible path in the loop, while omitting 
     variable absent of the set in argument
@@ -82,7 +83,7 @@ and lin_body = monom_assign list
     Cil_types.stmt option -> 
     Cil_types.block -> 
     body list
-
+    *)
 (** Returns the list of monomial affectations needed to linearize the loop, and the
     set of all monomials used. *)
   val add_monomial_modifications : 
@@ -95,7 +96,7 @@ and lin_body = monom_assign list
 
   val reverse_base : int P.Monom.Map.t -> P.Monom.t Imap.t
 
-  val print_vec : P.Monom.t Imap.t -> M.vec -> unit
+  val print_vec : Format.formatter -> P.Monom.t Imap.t * M.vec -> unit
 
   val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
 
@@ -106,7 +107,7 @@ end
 module Make: 
   functor 
     (M : Matrix)
-    (P : Polynomial with type v = Varinfo.t 
-		    and type c = M.elt 
-		    and type Var.Set.t = Varinfo.Set.t) -> S with type P.c = M.elt
+    (Poly : Polynomial with type c = M.elt) -> S with type P.c = M.elt 
+						 and type P.v = Poly.v
+						 and type P.Var.Set.t = Poly.Var.Set.t
   

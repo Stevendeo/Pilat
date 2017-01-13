@@ -24,7 +24,7 @@ open Cil_types
 open Cil_datatype
 open Invariant_utils 
 
-module Make: functor (A:Poly_assign.S) -> 
+module Make: functor (A:Poly_assign.S with type P.v = Varinfo.t) -> 
 sig
   
   module Invar_utils : S with type mat = A.mat and type invar = A.M.vec inv
@@ -39,6 +39,5 @@ sig
     'a Varinfo.Map.t -> 
     int -> 
     unit
-    
-    
+     
 end

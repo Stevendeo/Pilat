@@ -23,8 +23,9 @@
 open Cil_types
 open Cil_datatype
 
-val varinfo_registerer : block -> Varinfo.Set.t * (float*float) Varinfo.Map.t
+val studied_variables : block -> Varinfo.Set.t * (float*float) Varinfo.Map.t
 
+(** Used to register generated assignments to loop heads. *)
 val register_stmt : stmt -> stmtkind -> unit
 
 (** fundec_updater adds the constant initialisation as new stmts in the CFG. It is based on the 

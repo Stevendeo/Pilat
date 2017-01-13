@@ -38,12 +38,10 @@ module type S = sig
 
   (** 1. Utils *)
 
-  module P : Polynomial with type v = Varinfo.t
-			 and type Var.Set.t = Varinfo.Set.t
-
+  module P : Polynomial 
   module M : Matrix with type elt = P.c
-
   module R : Ring with type t = P.c
+  module Var = P.Var
   (** Takes a monomial and its affectation, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
@@ -77,12 +75,12 @@ type monom_assign =
 and lin_body = monom_assign list
 
   (** 2. Ast to matrix translators *)  
-
-  val exp_to_poly : ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> Cil_types.exp -> P.t
+(*
+  val exp_to_poly : ?nd_var:(float*float) Var.Map.t -> Cil_types.exp -> P.t
 
   val block_to_poly_lists : 
     P.Var.Set.t -> 
-    ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> 
+    ?nd_var:(float*float) Var.Map.t -> 
     Cil_types.stmt option -> 
     Cil_types.block -> 
     body list
@@ -90,7 +88,7 @@ and lin_body = monom_assign list
     succession of affectations for each possible path in the loop, while omitting 
     variable absent of the set in argument
     Raises Not_solvable if a statement of the loop is not solvable. *)
-
+*)
   val add_monomial_modifications : 
     body list -> lin_body list * P.Monom.Set.t
 (** Returns the list of monomial affectations needed to linearize the loop, and the
@@ -102,22 +100,20 @@ and lin_body = monom_assign list
 
   val reverse_base : int P.Monom.Map.t -> P.Monom.t Imap.t
 
-  val print_vec : P.Monom.t Imap.t -> M.vec -> unit
+  val print_vec : Format.formatter -> P.Monom.t Imap.t * M.vec -> unit
 
   val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
 
   val loop_matrix : int P.Monom.Map.t -> monom_assign list -> mat list
 end
 
-module Make (M:Matrix) (Poly:Polynomial with type v = Varinfo.t 
-					and type c = M.elt 
-					and type Var.Set.t = Varinfo.Set.t) = 
+module Make (M:Matrix) (Poly:Polynomial with type c = M.elt) = 
 struct 
 
   module M = M
   module P = Poly
   module R = P.R
-
+  module Var = P.Var
   let to_mat ?(base = P.Monom.Map.empty) (monom_var:P.Monom.t) (p:P.t) : int P.Monom.Map.t * M.t = 
     let base_monom = 
       if P.Monom.Map.is_empty base
@@ -277,10 +273,10 @@ let add_monomial_modifications
   let module M_set = P.Monom.Set in
   let module M_map = P.Monom.Map in
   let l_size = List.length p_list in
-  let var_monom_tbl = Varinfo.Hashtbl.create l_size
+  let var_monom_tbl = Var.Hashtbl.create l_size
   in
   
-  let effective_degree = P.Var.Hashtbl.create l_size in
+  let effective_degree = Var.Hashtbl.create l_size in
   
   let rec reg_monomials affect_list = 
     List.iter (* Registration of the monomials used in the transformation of each var *)
@@ -293,21 +289,21 @@ let add_monomial_modifications
 	    in
 	    let old_bind = 
 	      try 
-		Varinfo.Hashtbl.find 
+	        Var.Hashtbl.find 
 		  var_monom_tbl 
 		  v 
 	      with 
 		Not_found -> M_set.empty
-	    in Varinfo.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
+	    in Var.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
 	| Loop l -> List.iter reg_monomials l
       )
       affect_list 
   in
   let () = List.iter reg_monomials p_list in
 
-  Varinfo.Hashtbl.iter
+  Var.Hashtbl.iter
     (fun v _ -> Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
-      "Table contains variable %a with id %i" Varinfo.pretty v v.vid)
+      "Table contains variable %a" Var.pretty v)
     var_monom_tbl;
 
   let compute_effective_degree v = 
@@ -316,7 +312,7 @@ let add_monomial_modifications
       Mat_option.debug ~dkey:dkey_lowerizer ~level:2 
 	"Vars seen so far :";
       P.Var.Set.iter 
-	(Mat_option.debug ~dkey:dkey_lowerizer ~level:2 "%a" Varinfo.pretty) 
+	(Mat_option.debug ~dkey:dkey_lowerizer ~level:2 "%a" Var.pretty) 
 	seen_vars;
 
       if  P.Var.Hashtbl.mem effective_degree v
@@ -325,7 +321,7 @@ let add_monomial_modifications
       then raise Not_solvable
       else 
 	begin 
-	  let monoms = try Varinfo.Hashtbl.find var_monom_tbl v with Not_found -> M_set.empty in
+	  let monoms = try Var.Hashtbl.find var_monom_tbl v with Not_found -> M_set.empty in
 	  Mat_option.debug ~dkey:dkey_lowerizer ~level:3
 	    "Monoms :\n";
 	  M_set.iter
@@ -340,7 +336,7 @@ let add_monomial_modifications
 		      acc_deg 
 		      + 
 			(__compute_degree 
-			   (Varinfo.Set.add v seen_vars) 
+			   (Var.Set.add v seen_vars) 
 			   v2)
 		      *
 		        P.deg_of_var m v2)
@@ -357,10 +353,10 @@ let add_monomial_modifications
 	  in deg
 	end
     in
-    __compute_degree Varinfo.Set.empty v
+    __compute_degree Var.Set.empty v
   in
 
-  let min_degree = Varinfo.Hashtbl.fold
+  let min_degree = Var.Hashtbl.fold
     (fun v _ acc -> 
       max acc (compute_effective_degree v)
     ) var_monom_tbl 0
@@ -370,11 +366,11 @@ let add_monomial_modifications
   then Mat_option.abort "The effective degree of the loop is %i, this is the minimal degree for finding invariants. Change the invariant degree to %i." min_degree min_degree;
     
  
-  let () = P.Var.Hashtbl.iter 
+  let () = Var.Hashtbl.iter 
     (fun v i -> 
       Mat_option.debug ~dkey:dkey_lowerizer ~level:5
-	"Varinfo %a of id %i has degree %i"
-	Varinfo.pretty v v.vid i 
+	"Var %a has degree %i"
+	Var.pretty v i 
     ) effective_degree
   in
  
@@ -391,15 +387,15 @@ let add_monomial_modifications
 	List.fold_left
 	  (fun acc v -> 
 	    let old_bind = 
-	      try Varinfo.Map.find v acc with Not_found -> M_set.empty
+	      try Var.Map.find v acc with Not_found -> M_set.empty
 	    in
-	    Varinfo.Map.add v (M_set.add monom old_bind) acc
+	    Var.Map.add v (M_set.add monom old_bind) acc
 	  )
 	  map
 	  (P.to_var_set monom)
       )
       s
-      Varinfo.Map.empty
+      Var.Map.empty
   in
   let rec linearize affect_list = 
     (List.fold_right
@@ -407,7 +403,7 @@ let add_monomial_modifications
 	 match affect with
 	   Assign (v,poly) -> 
 	     
-	     let monoms_modified = Varinfo.Map.find v modification_map
+	     let monoms_modified = Var.Map.find v modification_map
 	     in 
 	     
 	     M_set.fold
@@ -437,8 +433,8 @@ exception Loop_break
 
 let poly_hashtbl = Cil_datatype.Stmt.Hashtbl.create 12
 
-let non_det_var_memoizer = Cil_datatype.Varinfo.Hashtbl.create 2
-
+let non_det_var_memoizer = Var.Hashtbl.create 2
+(*
 let exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
   let float_of_const c = 
     match c with
@@ -454,10 +450,10 @@ let exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
     | Lval (Var v,_) ->
       begin
 	try 
-	  P.const (Cil_datatype.Varinfo.Hashtbl.find non_det_var_memoizer v)
+	  P.const (Var.Hashtbl.find non_det_var_memoizer v)
 	with Not_found -> 
 	  try 
-	    let (low,up) = Varinfo.Map.find v nd_var 
+	    let (low,up) = Var.Map.find v nd_var 
 	    in
 	    
 	    let new_rep = (P.R.non_det_repr low up) in 
@@ -466,11 +462,11 @@ let exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
 	  let () = 
 	    Mat_option.debug ~dkey:dkey_stmt ~level:2
 	      "Variable %a non deterministic, first use. Representant : %a"
-	      Varinfo.pretty v 
+	      Var.pretty v 
 	      P.R.pp_print new_rep
 	  in
 
-	    let () = Cil_datatype.Varinfo.Hashtbl.add non_det_var_memoizer v new_rep
+	    let () = Var.Hashtbl.add non_det_var_memoizer v new_rep
 	    in
 	    P.const new_rep
 	  with
@@ -660,7 +656,7 @@ and block_to_poly_lists
   in
   Mat_option.debug ~dkey:dkey_stmt ~level:5
     "How many paths ? %i" (List.length res); res
-
+*)
 let monomial_base set = 
     let i = ref (-1) in
     P.Monom.Set.fold
@@ -686,7 +682,7 @@ let reverse_base base =
     base
     Imap.empty 
 
-let print_vec rev_base vec =
+let print_vec fmt (rev_base,vec) =
 
   let i = ref (-1) in 
   Array.iter
@@ -695,7 +691,7 @@ let print_vec rev_base vec =
       if P.R.equal P.R.zero c
       then () 
       else 
-	Mat_option.feedback
+	Format.fprintf fmt
 	  "+%a%a" 
 	  P.R.pp_print c
 	  P.Monom.pretty 

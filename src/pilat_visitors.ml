@@ -42,7 +42,7 @@ let rec arg_exp e =
     Printer.pp_exp e
 
 (** Returns the varinfos used in the block in argument *)
-let varinfo_registerer block = 
+let studied_variables block = 
   let vinfos = ref Cil_datatype.Varinfo.Set.empty in
   
   let focused_vinfo = Mat_option.var_list ()

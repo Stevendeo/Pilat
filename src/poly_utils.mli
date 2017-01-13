@@ -22,11 +22,8 @@
 
 open Pilat_math
 open Cil_datatype
-open Pilat_math
 
 (** 1. Variables used for polynomials *)
-
-type n_var = Pilat_math.n_var
 
 module N_var : Variable with type t = n_var
 
@@ -52,7 +49,6 @@ module NQ_poly : Polynomial with type c = Q.t and type v = N_var.t
 module NF_poly : Polynomial with type c = N_poly.t 
 			    and type v = Varinfo.t
 			    and type Var.Set.t = Varinfo.Set.t
-
 
 
 module NQF_poly : Polynomial with type c = NQ_poly.t

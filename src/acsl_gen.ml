@@ -33,7 +33,7 @@ let dkey_zero = Mat_option.register_category "acsl_gen:iszero"
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
-module Make(A:Poly_assign.S) =
+module Make(A:Poly_assign.S with type P.v = Varinfo.t) =
 struct 
 
   module Invar_utils = Invariant_utils.Make(A)

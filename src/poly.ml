@@ -432,6 +432,7 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
 	 let mem_project = Datatype.never_any_project
 	end
        )
+      let new_var _ = X
       let max _ = assert false
       let min _ = assert false     
       let to_nvars _ = assert false
