@@ -179,6 +179,7 @@ object(self)
 	  if Mat_option.Prove.get () 
 	  then
 	    let () = Mat_option.feedback "Proving invariants" in
+	    let t0 = Sys.time () in
 	    let open Property_status in
 	    let module Prover = Invar_prover.Make(Assign_type) in
 	    List.iter
@@ -216,7 +217,9 @@ object(self)
 		in
 		Property_status.emit emitter ~hyps:[] ip status
 	      )
-	      (Annotations.code_annot stmt); DoChildren
+	      (Annotations.code_annot stmt); 
+	    Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t0; 
+	    DoChildren
 	  else
 	    let () = Mat_option.feedback "Invariant generation" in
 	    let module Invariant_maker = Invariant_utils.Make(Assign_type) in
@@ -254,6 +257,7 @@ object(self)
 	    
 	    let module Annot_generator = Acsl_gen.Make(Assign_type) in 
 	    
+	    let t = Sys.time () in
 	    let () = (** Intersecting the invariants if necessary *)
 	      if whole_loop_invar = [] then () 
 	      else if (assign_is_deter || List.length whole_loop_invar >= 2)
@@ -272,6 +276,8 @@ object(self)
 		
 		in
 		
+		let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t 
+		in
 		let () = 
 		  Mat_option.whole_rel_time := Sys.time() -. t0 +. !Mat_option.whole_rel_time 
 		in

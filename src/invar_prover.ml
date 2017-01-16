@@ -146,7 +146,6 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
     exception Not_an_invariant
     let prove_invariant (mat:A.M.t) (base:int A.P.Monom.Map.t) (pred:predicate) = 
 
-      let t0 = Sys.time () in
       try 
 	let vec = predicate_to_vector base pred in
 
@@ -155,41 +154,37 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
 	let mtvec = A.M.mul_vec matt vec in 
 	
 	let index = ref 0 in 
-	let res = 
-	  try
-	    ignore( 
-	      A.M.fold_vec
-		(fun acc c_mtvec -> (* acc will store the possible eigenvalue *)
-		  index := !index + 1;
-		  let c_vec = A.M.get_coef_vec !index vec in
-		  
-		  if c_mtvec = A.P.R.zero then
-		    begin
-		      if c_vec = A.P.R.zero then acc (* 0*ev = 0, we don't know the ev *)
-		      else Some A.P.R.zero (* c_vec * ev = 0 => ev = 0. *)
-		    end
-		  else 
-		    let ev = A.P.R.div c_vec c_mtvec in 
-	      (* Floating point division : maybe use zarith instead ? *)
-		    match acc with
-		      None -> Some ev (* We had no information about the eigenvalue before *)
-		    | (Some e) -> 
-		      if e = ev 
-		      then acc (* Vectors seem to be colinear, with coefficient ev *) 
-		      else raise Not_an_invariant (* Vectors are not colinear *)
-		)
-		None
-		mtvec
-	    );Property_status.True 
-	  with 
-	    
-	  | Not_an_invariant -> Property_status.False_if_reachable
-	in
-	Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t0; res
+	try
+	  ignore( 
+	    A.M.fold_vec
+	      (fun acc c_mtvec -> (* acc will store the possible eigenvalue *)
+		index := !index + 1;
+		let c_vec = A.M.get_coef_vec !index vec in
+		
+		if c_mtvec = A.P.R.zero then
+		  begin
+		    if c_vec = A.P.R.zero then acc (* 0*ev = 0, we don't know the ev *)
+		    else Some A.P.R.zero (* c_vec * ev = 0 => ev = 0. *)
+		  end
+		else 
+		  let ev = A.P.R.div c_vec c_mtvec in 
+		    (* Floating point division : maybe use zarith instead ? *)
+		  match acc with
+		    None -> Some ev (* We had no information about the eigenvalue before *)
+		  | (Some e) -> 
+		    if e = ev 
+		    then acc (* Vectors seem to be colinear, with coefficient ev *) 
+		    else raise Not_an_invariant (* Vectors are not colinear *)
+	      )
+	      None
+	      mtvec
+	  );Property_status.True 
+	with 
+	  
+	| Not_an_invariant -> Property_status.False_if_reachable
 	  
       with 
       | Bad_invariant -> 
-	Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t0; 
 	Property_status.Dont_know 
 	  
     let prove_annot mat map annot = 

@@ -142,10 +142,12 @@ let invariant_computation is_deter mat : invar list =
       let mat_dim = Fd.M.get_dim_row mat in
       let matt = (Fd.M.transpose mat) in
       
+
       List.fold_left 
 	(fun acc ev ->   
 	  let eigen_mat = Fd.M.sub matt (Fd.M.scal_mul (Fd.M.identity mat_dim) ev) in 
 	  let eigen_space = (Fd.M.nullspace eigen_mat) in 
+	  if ev = Fd.R.one && (List.length eigen_space = 1) then acc else
 	  let eigen_space = 
 	    List.map
 	      undeterminize_vec
@@ -273,13 +275,6 @@ let intersection_invariants ll1 ll2  =
       []
       ll1
 
-let intersection_invariants ll1 ll2 = 
-  let t = Sys.time () in
-  let res = 
-    intersection_invariants ll1 ll2
-  in
-  let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t
-  in res
 (*
 let limit_zarith (lim: limit) : Q.t lim = 
   match lim with 
