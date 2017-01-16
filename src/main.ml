@@ -59,7 +59,7 @@ object(self)
     match stmt.skind with
     | Cil_types.Loop (_,b,_,_,breaks) -> 
       
-      let t0 = Sys.time() in
+      let t_whole = Sys.time() in
 
       
       begin (* Loop treatment *)
@@ -179,7 +179,7 @@ object(self)
 	  if Mat_option.Prove.get () 
 	  then
 	    let () = Mat_option.feedback "Proving invariants" in
-	    let t0 = Sys.time () in
+	    let t_prove = Sys.time () in
 	    let open Property_status in
 	    let module Prover = Invar_prover.Make(Assign_type) in
 	    List.iter
@@ -218,11 +218,12 @@ object(self)
 		Property_status.emit emitter ~hyps:[] ip status
 	      )
 	      (Annotations.code_annot stmt); 
-	    Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t0; 
+	    Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t_prove; 
 	    DoChildren
 	  else
 	    let () = Mat_option.feedback "Invariant generation" in
 	    let module Invariant_maker = Invariant_utils.Make(Assign_type) in
+	    let t_invar = Sys.time () in
 	    let whole_loop_invar = 
 	    List.fold_left
 	      (fun acc (mat : Assign_type.mat) -> 
@@ -255,9 +256,10 @@ object(self)
 	      matrices
 	    in
 	    
+	    let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t_invar in
 	    let module Annot_generator = Acsl_gen.Make(Assign_type) in 
 	    
-	    let t = Sys.time () in
+	    let t_inter = Sys.time () in
 	    let () = (** Intersecting the invariants if necessary *)
 	      if whole_loop_invar = [] then () 
 	      else if (assign_is_deter || List.length whole_loop_invar >= 2)
@@ -276,10 +278,10 @@ object(self)
 		
 		in
 		
-		let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t 
+		let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t_inter
 		in
 		let () = 
-		  Mat_option.whole_rel_time := Sys.time() -. t0 +. !Mat_option.whole_rel_time 
+		  Mat_option.whole_rel_time := Sys.time() -. t_whole +. !Mat_option.whole_rel_time 
 		in
 		Annot_generator.add_loop_annots
 		  assign_is_deter
@@ -294,7 +296,7 @@ object(self)
 		let mat,invar = List.hd whole_loop_invar
 		in	
 		let () = 
-		  Mat_option.whole_rel_time := Sys.time() -. t0 +. !Mat_option.whole_rel_time 
+		  Mat_option.whole_rel_time := Sys.time() -. t_whole +. !Mat_option.whole_rel_time 
 		in
 		Annot_generator.add_loop_annots
 		  assign_is_deter
