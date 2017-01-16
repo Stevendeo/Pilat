@@ -137,30 +137,27 @@ object(self)
 		"%a between %f and %f" 
 		Printer.pp_varinfo v f1 f2) nd_var ;
 
-	  let basic_assigns = 
+	  (*let basic_assigns = 
 	    (* In order to compute the transformations for all variables in each 
 	       loop, even if a variable doesn't appear on all loops, we need to 
 	       add identity assignment *)
-	    Cil_datatype.Varinfo.Set.fold
-	      (fun v acc ->
-		Assign_type.Assign 
-		  ((v, (Assign_type.P.monomial Assign_type.P.R.one [v,1]))):: acc )
-	      varinfos_used
-	      []
-	      	    
-	  in
+	    Assign_type.basic_assigns varinfos_used
+	 	
+    
+	  in *)  
 	  let assigns,bases_for_each_loop = 
+	    Assign_type.add_monomial_modifications varinfos_used poly_lists(*
 	    List.fold_left
 	      (fun (acc_assign,acc_base) p_list -> 
 		let assign,m_set = 
-		  Assign_type.add_monomial_modifications 
-		    [(basic_assigns@p_list)] in 
+		  Assign_type.add_monomial_modifications  varinfos_used
+		    [((*basic_assigns@*)p_list)] in 
 				
 		let acc_assign = assign @ acc_assign and  
 		    acc_base = Assign_type.P.Monom.Set.union acc_base m_set in
 		(acc_assign,acc_base))
 	      ([],Assign_type.P.Monom.Set.empty)
-	      poly_lists
+	      poly_lists*)
 	  in
 	  let base = Assign_type.monomial_base bases_for_each_loop 
 	  in
@@ -170,6 +167,15 @@ object(self)
  	      (List.map
  		 (Assign_type.loop_matrix base)
  		 assigns) in
+	  
+	  let () = List.iter
+	    (fun mat -> 
+	      Mat_option.debug ~dkey:dkey_stmt ~level:3
+		"Matrix generated : \n%a"
+		Assign_type.M.pp_print mat
+	    )
+	    matrices
+	  in
 	  if Mat_option.Prove.get () 
 	  then
 	    let () = Mat_option.feedback "Proving invariants" in

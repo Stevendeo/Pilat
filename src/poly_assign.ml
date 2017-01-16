@@ -21,14 +21,12 @@
 (**************************************************************************)
 
 open Pilat_math
-open Cil_types 
-open Cil_datatype
 
+exception Missing_variables
 exception Incomplete_base
 exception Not_solvable
 
 let dkey_to_mat = Mat_option.register_category "assign:to_mat"
-let dkey_stmt = Mat_option.register_category "matast:block_analyzer" 
 let dkey_lowerizer = Mat_option.register_category "matast:lowerizer" 
 let dkey_all_monom = Mat_option.register_category "matast:lowerizer:all_monom" 
 let dkey_loop_mat = Mat_option.register_category "matast:loop_mat"
@@ -38,20 +36,22 @@ module type S = sig
 
   (** 1. Utils *)
 
-  module P : Polynomial 
+  module P : Polynomial
+
   module M : Matrix with type elt = P.c
+
   module R : Ring with type t = P.c
-  module Var = P.Var
-  (** Takes a monomial and its affectation, returns a matrix and its base. 
+  (** Takes a monomial and its assignment, returns a matrix and its base. 
       If a base is provided it will complete it and use it for the matrix, else it 
       will create a new base from the affectation.
       Raises Incomplete_base if unconsidered variables are necessary for the matrix.
   *)
+  module Var = P.Var
+    
   val to_mat : ?base:int P.Monom.Map.t -> P.Monom.t -> P.t -> int P.Monom.Map.t * M.t
 
-  type mat = M.t(** Matrix in which the affectation will be translated *)
-
-  type coef = P.c (** Coefficient of the polynomial *)
+  type mat = M.t (** Matrix in which the affectation will be translated *)
+  type coef = P.c (** Coefficient of the polynomial and of the matrix *)
   type var = P.v (** Variables used by the polynomial *)
 
   type monomial = P.Monom.t
@@ -60,51 +60,48 @@ module type S = sig
 
 
   type t = 
-    Assign of var * p
+    Assign of Var.t * P.t
   | Loop of body list 
-
+      
   and body = t list
 
   (** A monomial affectation is equivalent to considering a monomial is a variable modified
     by the affectation. *)
-type monom_assign = 
-  
-  LinAssign of monomial * p
-| LinLoop of lin_body list
 
-and lin_body = monom_assign list
+  type monom_assign = 
+    
+    LinAssign of monomial * p
+  | LinLoop of lin_body list
+      
+  and lin_body = monom_assign list
 
-  (** 2. Ast to matrix translators *)  
-(*
-  val exp_to_poly : ?nd_var:(float*float) Var.Map.t -> Cil_types.exp -> P.t
+  (** For each variable v of the set, returns the assignment v = v. This is needed when
+      a variable doesn't appear on each loop body. *)  
+  val basic_assigns : P.Var.Set.t -> body
 
-  val block_to_poly_lists : 
-    P.Var.Set.t -> 
-    ?nd_var:(float*float) Var.Map.t -> 
-    Cil_types.stmt option -> 
-    Cil_types.block -> 
-    body list
-(** Returns a list of list of polynomial affectations. Each list correspond to a the 
-    succession of affectations for each possible path in the loop, while omitting 
-    variable absent of the set in argument
-    Raises Not_solvable if a statement of the loop is not solvable. *)
-*)
+  (** Returns the list of monomial affectations needed to linearize the loop, and the
+    set of all monomials used. Raises Missing_variables if variables not present in the
+      set in argument are used as r-values in the body list. *)
   val add_monomial_modifications : 
-    body list -> lin_body list * P.Monom.Set.t
-(** Returns the list of monomial affectations needed to linearize the loop, and the
-    set of all monomials used. *)
+    P.Var.Set.t -> body list -> lin_body list * P.Monom.Set.t
 
   module Imap : Map.S with type key = int
 
+  (** Links each monomial to an integer. Used as base for the matrix *)
   val monomial_base : P.Monom.Set.t -> int P.Monom.Map.t
 
+  (** Reverses the base *)
   val reverse_base : int P.Monom.Map.t -> P.Monom.t Imap.t
 
+  (** Given a base, prints a vector as a polynomial *)
   val print_vec : Format.formatter -> P.Monom.t Imap.t * M.vec -> unit
 
+  (** Transforms a vector to a polynomial *)
   val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
 
+  (** Transforms a list of monomial assignments *)
   val loop_matrix : int P.Monom.Map.t -> monom_assign list -> mat list
+
 end
 
 module Make (M:Matrix) (Poly:Polynomial with type c = M.elt) = 
@@ -158,7 +155,13 @@ struct
 	  (fun m -> 
 	      let col_monom = 
 		try P.Monom.Map.find m base_monom 
-		with Not_found -> raise Incomplete_base
+		with Not_found -> 
+		  let () = 
+		    Mat_option.debug ~dkey:dkey_to_mat 
+		      "%a not found in base" 
+		      P.Monom.pretty m
+		  in
+		  raise Incomplete_base 
 	      in
 	      let coef = P.coef p m in
 	      M.set_coef row col_monom mat coef
@@ -191,7 +194,7 @@ type monom_assign =
 
 and lin_body = monom_assign list
 
-(** 2. Ast to matrix translator *)
+
 
 let all_possible_monomials e_deg_hashtbl =
   let module M_set =P.Monom.Set in
@@ -267,9 +270,21 @@ let all_possible_monomials e_deg_hashtbl =
   
   M_set.add (P.mono_minimal []) (M_set.union res basis)
  
+let basic_assigns v_set = 
+  Var.Set.fold
+    (fun v acc ->
+      Assign 
+	((v, (P.monomial P.R.one [v,1]))):: acc )
+    v_set
+    []
     
 let add_monomial_modifications 
-    (p_list:body list) : lin_body list * P.Monom.Set.t = 
+    (var_used : P.Var.Set.t) (p_list:body list) : lin_body list * P.Monom.Set.t = 
+  let () = 
+    Mat_option.debug ~dkey:dkey_lowerizer ~level:5
+      "%i paths studied"
+      (List.length p_list) in
+  
   let module M_set = P.Monom.Set in
   let module M_map = P.Monom.Map in
   let l_size = List.length p_list in
@@ -278,26 +293,39 @@ let add_monomial_modifications
   
   let effective_degree = Var.Hashtbl.create l_size in
   
-  let rec reg_monomials affect_list = 
-    List.iter (* Registration of the monomials used in the transformation of each var *)
+  (* Registration of the monomials used in the transformation of each var. *)
+  let rec reg_monomials a_list = 
+    List.iter 
       (fun affect -> 
 	match affect with 
 	  Assign (v,p) -> 
-	    let useful_monoms = 
-	      M_set.filter (fun m -> (m |> (P.mono_poly R.one) |> P.deg) > 1)
-		(P.get_monomials p)
-	    in
-	    let old_bind = 
-	      try 
-	        Var.Hashtbl.find 
-		  var_monom_tbl 
-		  v 
-	      with 
-		Not_found -> M_set.empty
-	    in Var.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
+	    if P.Var.Set.mem v var_used
+	    then 
+	      let useful_monoms = 
+		M_set.filter 
+		  (fun m -> 
+		      if m 
+			|> P.to_var_set 
+			|> P.Var.Set.of_list 
+			|> (P.Var.Set.union var_used) 
+			|> P.Var.Set.cardinal <> P.Var.Set.cardinal var_used
+		      then raise Missing_variables
+		      else 		    
+		    (m |> (P.mono_poly R.one) |> P.deg) > 1)
+		  (P.get_monomials p)
+	      in
+	      let old_bind = 
+		try 
+	          Var.Hashtbl.find 
+		    var_monom_tbl 
+		    v 
+		with 
+		  Not_found -> M_set.empty
+	      in Var.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
+	  
 	| Loop l -> List.iter reg_monomials l
       )
-      affect_list 
+      a_list
   in
   let () = List.iter reg_monomials p_list in
 
@@ -402,7 +430,6 @@ let add_monomial_modifications
        (fun affect acc  -> 
 	 match affect with
 	   Assign (v,poly) -> 
-	     
 	     let monoms_modified = Var.Map.find v modification_map
 	     in 
 	     
@@ -427,236 +454,6 @@ let add_monomial_modifications
   
   (List.map linearize p_list),s
   
-(** 2. CIL2Poly  *)
-
-exception Loop_break 
-
-let poly_hashtbl = Cil_datatype.Stmt.Hashtbl.create 12
-
-let non_det_var_memoizer = Var.Hashtbl.create 2
-(*
-let exp_to_poly ?(nd_var=Cil_datatype.Varinfo.Map.empty) exp =
-  let float_of_const c = 
-    match c with
-      CInt64 (i,_,_) -> Integer.to_float i
-    | CChr c -> Integer.to_float (Cil.charConstToInt c)
-    | CReal (f,_,_) -> f
-    | _ -> assert false
-  in
-  let rec __e_to_p e = 
-    match e.enode with 
-      Const c -> 
-	P.const (c |> float_of_const |> P.R.float_to_t)
-    | Lval (Var v,_) ->
-      begin
-	try 
-	  P.const (Var.Hashtbl.find non_det_var_memoizer v)
-	with Not_found -> 
-	  try 
-	    let (low,up) = Var.Map.find v nd_var 
-	    in
-	    
-	    let new_rep = (P.R.non_det_repr low up) in 
-
-	    
-	  let () = 
-	    Mat_option.debug ~dkey:dkey_stmt ~level:2
-	      "Variable %a non deterministic, first use. Representant : %a"
-	      Var.pretty v 
-	      P.R.pp_print new_rep
-	  in
-
-	    let () = Var.Hashtbl.add non_det_var_memoizer v new_rep
-	    in
-	    P.const new_rep
-	  with
-	    Not_found (* Varinfo.Map.find *) -> 
-	      P.monomial P.R.one [v,1]
-      end
-    | Lval _ -> assert false   
-    | SizeOf _ | SizeOfE _ | SizeOfStr _ | AlignOf _ | AlignOfE _ -> assert false
-    | UnOp (Neg,e,_) -> 
-      P.sub P.zero (__e_to_p e)
-    | UnOp _ -> assert false
-    | BinOp (binop,e1,e2,_) -> 
-      begin
-	match binop with
-	  PlusA | PlusPI | IndexPI -> P.add (__e_to_p e1) (__e_to_p e2)
-	| MinusA | MinusPI | MinusPP -> P.sub (__e_to_p e1) (__e_to_p e2)
-	| Mult -> P.mul (__e_to_p e1) (__e_to_p e2)
-	| Div -> 
-	  begin 
-	    match e2.enode with
-	      Const c -> 
-		P.mul (__e_to_p e1) (P.const (1. /.(c |> float_of_const) |> P.R.float_to_t))
-	    | _ ->
-	      Mat_option.abort "The expression %a is a forbidden division." Printer.pp_exp exp
-	  end	    
-	| _ -> assert false
-      end
-    | CastE (_,e) -> __e_to_p e
-    | _ -> assert false
-  in
-  __e_to_p exp
-
-let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> t option = 
-  function
-  | Set ((Var v, _),e,_) -> 
-    if P.Var.Set.mem v varinfo_used 
-    then Some (Assign (v,(exp_to_poly ~nd_var e)))
-    else None 
-  | Call(_,{enode = Lval(Var v,NoOffset) },_,_) as i -> 
-    if (v.vorig_name = Mat_option.non_det_name) then None
-    else 
-      let () = Mat_option.feedback
-	"Call %a not supported, assuming no effect"
-	Printer.pp_instr i in
-      None
-  | Skip _ -> None
-  | i -> 
-    Mat_option.abort
-      "Instruction %a not supported"
-      Printer.pp_instr i
-
-let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl   
-
-let rec stmt_to_poly_assign varinfo_used nd_var break s : t option = 
-  
-  try 
-    Stmt.Hashtbl.find poly_hashtbl s 
-  with 
-    Not_found -> 
-      match s.skind with
-	Instr i -> 	
-	  if break = None then None 
-	  else 
-	    if Stmt.equal s (Extlib.the break)
-	    then raise Loop_break
-	    else 
-	  let () = Mat_option.debug ~dkey:dkey_stmt
-	    "Instruction"
-	  in
-	  begin
-	    match instr_to_poly_assign varinfo_used nd_var i with 
-	      Some p -> 
-		register_poly s (Some p); 
-		Some p
-	    | None -> register_poly s None; None
-	  end
-      | Cil_types.Loop (_,b,_,_,break) -> 
-	
-	if Cil_datatype.Varinfo.Map.is_empty nd_var
-	then 
-	  let () =
-	    Mat_option.debug ~dkey:dkey_stmt
-	      "Nested loop";
-	    List.iter
-	      (fun s -> 
-		Mat_option.debug ~dkey:dkey_stmt ~level:2
-		  "-- %a"
-		  Printer.pp_stmt s)
-	      b.bstmts
-	    ;
-	    
-	  in
-	  Some (Loop (block_to_poly_lists varinfo_used break b))
-	else 
-	    Mat_option.abort 
-	      "Non deterministic nested loop are not allowed"   
-      | Break _ -> raise Loop_break
-      | _ -> 
-
-	    None
-
-and block_to_poly_lists 
-    varinfo_used 
-    ?(nd_var = Cil_datatype.Varinfo.Map.empty) 
-    break
-    block : body list = 
-  let head = 
-    try 
-      List.hd 
-	(List.hd block.bstmts).preds with Failure _ ->  
-	  Mat_option.feedback 
-	    "Error incoming : head of the block is %a" Printer.pp_stmt (List.hd block.bstmts);
-
-	  failwith "hd"
-(* It must be the entry of the loop *)
-  in
-  let () = 
-    Mat_option.debug ~dkey:dkey_stmt "Loop head : %a"
-      Printer.pp_stmt head in
-  let rec dfs stmt = 
-    Mat_option.debug ~dkey:dkey_stmt ~level:2
-      "Stmt %a studied" 
-      Stmt.pretty stmt
-    ;
-    if Stmt.equal stmt head
-    then 
-    begin  
-      Mat_option.debug ~dkey:dkey_stmt ~level:3
-	"Stmt already seen : loop." 
-      ;
-      [[]] 
-    end
-    else 
-      begin
-	Mat_option.debug ~dkey:dkey_stmt ~level:3
-	  "Stmt never seen" 
-	;
-		
-	try
-
-	  let poly_opt = stmt_to_poly_assign varinfo_used nd_var break stmt in
-
-	  let succs = 
-	  match stmt.skind with
-	    Cil_types.Loop(_,_,_,_,None) -> 
-	      assert false
-	  | Cil_types.Loop(_,_,_,_,Some s) -> s.succs
-	  | _ -> 
-	      stmt.succs in    
-
-	  let future_lists = 
-	    List.fold_left
-	      (fun acc succ -> 		
-		Mat_option.debug ~dkey:dkey_stmt ~level:4
-		  "Successor of %a analyzed :\n %a"
-		  Printer.pp_stmt stmt
-		  Printer.pp_stmt succ;
-		(dfs succ) @ acc)
-	      []
-	      succs
-	  in
-	  Mat_option.debug ~dkey:dkey_stmt ~level:3
-	    "List of paths : %i" (List.length future_lists) ;
-	  let (++) elt l = List.map (fun li -> elt :: li) l
-	  in
-	  match poly_opt with 
-	    None -> 
-	      Mat_option.debug ~dkey:dkey_stmt ~level:3
-		"No polynom generated from stmt %a"
-		Printer.pp_stmt stmt
-	      ;
-	      future_lists
-	  | Some (Assign (_,p) as aff) ->
-	    Mat_option.debug ~dkey:dkey_stmt 
-	      "Polynom generated : %a"
-	      P.pp_print p;
-
-	    aff ++ future_lists
-	  | Some ((Loop _) as l) -> l ++ future_lists
-
-	with
-	  Loop_break -> []
-      end 
-  in
-    
-  let res = dfs (List.hd head.succs)
-  in
-  Mat_option.debug ~dkey:dkey_stmt ~level:5
-    "How many paths ? %i" (List.length res); res
-*)
 let monomial_base set = 
     let i = ref (-1) in
     P.Monom.Set.fold

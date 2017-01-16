@@ -23,6 +23,7 @@
 open Cil_datatype
 open Pilat_math
 
+exception Missing_variables
 exception Incomplete_base
 exception Not_solvable
 
@@ -68,38 +69,32 @@ module type S = sig
   | LinLoop of lin_body list
       
   and lin_body = monom_assign list
-  (** 2. Ast to matrix translators *)  
-    (*
-  (** Returns a polynomial representing the expression in argument *)
-  val exp_to_poly : ?nd_var: (float*float) Cil_datatype.Var.Map.t -> Cil_types.exp -> P.t
-    
-(** Returns a list of list of polynomial affectations. Each list correspond to a the 
-    succession of affectations for each possible path in the loop, while omitting 
-    variable absent of the set in argument
-    Raises Not_solvable if a statement of the loop is not solvable. *)
-  val block_to_poly_lists : 
-    Cil_datatype.Varinfo.Set.t -> 
-    ?nd_var:(float*float) Cil_datatype.Varinfo.Map.t -> 
-    Cil_types.stmt option -> 
-    Cil_types.block -> 
-    body list
-    *)
-(** Returns the list of monomial affectations needed to linearize the loop, and the
-    set of all monomials used. *)
-  val add_monomial_modifications : 
-    body list -> lin_body list * P.Monom.Set.t
 
+  (** For each variable v of the set, returns the assignment v = v. This is needed when
+      a variable doesn't appear on each loop body. *)  
+  val basic_assigns : P.Var.Set.t -> body
+
+  (** Returns the list of monomial assignments needed to linearize the loop, and the
+      set of all monomials used. Raises Missing_variables if variables not present in the
+      set in argument are used as r-values in the body list. *)
+  val add_monomial_modifications : 
+    P.Var.Set.t -> body list -> lin_body list * P.Monom.Set.t
 
   module Imap : Map.S with type key = int
 
+  (** Links each monomial to an integer. Used as base for the matrix *)
   val monomial_base : P.Monom.Set.t -> int P.Monom.Map.t
 
+  (** Reverses the base *)
   val reverse_base : int P.Monom.Map.t -> P.Monom.t Imap.t
 
+  (** Given a base, prints a vector as a polynomial *)
   val print_vec : Format.formatter -> P.Monom.t Imap.t * M.vec -> unit
 
+  (** Transforms a vector to a polynomial *)
   val vec_to_poly : P.Monom.t Imap.t -> M.vec -> P.t
 
+  (** Transforms a list of monomial assignments *)
   val loop_matrix : int P.Monom.Map.t -> monom_assign list -> mat list
 
 end
