@@ -118,11 +118,9 @@ let undeterminize_vec (vec:Fd.M.vec) =
 
 let invariant_computation is_deter mat : invar list = 
   
-  let t = Sys.time () in
   
   (*let mat = Deter_mat.nd_mat_to_d_mat mat in
   *)
-  let res = 
     if is_deter
     then
       let evs = A.M.eigenvalues mat in 
@@ -157,9 +155,6 @@ let invariant_computation is_deter mat : invar list =
 	)
 	[] 
 	evs
-  in
-  let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t
-    in res
 
 let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) = 
    if b1 = [] || b2 = [] then [||]
