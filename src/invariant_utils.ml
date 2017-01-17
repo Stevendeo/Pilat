@@ -38,35 +38,6 @@ type 'v inv = limit * 'v list
 
 type q_invar = Pilat_matrix.QMat.vec inv
 
-module type S = 
-sig 
-  
-(** An invariant is an eigenspace, represented by its base with
-    a vec list. 
-    When an eigenspace is associated to an eigenvalue strictly 
-    lower to one, the invariant is convergent 
-    (<e,X> < k => <e,MX> <k).
-    When it is higher to one, it is divergent
-    (<e,X> > k => <e,MX> > k).
-*)
-  type mat
-  type invar
-    
-  val lim_to_string : limit -> string
-    
-(** Returns the rational eigenspaces union of the floating matrix 
-    as a list of bases. If assignments are non deterministic, the boolean 
-    must be set to true *)
-  val invariant_computation : bool -> mat -> invar list
-    
-(** Intersects two union of vectorial spaces. *)
-  val intersection_invariants :  invar list -> invar list -> invar list
-
-  val zarith_invariant : invar -> q_invar
-  val to_invar : q_invar -> invar
-  val integrate_invar : invar -> invar
-end
-
 module Make (A : Poly_assign.S) =  
 struct 
   module Ring = A.P.R
@@ -117,7 +88,6 @@ let undeterminize_vec (vec:Fd.M.vec) =
      arr) |> A.M.vec_from_array
 
 let invariant_computation is_deter mat : invar list = 
-  
   
   (*let mat = Deter_mat.nd_mat_to_d_mat mat in
   *)
@@ -319,5 +289,18 @@ let integrate_invar  ((lim,inv):invar) =
   (List.map 
      (fun vec -> vec |> vec_zarith |> integrate_vec |> to_vec)) inv
   
-
+let invar_to_poly_list imap (_,invars) = 
+  List.map 
+    (fun v ->  
+      A.Imap.fold
+	(fun i monom acc -> 
+	  let coef_vec = A.M.get_coef_vec i v in 
+	  A.P.add
+	    acc
+	    (A.P.mono_poly coef_vec monom)
+	)
+	imap
+	A.P.zero
+    )
+    invars
 end 

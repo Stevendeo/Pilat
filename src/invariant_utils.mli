@@ -33,35 +33,37 @@ type 'v inv = limit * 'v list
 
 type q_invar = Pilat_matrix.QMat.vec inv
 
-module type S = 
-sig 
+module Make : functor 
+    (A : Poly_assign.S) -> 
+      sig 
   
-(** An invariant is an eigenspace, represented by its base with
-    a vec list. 
-    When an eigenspace is associated to an eigenvalue strictly 
-    lower to one, the invariant is convergent 
-    (<e,X> < k => <e,MX> <k).
-    When it is higher to one, it is divergent
-    (<e,X> > k => <e,MX> > k).
-*)
-  type mat
-  type invar
-    
-  val lim_to_string : limit -> string
-    
-(** Returns the rational eigenspaces union of the floating matrix 
-    as a list of bases. If assignments are non deterministic, the boolean 
-    must be set to true *)
-  val invariant_computation : bool -> mat -> invar list
-    
-(** Intersects two union of vectorial spaces. *)
-  val intersection_invariants :  invar list -> invar list -> invar list
-
-  val zarith_invariant : invar -> q_invar
-  val to_invar : q_invar -> invar 
-
-  val integrate_invar : invar -> invar
+  (** An invariant is an eigenspace, represented by its base with
+      a vec list. 
+      When an eigenspace is associated to an eigenvalue strictly 
+      lower to one, the invariant is convergent 
+      (<e,X> < k => <e,MX> <k).
+      When it is higher to one, it is divergent
+      (<e,X> > k => <e,MX> > k).
+  *)
+	type mat = A.mat
+	type invar = A.M.vec inv
+	  
+	val lim_to_string : limit -> string
+	  
+  (** Returns the rational eigenspaces union of the floating matrix 
+      as a list of bases. If assignments are non deterministic, the boolean 
+      must be set to true *)
+	val invariant_computation : bool -> mat -> invar list
+	  
+  (** Intersects two union of vectorial spaces. *)
+	val intersection_invariants :  invar list -> invar list -> invar list
+	  
+	val zarith_invariant : invar -> q_invar
+	val to_invar : q_invar -> invar 
+	  
+	val integrate_invar : invar -> invar
+	  
+	val invar_to_poly_list : A.P.Monom.t A.Imap.t -> invar -> A.P.t list
+	  
 end
 
-module Make : functor 
-    (A : Poly_assign.S) -> S with type invar = A.M.vec inv and type mat = A.mat

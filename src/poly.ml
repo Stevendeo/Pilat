@@ -212,10 +212,11 @@ struct
       let highest_m_of_p2,coef_of_p2 = highest_monom p2 in
       
       let rec __div p = 
-	let highest_p1,coef_of_p1 = highest_monom p in
-	let res_monom = monom_div highest_p1 highest_m_of_p2 in
-	let res_coef = R.div coef_of_p1 coef_of_p2 in
-	let new_monom = mono_poly res_coef res_monom in 
+	let highest_p1,coef_of_p1 = highest_monom p in	
+	let new_monom = 
+	  mono_poly 
+	    (R.div coef_of_p1 coef_of_p2)
+	    (monom_div highest_p1 highest_m_of_p2) in 
         let p2_times_new = mul p2 new_monom in
 	let new_p = sub p1  p2_times_new in 
 	
