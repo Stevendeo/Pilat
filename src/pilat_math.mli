@@ -27,8 +27,6 @@
     - The Polynomial structure. Polynomials can be with multiple variables.
     - The Matrix structure
 *)
-
-
 type n_var = 	
   {
     name:string;
@@ -36,11 +34,13 @@ type n_var =
     max:float
   }
 
+
 (** 1. The ring structure *)
 
 module type Ring = sig
   type t
 (* type of elements of the ring *)
+
   val zero : t
   val one : t
   val add : t -> t -> t
@@ -55,20 +55,22 @@ module type Ring = sig
   val compare : t -> t -> int
   val pp_print : Format.formatter -> t -> unit
   val to_str : t -> string
-(** Ast translators : only required for Pilat *)
+  (** 2. Ast translators : only required for Pilat *)
+
   val float_to_t : float -> t 
   val t_to_float : t -> float
   val int_to_t : int -> t   
   val t_to_int : t -> int
-  val approx : t -> t
-  val non_det_repr : float -> float -> t
+
+  (** 3. Non deterministic utilities. Experimental API *)
+  (** When the ring admits non deterministic values parametrized by two floats, returns its 
+      representation (used in cil2assign) *)
+  val non_det_repr : float -> float -> t 
+
+  (** Returns a possible float value *)
   val deter : t -> float
 
-(** For the eigenvalue non-optimized algorithm, the following is required *)
-(** den fl = The smallest int i such that fl*i is an integer.  *)
-  val den : t -> t
-
-(** To complete it, we need to add a way to get back a n_var once created *)
+(** A way to get back a n_var once created *)
   val to_nvars : t -> n_var list
 end
 
@@ -153,8 +155,6 @@ sig
 
   (** Only required to match Pilat's ring. Undefined behavior *)  
   val div : t -> t -> t 
-  val den : t -> t
-  val approx : t -> t
   val float_to_t : float -> t
   val t_to_float : t -> float
   val int_to_t : int -> t   

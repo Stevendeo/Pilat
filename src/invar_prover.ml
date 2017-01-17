@@ -67,7 +67,7 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
     let cast_poly typ p = 
       match typ with
       | TInt _ -> (* Cast floats to int *)
-	A.P.Monom.Set.fold
+	(*A.P.Monom.Set.fold
 	  (fun m acc -> 
 	    let coef = A.P.coef p m in 
 	    let casted = A.P.R.approx coef
@@ -75,7 +75,7 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
 	    A.P.add acc (A.P.mono_poly casted m)
 	  )
 	  (A.P.get_monomials p)
-	  A.P.zero
+	  A.P.zero*) raise Bad_invariant
       | TFloat _ -> p
       | _ -> raise Bad_invariant
 	

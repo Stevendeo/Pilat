@@ -82,10 +82,7 @@ struct
   (* for simplicity *)
   module P = Monom.Map
   type t = c P.t 
-    
-
-   
-
+       
   let (zero:t) = P.empty
     
   let empty_monom = V.Map.empty
@@ -356,14 +353,6 @@ struct
       P.mem m p
 
     let float_to_t (f:float) = const (A.float_to_t f)
-
-    let approx (p:t) =
-      Monom.Map.fold 
-	(fun monom coef acc -> 
-	  add (mono_poly (A.approx coef) monom) acc
-	)
-	p
-	zero
 	
     let deter poly = (* eval to zero *)
       try A.deter (Monom.Map.find empty_monom poly)
@@ -392,7 +381,7 @@ struct
 	  let vars = to_var_set monom in 
 	  List.fold_left
 	    (fun acc2 v -> (Var.to_nvars v) @ (acc2))
-	    (acc@(R.to_nvars cst))  
+	    (acc@ (R.to_nvars cst))  
 	    vars
 	)
 	p
