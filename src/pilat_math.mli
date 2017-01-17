@@ -153,8 +153,11 @@ sig
 
   val deter : t -> float (** Pilat use : returning a random value in the polynomial image *)
 
-  (** Only required to match Pilat's ring. Undefined behavior *)  
+  exception Not_divisible
+  (** Euclidian division between two polynomials. Raise Not_divisible if they are not divisible. *)
   val div : t -> t -> t 
+
+  (** Only required to match Pilat's ring. Undefined behavior *)  
   val float_to_t : float -> t
   val t_to_float : t -> float
   val int_to_t : int -> t   

@@ -188,11 +188,44 @@ struct
 	p1
 	zero
     
-    let div p1 p2 = 
-      assert ((Monom.Map.cardinal p1 = 1) && (Monom.Map.cardinal p2 = 1));
-      let c1 = coef p1 empty_monom and c2 = coef p2 empty_monom in
-      let c1oc2 = R.div c1 c2 in const c1oc2
+    exception Not_divisible
 
+    let monom_div (m1:Monom.t) (m2:Monom.t) : Monom.t= 
+      V.Map.merge
+	(fun _ pow1 pow2 -> 
+	  match pow1,pow2 with
+	  | None, None -> None 
+	  | None,Some _ -> raise Not_divisible
+	  | Some p1, Some p2 -> 
+	    let p = p1 - p2 in 
+	    if p < 0 then raise Not_divisible 
+	    else Some p
+
+	  | Some p,None -> Some p
+	)
+	m1 m2
+
+    let div (p1:t) (p2:t) = 
+      let highest_monom p = 
+	List.hd (Monom.Map.bindings p)
+      in
+      let highest_m_of_p2,coef_of_p2 = highest_monom p2 in
+      
+      let rec __div p = 
+	let highest_p1,coef_of_p1 = highest_monom p in
+	let res_monom = monom_div highest_p1 highest_m_of_p2 in
+	let res_coef = R.div coef_of_p1 coef_of_p2 in
+	let new_monom = mono_poly res_coef res_monom in 
+        let p2_times_new = mul p2 new_monom in
+	let new_p = sub p1  p2_times_new in 
+	
+	if new_p = zero then zero else 	  
+	  add new_monom (__div (sub p1 p2_times_new))
+      in
+      __div p1
+
+      
+	
     let rec pow_ring (c:c) (n:int) : c = 
       match n with
 	0 -> A.one
