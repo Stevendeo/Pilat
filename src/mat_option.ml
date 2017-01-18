@@ -89,6 +89,13 @@ module Prove =
       let help = "when on, tries to prove already existing loop invariants"
      end)
 
+module Redundancy = 
+  False
+    (struct 
+      let option_name = "-pilat-redun"
+      let help = "undocumented"
+     end)
+
 
 
 module Optim_start = String
@@ -178,3 +185,5 @@ let char_poly_timer = ref 0.
 let proof_timer = ref 0.
 
 let optimizer_timer = ref 0.
+
+let redun_timer = ref 0.

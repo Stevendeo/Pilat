@@ -61,9 +61,14 @@ module Make : functor
 	val zarith_invariant : invar -> q_invar
 	val to_invar : q_invar -> invar 
 	  
+	(** Returns equivalent invariants with integers only. *)
 	val integrate_invar : invar -> invar
 	  
-	val invar_to_poly_list : A.P.Monom.t A.Imap.t -> invar -> A.P.t list
+	(** Returns the polynomial associated to a vector with respect to the base in argument. *)
+	val vec_to_poly : A.P.Monom.t A.Imap.t -> A.M.vec -> A.P.t
+
+	(** Returns true if an invariant is . *)
+	val redundant_invariant : A.P.Monom.t A.Imap.t -> A.M.vec ->  A.M.vec list -> bool
 	  
 end
 

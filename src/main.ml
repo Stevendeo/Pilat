@@ -247,7 +247,7 @@ object(self)
 			  Assign_type.print_vec (rev_base,invar);						  
 			)invars;	    
 		    ) invar;
-		   	  
+		  
 		  
 		  (mat,invar) :: acc
 		  		  
@@ -257,8 +257,35 @@ object(self)
 	    in
 	    
 	    let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t_invar in
+	     (** Redundancy analysis *)
+	    
+	    let t_redundancy = Sys.time ()
+	    in	
+	    let whole_loop_invar =
+	      if Mat_option.Redundancy.get () then
+		List.map
+		  (fun (mat,invars) -> 
+		    mat,List.map
+		      (fun (l,invar) ->
+			l,List.filter
+			  (fun vec -> 
+			    not (Invariant_maker.redundant_invariant rev_base vec invar)
+			  )
+			  invar
+		      )
+		      invars 
+		  )
+		  whole_loop_invar
+	      else
+		whole_loop_invar
+	    in
+	    Mat_option.redun_timer := !Mat_option.redun_timer +. Sys.time () -. t_redundancy;
+
+	    
 	    let module Annot_generator = Acsl_gen.Make(Assign_type) in 
 	    
+	    
+
 	    let t_inter = Sys.time () in
 	    let () = (** Intersecting the invariants if necessary *)
 	      if whole_loop_invar = [] then () 
@@ -358,12 +385,14 @@ let run () =
     "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
  
    Mat_option.debug ~dkey:dkey_time ~level:2
-    "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly %f" 
+    "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly : %f\nRedundancy analysis : %f" 
      !Mat_option.invar_timer 
      !Mat_option.inter_timer 
      !Mat_option.nullspace_timer
      !Mat_option.ev_timer
-     !Mat_option.char_poly_timer;
+     !Mat_option.char_poly_timer
+     !Mat_option.redun_timer
+   ;
 
   if not(Mat_option.Prove.get ()) then 
     let cout = open_out filename in

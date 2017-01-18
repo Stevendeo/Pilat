@@ -40,6 +40,7 @@ module Var_focus : Parameter_sig.String
 
 module Prove : Parameter_sig.Bool
 
+module Redundancy : Parameter_sig.Bool
 
 module Optim_start: Parameter_sig.String
 module Optim_iters: Parameter_sig.String
@@ -84,3 +85,5 @@ val char_poly_timer : float ref
 val proof_timer : float ref
 
 val optimizer_timer : float ref
+
+val redun_timer : float ref

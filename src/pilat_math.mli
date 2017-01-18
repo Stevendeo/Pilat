@@ -105,7 +105,11 @@ sig
   type t
     (** type of polynoms *)
 
+  (** This is ONE of the representations of P(X) = 0. To test is a polynomial is null, 
+      use is_zero. *)
   val zero : t
+    
+  val is_zero : t -> bool
   val one : t
     (* unit for the polynomial product. It is superfluous however this 
        makes polynomials match the interface of rings *)
@@ -118,7 +122,8 @@ sig
   val var_to_monom : v -> Monom.t
 
   val const : c -> t
-    
+  val is_const : t -> bool
+
   val to_var : Monom.t -> v list
     (** Same than before, but each variable appears only once *)
   val to_var_set : Monom.t -> v list

@@ -24,6 +24,8 @@ open Pilat_matrix
 
 let dkey_null = Mat_option.register_category "invar:nullspace"
 let dkey_inter = Mat_option.register_category "invar:lacaml:inter"
+let dkey_redun = Mat_option.register_category "invar:redun"
+
 
 module Int = Datatype.Int 
 
@@ -176,7 +178,16 @@ let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) =
 	     let trunc_v = 
 	       A.M.create_vec b2_length
 		 (fun i -> 
-		   A.M.get_coef_vec (i + b1_length) v) in (* TODO : Some examples fail here *) 
+		   try A.M.get_coef_vec (i - 1 + b1_length) v
+		   with 
+		     Invalid_argument s -> 
+		       Mat_option.feedback 
+			 "%s : Trying to get %i th coefficient of vec %a"
+			 s
+			 (i + b1_length)
+			 A.M.pp_vec v; assert false
+			 
+		 ) in (* TODO : Some examples fail here *) 
 	     trunc_v :: acc	  
 	   )
 	   []
@@ -289,18 +300,36 @@ let integrate_invar  ((lim,inv):invar) =
   (List.map 
      (fun vec -> vec |> vec_zarith |> integrate_vec |> to_vec)) inv
   
-let invar_to_poly_list imap (_,invars) = 
-  List.map 
-    (fun v ->  
+let vec_to_poly imap vec =
       A.Imap.fold
 	(fun i monom acc -> 
-	  let coef_vec = A.M.get_coef_vec i v in 
+	  let coef_vec = A.M.get_coef_vec i vec in 
 	  A.P.add
 	    acc
 	    (A.P.mono_poly coef_vec monom)
 	)
 	imap
 	A.P.zero
+    
+let redundant_invariant imap vec vec_list = 
+  let vec_poly = vec_to_poly imap vec in
+  A.P.is_const vec_poly ||
+  List.exists
+    (fun invar -> if invar = vec then false else 
+      let vec_invar = vec_to_poly imap invar in
+      if A.P.is_const vec_invar then false else
+      let () = Mat_option.debug ~dkey:dkey_redun 
+	"Does %a divides %a ?" 
+	A.P.pp_print vec_invar A.P.pp_print vec_poly
+      in
+      try 
+	ignore (A.P.div vec_poly vec_invar); 
+	Mat_option.debug ~dkey:dkey_redun 
+	  "Yes" ;
+	true
+      with 
+	A.P.Not_divisible -> Mat_option.debug ~dkey:dkey_redun 
+	  "No" ; false
     )
-    invars
+    vec_list
 end 

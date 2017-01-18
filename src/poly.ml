@@ -53,7 +53,7 @@ struct
 	let name = "Monom_"  ^ V.name  ^ "_" ^ (string_of_int (Vmod_id.next ()))
 	let equal = V.Map.equal (fun (a:int) (b:int) -> a = b)   
 	let hash = Hashtbl.hash (* For now, do not hash monomials *)
-	let compare = V.Map.compare Pervasives.compare
+	let compare v1 v2 = V.Map.compare Pervasives.compare v1 v2
 	let varname (x:t) = 
 	  V.Map.fold
 	    (fun var pow acc -> (V.varname var) ^ (string_of_int pow) ^ acc)
@@ -85,12 +85,14 @@ struct
        
   let (zero:t) = P.empty
     
+  let is_zero = 
+    Monom.Map.for_all
+      (fun _ v -> R.zero = v)
+
   let empty_monom = V.Map.empty
 
   let equal (p1:t) (p2:t) : bool = P.equal A.equal p1 p2
 
-    
-      
     (* monomial creation *)
   let mono_poly (a:A.t) (m:Monom.t) : t =
     P.singleton m a
@@ -130,6 +132,11 @@ struct
 
   let const (c:A.t) = mono_poly c V.Map.empty
 
+  let is_const = 
+    Monom.Map.for_all
+      (fun monom v -> 
+	v = R.zero || monom = empty_monom)
+	
     (* a pacticular case *)
     let (one:t) = const A.one
 
@@ -190,6 +197,30 @@ struct
     
     exception Not_divisible
 
+    let pp_print fmt (p:t) =
+      if is_zero p then Format.fprintf fmt "0" else
+        P.iter
+	  (fun monom coef -> if coef = R.zero then () else
+	      Format.fprintf fmt " + %a%a" A.pp_print coef Monom.pretty monom;
+	  )
+          p
+	  
+    let deg_monom (m:Monom.t) : int = 
+       V.Map.fold
+	 (fun _ coef acc -> acc + coef)
+	 m
+	 0
+
+    let deg (p:t) : int = 
+      P.fold
+	(fun var_map const deg ->
+	  if const <> R.zero then
+	  max deg (deg_monom var_map)
+	  else deg
+	)
+	p
+	(-1)
+	  
     let monom_div (m1:Monom.t) (m2:Monom.t) : Monom.t= 
       V.Map.merge
 	(fun _ pow1 pow2 -> 
@@ -199,29 +230,79 @@ struct
 	  | Some p1, Some p2 -> 
 	    let p = p1 - p2 in 
 	    if p < 0 then raise Not_divisible 
-	    else Some p
+	    else if p = 0 then None else Some p
 
 	  | Some p,None -> Some p
 	)
 	m1 m2
-
+   	  
     let div (p1:t) (p2:t) = 
+      if is_const p2 then 
+	scal_mul 
+	  (R.div R.one  (coef p2 empty_monom))
+	  p1 
+      else if is_const p1 then raise Not_divisible 
+      else 
+      (*let () =
+	Mat_option.feedback
+	  "%a is divided by %a"
+	  pp_print p1
+	  pp_print p2 in*)
+	
       let highest_monom p = 
-	List.hd (Monom.Map.bindings p)
+	let degp = deg p in
+	try 
+	  (List.find
+	    (fun (m,v) -> v <> R.zero && deg_monom m = degp) 
+	    (Monom.Map.bindings p))
+	with Not_found -> empty_monom,R.zero
       in
       let highest_m_of_p2,coef_of_p2 = highest_monom p2 in
       
-      let rec __div p = 
-	let highest_p1,coef_of_p1 = highest_monom p in	
+      let rec __div p =	
+      (*let () =
+	Mat_option.feedback
+	  "%a by %a"
+	  pp_print p
+	  pp_print p2 
+      in*)
+	let highest_p1,coef_of_p1 = highest_monom p in	      
+	(*let () =
+	Mat_option.feedback
+	  "Highest monom of p1 : %a,%a"
+	  Monom.pretty highest_p1
+	  R.pp_print coef_of_p1
+      in*)
 	let new_monom = 
 	  mono_poly 
 	    (R.div coef_of_p1 coef_of_p2)
 	    (monom_div highest_p1 highest_m_of_p2) in 
+
+	(*let () = 	
+	  Mat_option.feedback
+	    "New monom : (%a / %a) * (%a / %a) = %a"
+	    R.pp_print coef_of_p1 
+	    R.pp_print coef_of_p2
+	    Monom.pretty highest_p1 
+	    Monom.pretty highest_m_of_p2
+	    pp_print new_monom
+	in*)
+	  
         let p2_times_new = mul p2 new_monom in
-	let new_p = sub p1  p2_times_new in 
+	(*let () = Mat_option.feedback
+	  "p2 times the new monom : %a"
+	  pp_print p2_times_new;
+	in*)
+	let new_p = sub p p2_times_new in 
+	(*let () = Mat_option.feedback
+	  "(%a) - (%a) = (%a)"
+	  pp_print p
+	  pp_print p2 
+	  pp_print new_p
+	in *)
 	
-	if new_p = zero then zero else 	  
-	  add new_monom (__div (sub p1 p2_times_new))
+	if is_zero new_p then zero else 	  
+	  add new_monom (__div new_p)
       in
       __div p1
 
@@ -254,8 +335,6 @@ struct
 	)
 	p
 	zero
-
-    let print_monom = Monom.pretty
 	
     let (to_str_var_map : string Var.Hashtbl.t) = Var.Hashtbl.create 5
     let new_var v = 
@@ -265,7 +344,7 @@ struct
 
     let to_str (p:t) = 
       (* This string is used for the sage optimizer, string is formatted in consequence *)
-      if p = zero then "0" else
+      if is_zero p then "0" else
 	let () = 
 	  Monom.Map.iter
 	    (fun monom _ -> 
@@ -310,16 +389,7 @@ struct
 	  p
 	  ""
 
-      
-    let pp_print fmt (p:t) =
-      if p = zero then Format.fprintf fmt "0" else
-
-        P.iter
-	  (fun monom coef -> 
-	    Format.fprintf fmt " + %a" A.pp_print coef;
-	    (print_monom fmt monom)
-	  )
-          p
+   
 	  
 
     (* Computation of (p1 o p2) *)
@@ -361,20 +431,6 @@ struct
 	p1
 	zero
 
-    let deg_monom (m:Monom.t) : int = 
-       V.Map.fold
-	 (fun _ coef acc -> acc + coef)
-	 m
-	 0
-  
-
-    let deg (p:t) : int = 
-      P.fold
-	(fun var_map _ deg -> 
-	  max deg (deg_monom var_map)	   
-	)
-	p
-	(-1)
 
    
     let get_monomials (p:t) : Monom.Set.t = 
