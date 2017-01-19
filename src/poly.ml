@@ -344,7 +344,7 @@ struct
 
     let to_str (p:t) = 
       (* This string is used for the sage optimizer, string is formatted in consequence *)
-      if is_zero p then "0" else
+      if is_zero p then "+ 0" else
 	let () = 
 	  Monom.Map.iter
 	    (fun monom _ -> 
@@ -389,8 +389,6 @@ struct
 	  p
 	  ""
 
-   
-	  
 
     (* Computation of (p1 o p2) *)
 
