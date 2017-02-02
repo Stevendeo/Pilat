@@ -163,7 +163,7 @@ let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) =
 	   (fun acc v -> 
 	     let trunc_v = 
 	       A.M.create_vec b1_length
-		 (fun i -> A.M.get_coef_vec i v)
+		 (fun i -> A.M.get_coef_vec i v) 
 	     in
 	     trunc_v :: acc
 	   )
@@ -178,7 +178,11 @@ let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) =
 	     let trunc_v = 
 	       A.M.create_vec b2_length
 		 (fun i -> 
-		   try A.M.get_coef_vec (i - 1 + b1_length) v
+		   Mat_option.debug ~dkey:dkey_inter ~level:5 
+		     "Trying to get %i th coefficient of vec %a"
+		     (i + b1_length)
+		     A.M.pp_vec v;
+		   try A.M.get_coef_vec (i + b1_length) v
 		   with 
 		     Invalid_argument s -> 
 		       Mat_option.feedback 
