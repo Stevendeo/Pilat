@@ -191,7 +191,7 @@ let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) =
 			 (i + b1_length)
 			 A.M.pp_vec v; assert false
 			 
-		 ) in (* TODO : Some examples fail here *) 
+		 ) in
 	     trunc_v :: acc	  
 	   )
 	   []

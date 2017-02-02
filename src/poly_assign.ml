@@ -292,27 +292,48 @@ let add_monomial_modifications
   in
   
   let effective_degree = Var.Hashtbl.create l_size in
-  
+  let num_var_used =  P.Var.Set.cardinal var_used in
+  let cst_vars = ref P.Monom.Set.empty in
   (* Registration of the monomials used in the transformation of each var. *)
   let rec reg_monomials a_list = 
     List.iter 
       (fun affect -> 
 	match affect with 
 	  Assign (v,p) -> 
+	    Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
+	      "Assign treated : %a = %a" 
+	      Var.pretty v
+	      P.pp_print p;
 	    if P.Var.Set.mem v var_used
 	    then 
-	      let useful_monoms = 
-		M_set.filter 
+	      let useful_monoms = (P.get_monomials p) in
+	      let () = 
+		M_set.iter
 		  (fun m -> 
-		      if m 
-			|> P.to_var_set 
-			|> P.Var.Set.of_list 
+		    Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
+		      "Monomial treated : %a"
+		      P.Monom.pretty m;
+		    let var_set = 
+		      m |> P.to_var_set 
+			|> P.Var.Set.of_list  
+		    in
+		      if var_set 
 			|> (P.Var.Set.union var_used) 
-			|> P.Var.Set.cardinal <> P.Var.Set.cardinal var_used
+			|> P.Var.Set.cardinal <> num_var_used
 		      then raise Missing_variables
-		      else 		    
-		    (m |> (P.mono_poly R.one) |> P.deg) > 1)
-		  (P.get_monomials p)
+		      else 
+			P.Var.Set.iter
+			  (fun v -> 
+			    if not (Var.Hashtbl.mem var_monom_tbl v)
+			    then 
+			    Var.Hashtbl.add var_monom_tbl v 
+			      (M_set.singleton 
+				 (P.mono_minimal [v,1]))
+			  )
+			  var_set
+			
+		      )
+		  useful_monoms
 	      in
 	      let old_bind = 
 		try 
@@ -321,7 +342,9 @@ let add_monomial_modifications
 		    v 
 		with 
 		  Not_found -> M_set.empty
-	      in Var.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
+	      in 	  
+		  
+	      Var.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
 	  
 	| Loop l -> List.iter reg_monomials l
       )
@@ -334,6 +357,7 @@ let add_monomial_modifications
       "Table contains variable %a" Var.pretty v)
     var_monom_tbl;
 
+ 
   let compute_effective_degree v = 
     let rec __compute_degree seen_vars v =
 
@@ -353,11 +377,11 @@ let add_monomial_modifications
 	  Mat_option.debug ~dkey:dkey_lowerizer ~level:3
 	    "Monoms :\n";
 	  M_set.iter
-	    (Mat_option.debug ~dkey:dkey_lowerizer ~level:3 "%a" P.Monom.pretty) monoms;
+	    (fun m -> Mat_option.debug ~dkey:dkey_lowerizer ~level:3 "%a" P.Monom.pretty m) monoms;
 	  let deg = 
 	    M_set.fold
-	      (fun m acc -> 
-		
+	      (fun m acc ->
+		if P.deg_monom m = 1 then max acc 1 else
 		let deg = 
 		  List.fold_left
 		    (fun acc_deg v2 -> 
@@ -377,7 +401,10 @@ let add_monomial_modifications
 	      monoms 
 	      1
 	  in
-	  let () = P.Var.Hashtbl.replace effective_degree v deg
+	  let () = 
+	    Mat_option.debug ~dkey:dkey_lowerizer ~level:3
+	      "Effective degree of %a : %i" P.Var.pretty v deg;
+	    P.Var.Hashtbl.replace effective_degree v deg
 	  in deg
 	end
     in
@@ -389,11 +416,22 @@ let add_monomial_modifications
       max acc (compute_effective_degree v)
     ) var_monom_tbl 0
   in
-  
+  let cst_vars = 
+    P.Monom.Set.fold
+      (fun m acc -> 
+	match P.to_var m with
+	  [] -> acc
+	| hd :: [] -> P.Var.Set.add hd acc
+	| _ -> assert false)
+      !cst_vars
+      P.Var.Set.empty
+  in
+
+    
   if (Mat_option.Degree.get ()) < min_degree
   then Mat_option.abort "The effective degree of the loop is %i, this is the minimal degree for finding invariants. Change the invariant degree to %i." min_degree min_degree;
     
- 
+  
   let () = Var.Hashtbl.iter 
     (fun v i -> 
       Mat_option.debug ~dkey:dkey_lowerizer ~level:5
@@ -451,8 +489,14 @@ let add_monomial_modifications
        affect_list
        [])
   in
-  
-  (List.map linearize p_list),s
+
+  (* Constant variables are treated apart. *)
+    
+  let cst_assigns = basic_assigns cst_vars in
+  (List.map 
+     (fun bdy -> 
+       linearize (cst_assigns@bdy)) 
+     p_list),s
   
 let monomial_base set = 
     let i = ref (-1) in

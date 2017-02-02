@@ -43,7 +43,7 @@ let create_mat d1 d2 f = Lacaml_D.Mat.init_rows d1 d2 (fun i j -> f (i-1) (j-1))
 let create_vec size f = 
   Lacaml_D.Vec.init
     size
-    (fun i -> f (i+1))
+    (fun i -> f (i-1))
 let copy_mat m = Lacaml_D.lacpy m
 let identity = Lacaml_D.Mat.identity
 
