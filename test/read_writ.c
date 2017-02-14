@@ -2,19 +2,12 @@
 int main (){
   int c1,c2,k0;
   int r,w,k;
-  
   r = 0;
   w = 0;
   k = k0;
 
-  while( true ) 
-    { 
-      r = r;
-      w = w;
-      k = k;
-      k0 = k0;
-      c1 = c1;
-      c2 = c2;
+  while( 1 ) 
+    {       
       if ( w==0 )
 	{ 
 	  r = r+1;

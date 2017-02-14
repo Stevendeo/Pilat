@@ -14,8 +14,6 @@ int main(){
       }
       else
       if (e != 0){
-	s =s ;
-	i = i;
 	e --;
 	m ++;
       }

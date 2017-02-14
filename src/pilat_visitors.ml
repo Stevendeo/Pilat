@@ -137,9 +137,6 @@ class fundec_updater prj =
 object
   inherit (Visitor.frama_c_copy prj)
     
-   (* TODO : There is still a problem, after the stmt is added to the cfg the cfg is unusable
-     for other tools*) 
-
   method! vfunc _ =
     DoChildrenPost (fun f -> let () = File.must_recompute_cfg f in f) 
 

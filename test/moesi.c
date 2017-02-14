@@ -1,15 +1,10 @@
-int main(){
-  int modified,shared,exclusive,invalid,owned;
-  exclusive = 0;
-  modified = 0;
-  shared = 0;
 
-  while (1) {
-    modified = modified;
-    shared = shared;
-    exclusive = exclusive;
-    invalid = invalid;
-    owned = owned;
+int modified = 1 ,shared = 2,exclusive = 3,invalid = 4 ,owned = 5;
+int main(){
+  int N = 0;
+
+  while (N < 100) {
+    N++;
     if (invalid) {
 
       shared = shared + exclusive + 1;
@@ -48,5 +43,6 @@ int main(){
       owned = 0;
     }
   }
+  return 0;
 }
 

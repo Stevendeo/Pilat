@@ -341,12 +341,13 @@ object(self)
       end (* Loop *)
     | _ -> DoChildren 
 end
-     
+
 let run () =  
-  if Mat_option.Enabled.get ()
+  if Mat_option.Enabled.get () 
   then
-  let () = 
-    Mat_option.feedback
+    let () = 
+      Mat_option.Enabled.set false;
+      Mat_option.feedback
       "Welcome to Frama-C's Pilat invariant generator"
   in 
   let file = Ast.get () 
