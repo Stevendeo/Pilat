@@ -136,6 +136,19 @@ object(self)
 		~level:3 
 		"%a between %f and %f" 
 		Printer.pp_varinfo v f1 f2) nd_var ;
+	  
+	  List.iter
+	    (fun body -> 
+	      Mat_option.debug ~dkey:dkey_stmt ~level:5
+		"Main loop body";
+	      
+	      List.iter
+		(fun a ->  
+		  Mat_option.debug ~dkey:dkey_stmt ~level:5
+		    "%a"
+		    Assign_type.pretty_assign a) body 
+		
+	    ) poly_lists;
 
 	  (*let basic_assigns = 
 	    (* In order to compute the transformations for all variables in each 
@@ -352,7 +365,12 @@ let run () =
   in 
   let file = Ast.get () 
   in  
-  List.iter
+  let filename = 
+    let fname = Mat_option.Output_C_File.get () in 
+    
+    if  fname = "" then file.fileName ^ "_annot.c" else fname
+  in
+  (*List.iter
     (function
     |GFun (f,_) -> 
       Cfg.prepareCFG f;
@@ -360,10 +378,7 @@ let run () =
       Cfg.cfgFun f;
     | _ -> ())
     file.globals;
-  let filename = 
-    let fname = Mat_option.Output_C_File.get () in 
-    if  fname = "" then file.fileName ^ "_annot.c" else fname
-  in
+  *)
   
   let () = 
     let vis = loop_analyzer () in

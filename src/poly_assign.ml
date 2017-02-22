@@ -65,8 +65,10 @@ module type S = sig
       
   and body = t list
 
-  (** A monomial affectation is equivalent to considering a monomial is a variable modified
-    by the affectation. *)
+  val pretty_assign : Format.formatter -> t -> unit
+
+  (** A monomial assignment is equivalent to considering a monomial is a variable modified
+      by the assignment. *)
 
   type monom_assign = 
     
@@ -75,12 +77,14 @@ module type S = sig
       
   and lin_body = monom_assign list
 
+  val pretty_linassign : Format.formatter -> monom_assign -> unit
+
   (** For each variable v of the set, returns the assignment v = v. This is needed when
       a variable doesn't appear on each loop body. *)  
   val basic_assigns : P.Var.Set.t -> body
 
-  (** Returns the list of monomial affectations needed to linearize the loop, and the
-    set of all monomials used. Raises Missing_variables if variables not present in the
+  (** Returns the list of monomial assignments needed to linearize the loop, and the
+      set of all monomials used. Raises Missing_variables if variables not present in the
       set in argument are used as r-values in the body list. *)
   val add_monomial_modifications : 
     P.Var.Set.t -> body list -> lin_body list * P.Monom.Set.t
@@ -184,6 +188,29 @@ struct
 
   and body = t list
 
+  let pretty_assign fmt a = 
+    let cpt = ref 1 in
+    let rec __pretty_assign fmt a = 
+    match a with
+      Assign (var,p) -> 
+	Format.fprintf fmt 
+	  "%a = %a"
+	  Poly.Var.pretty var
+	  Poly.pp_print p
+    | Loop l -> 
+      List.iter
+	(fun bdy -> 
+	  Format.fprintf fmt 
+	    "-- Body %i"
+	    !cpt; 
+	  cpt := !cpt + 1;
+	  List.iter (__pretty_assign fmt) bdy;
+	  Format.fprintf fmt 
+	    "-- ")
+	l
+    in __pretty_assign fmt a
+    
+
   (** A monomial affectation is equivalent to considering a monomial is a variable modified
     by the affectation. *)
 
@@ -194,11 +221,43 @@ type monom_assign =
 
 and lin_body = monom_assign list
 
+let pretty_linassign fmt a = 
+  let cpt = ref 1 in
+
+  let rec __pretty_linassign fmt a = 
+    match a with
+      LinAssign (var,p) -> 
+	Format.fprintf fmt 
+	  "%a = %a"
+	  Poly.Monom.pretty var
+	  Poly.pp_print p
+    | LinLoop l -> 
+      List.iter
+	(fun bdy -> 
+	  Format.fprintf fmt 
+	    "-- Body %i"
+	    !cpt;
+	  cpt := !cpt + 1;
+	  List.iter (__pretty_linassign fmt) bdy;
+	  Format.fprintf fmt 
+	    "-- ")
+	l
+  in __pretty_linassign fmt a
 
 
 let all_possible_monomials e_deg_hashtbl =
   let module M_set =P.Monom.Set in
   let max_deg = Mat_option.Degree.get () in
+  let () = 
+  Mat_option.debug ~dkey:dkey_all_monom ~level:7
+    "Hashtbl content : ";
+    P.Var.Hashtbl.iter
+      (fun v d -> 
+	Mat_option.debug ~dkey:dkey_all_monom ~level:7
+	  "Variable %a <-> degree %i"
+	  P.Var.pretty v
+	  d
+      ) e_deg_hashtbl in
 
   let effective_deg_of_monom monom = 
 
@@ -296,6 +355,9 @@ let add_monomial_modifications
   let cst_vars = ref P.Monom.Set.empty in
   (* Registration of the monomials used in the transformation of each var. *)
   let rec reg_monomials a_list = 
+    Mat_option.debug ~dkey:dkey_lowerizer ~level:7
+      "Size of path : %i"
+      (List.length a_list);
     List.iter 
       (fun affect -> 
 	match affect with 

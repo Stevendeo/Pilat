@@ -60,8 +60,10 @@ module type S = sig
       
   and body = t list
 
-  (** A monomial affectation is equivalent to considering a monomial is a variable modified
-    by the affectation. *)
+  val pretty_assign : Format.formatter -> t -> unit
+
+  (** A monomial assignment is equivalent to considering a monomial is a variable modified
+      by the assignment. *)
 
   type monom_assign = 
     
@@ -69,6 +71,8 @@ module type S = sig
   | LinLoop of lin_body list
       
   and lin_body = monom_assign list
+
+  val pretty_linassign : Format.formatter -> monom_assign -> unit
 
   (** For each variable v of the set, returns the assignment v = v. This is needed when
       a variable doesn't appear on each loop body. *)  
