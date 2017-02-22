@@ -138,6 +138,8 @@ module Make = functor
 	    Not_found -> 
 	      match s.skind with
 		Instr i -> 	
+		  let () = Mat_option.debug ~dkey:dkey_stmt
+		    "Instruction" in
 		  if break = None then None 
 		  else 
 		    if Stmt.equal s (Extlib.the break)

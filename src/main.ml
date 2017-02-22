@@ -370,7 +370,7 @@ let run () =
     
     if  fname = "" then file.fileName ^ "_annot.c" else fname
   in
-  (*List.iter
+  List.iter
     (function
     |GFun (f,_) -> 
       Cfg.prepareCFG f;
@@ -378,7 +378,7 @@ let run () =
       Cfg.cfgFun f;
     | _ -> ())
     file.globals;
-  *)
+ 
   
   let () = 
     let vis = loop_analyzer () in
