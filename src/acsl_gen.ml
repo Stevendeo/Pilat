@@ -113,13 +113,32 @@ let vec_to_term_zarith
     (nd_vars : 'a Varinfo.Map.t)
     =
 
- 
+  let vec_array = A.M.vec_to_array vec in 
+  let type_is_integer = 
+    A.Imap.for_all
+      (fun row monom -> 
+	let cst =  vec_array.(row) |> A.P.R.t_to_float
+	in 
+	if cst |> int_of_float |> float_of_int = cst
+	then 
+	  if cst = 0. then true
+	  else 
+	    List.for_all
+	      (fun v -> match v.vtype with 
+		TInt _ -> true
+	      | _ -> false)
+	      (A.P.to_var_set monom)
+	  
+	else false
+      )
+      rev_base in
+
+  let typ = if type_is_integer then Linteger else Lreal in
   let () = Mat_option.debug ~dkey:dkey_zterm ~level:2
     "Vector given : %a" A.M.pp_vec vec in
 
   let zero =  Logic_const.term (TConst (Integer (Integer.zero,(Some "0")))) Linteger
   in
-  let vec_array = A.M.vec_to_array vec in 
   A.Imap.fold
     (fun row monom acc -> 
       let cst = 
@@ -130,18 +149,22 @@ let vec_to_term_zarith
       if cst = 0. then acc 
       else if not(possible_monomial monom nd_vars) then raise Bad_invariant
       else 
-      
-	    let lreal:Cil_types.logic_real = 
-	      {
-		r_literal = string_of_float cst;
-		r_nearest = cst;
-		r_upper = cst; 
-		r_lower = cst;		  
-	      }  in
 	    
 	    let term_cst = 
+	      let lcst:Cil_types.logic_constant = 
+
+		if type_is_integer
+		then Integer (Integer.of_int (int_of_float cst), Some (string_of_float cst))
+		else LReal
+		{
+		  r_literal = string_of_float cst;
+		  r_nearest = cst;
+		  r_upper = cst; 
+		  r_lower = cst;		  
+		}  in
+	      
 	      Logic_const.term 
-		(TConst (LReal lreal)) Lreal in
+		(TConst lcst) typ in
 	    
 	    let monom_term = 
 	      
@@ -150,11 +173,11 @@ let vec_to_term_zarith
 		   (Mult,
  		    term_cst,
 		    monomial_to_mul_term monom)
-		) Lreal
+		)  typ
 		
 	    in
 	    if acc = zero then monom_term else
-	      Logic_const.term (TBinOp (PlusA,acc,monom_term)) Lreal
+	      Logic_const.term (TBinOp (PlusA,acc,monom_term))  typ
     )
     rev_base
     zero
@@ -174,6 +197,7 @@ let get_inst_loc = function
      
   *)
   | Asm _ -> assert false
+  | Local_init _ -> assert false
     
 let rec get_stmt_loc s = match s.skind with
   | Instr i -> get_inst_loc i
@@ -342,23 +366,25 @@ let term_list_to_predicate
     end (* Matching mat *)
   | _,_ -> 
       
-      let operator = 
+      let operator,integer = 
 	match limit with
-	| Convergent _ -> Rle
-	| Divergent _ -> Rge
-	| One -> Req
+	| Convergent _ -> Rle,false
+	| Divergent ev -> Rge,(ev = (ev|>int_of_float|>float_of_int))
+	| One -> Req,true
 	| _ -> assert false
       in
+      let type_vars,logic_type_vars = 
+	if integer then TInt (IInt,[]),Linteger else TFloat (FFloat,[]),Lreal in
       List.map
 	(fun (_,term) -> 
-	  	    
-	  let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TFloat (FFloat,[]))
+	  let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) type_vars
 	  in
 	  new_ghost_var.vghost <- true;     
 	  let lvar = Cil.cvar_to_lvar new_ghost_var in
           let term_gvar = 
 	    Logic_const.term
-	      (TLval ((TVar lvar),TNoOffset)) Lreal
+	      (TLval ((TVar lvar),TNoOffset)) 
+	      logic_type_vars
 	  in
 	  let () = add_k_stmt new_ghost_var term stmt
 	  in

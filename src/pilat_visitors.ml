@@ -174,9 +174,11 @@ object
       let new_block = 
 	Cil.mkStmt ~ghost:false ~valid_sid:true
 	  (Block
-	     {battrs = [];
-	      blocals = [];
-	      bstmts =  s::s_list
+	     {
+	       bscoping = false;
+	       battrs = [];
+	       blocals = [];
+	       bstmts =  s::s_list
 	     }
 	  )
       in
