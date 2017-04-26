@@ -175,7 +175,7 @@ object
 	Cil.mkStmt ~ghost:false ~valid_sid:true
 	  (Block
 	     {
-	       bscoping = false;
+	       (*bscoping = false;*)
 	       battrs = [];
 	       blocals = [];
 	       bstmts =  s::s_list

@@ -197,7 +197,7 @@ let get_inst_loc = function
      
   *)
   | Asm _ -> assert false
-  | Local_init _ -> assert false
+  (*| Local_init _ -> assert false (Frama-C Silicon refuses it)  *)
     
 let rec get_stmt_loc s = match s.skind with
   | Instr i -> get_inst_loc i
