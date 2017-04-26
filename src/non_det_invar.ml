@@ -62,11 +62,25 @@ module Make (P_assign : Poly_assign.S) =
 	N_poly.Var.Set.empty
       
     let do_the_job rev_base (mat:M.t) (ev:float) (invar:M.vec) (num_vars:int) = 
+      let () = 
+	Mat_option.debug 
+	  ~dkey ~level:3
+	  "Invariant : %a"
+	  P.pp_print (P_assign.vec_to_poly rev_base invar)
+      in
+
       let time = Sys.time () in
       let (minus_one:R.t) = R.sub R.zero R.one in 
       let objective = 
 	M.scal_mul_vec (get_objective_from_convergent_invar mat ev (invar:M.vec)) minus_one
       in
+      let () = 
+	Mat_option.debug 
+	  ~dkey ~level:3
+	  "Objective : %a"
+	  P.pp_print (P_assign.vec_to_poly rev_base objective)
+      in
+
       let obj_str = vec_to_poly_string rev_base objective
       in
       let invar_constraint = 
