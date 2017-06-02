@@ -1,0 +1,18 @@
+opam-version: "1.2.2"
+name: "pilat"
+version: "0.1"
+maintainer: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
+authors: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
+license: "LGPLv2.1"
+build: [[autoconf]
+  ["./configure" "--prefix=%{prefix}%"]
+  [make]
+]
+install: [make "install"]
+remove: ["ocamlfind" "remove" "pilat"]
+depends: [
+  "ocamlfind" {build}
+  "lacaml" {build}
+  "zarith" {build}
+  "frama-c" {build}
+]
