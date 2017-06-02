@@ -21,7 +21,6 @@
 (**************************************************************************)
 
 open Cil_datatype
-open Pilat_math
 
 
 module Make: functor 

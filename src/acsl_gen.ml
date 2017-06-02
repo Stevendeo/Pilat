@@ -24,8 +24,7 @@ open Cil_types
 open Invariant_utils
 open Cil_datatype
 
-let dkey_term = Mat_option.register_category "acsl_gen:term"  
-let dkey_term2pred = Mat_option.register_category "acsl_gen:term_list_to_predicate"  
+let dkey_term = Mat_option.register_category "acsl_gen:term"   
 
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
 let dkey_zero = Mat_option.register_category "acsl_gen:iszero"  
@@ -196,8 +195,9 @@ let get_inst_loc = function
      | Asm(_,_,_,l) -> l (Frama-C Aluminium)
      
   *)
+    
   | Asm _ -> assert false
-  (*| Local_init _ -> assert false (Frama-C Silicon refuses it)  *)
+  | Local_init _ -> assert false
     
 let rec get_stmt_loc s = match s.skind with
   | Instr i -> get_inst_loc i

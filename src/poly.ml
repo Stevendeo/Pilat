@@ -458,7 +458,7 @@ struct
     let lt _ _ = assert false
     let gt _ _ = assert false
     let compare _ = assert false
-    let den _ = assert false
+    (*let den _ = assert false*)
     let t_to_int _ = assert false
     let int_to_t _ = assert false
     let non_det_repr _ = assert false 
@@ -509,7 +509,7 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
 	 let mem_project = Datatype.never_any_project
 	end
        )
-      let new_var _ = X
+      (*let new_var _ = X*)
       let max _ = assert false
       let min _ = assert false     
       let to_nvars _ = assert false

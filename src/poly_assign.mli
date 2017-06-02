@@ -20,7 +20,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Cil_datatype
 open Pilat_math
 
 exception Missing_variables

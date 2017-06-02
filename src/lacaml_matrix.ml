@@ -30,14 +30,14 @@ type elt = float
 type mat = t
 
 exception Dimension_error of int*int*int*int
-    
+    (*
 let error m1 m2 = 
   raise (Dimension_error 
 	   (Lacaml_D.Mat.dim1 m1, 
 	    Lacaml_D.Mat.dim2 m1, 
 	    Lacaml_D.Mat.dim1 m2, 
 	    Lacaml_D.Mat.dim2 m2))
-
+*)
 let zero = Lacaml_D.Mat.make0
 let create_mat d1 d2 f = Lacaml_D.Mat.init_rows d1 d2 (fun i j -> f (i-1) (j-1))
 let create_vec size f = 
@@ -75,9 +75,9 @@ let get_dim_col = Lacaml_D.Mat.dim2
 let vec_to_array = Lacaml_D.Vec.to_array
 let vec_from_array = Lacaml_D.Vec.of_array
 
-let to_array m = Lacaml_D.Mat.to_array m
+(*let to_array m = Lacaml_D.Mat.to_array m
 let from_array m =  Lacaml_D.Mat.of_col_vecs m
-
+*)
 let set_coef i j m elt = m.{i+1,j+1} <- elt
 let get_coef i j m = m.{i+1,j+1}
 

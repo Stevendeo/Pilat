@@ -21,7 +21,6 @@
 (**************************************************************************)
 
 open Cil_datatype
-open Pilat_math
 open Cil_types
 
 let dkey_stmt = Mat_option.register_category "cil2assign:block_analyzer" 

@@ -22,7 +22,6 @@
 
 open Cil_types
 open Cil
-open Pilat_matrix
 
 (*open Logic_const
 *)

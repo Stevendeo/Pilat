@@ -122,7 +122,7 @@ let register_stmt loop_stmt init =
     with 
       Not_found -> [] in 
   Cil_datatype.Stmt.Hashtbl.replace stmt_init_table loop_stmt (init :: old_bind)
-
+(*
 let print_stmt_list sl = 
 Mat_option.debug ~dkey:dkey_stmt ~level:4
   "\nBEGIN\n";
@@ -130,9 +130,9 @@ Mat_option.debug ~dkey:dkey_stmt ~level:4
     (fun s -> Mat_option.debug ~dkey:dkey_stmt ~level:4
       "-- %a" Printer.pp_stmt s
     )sl;
-    
 Mat_option.debug ~dkey:dkey_stmt ~level:4
   "\nEND\n";
+*)  
 class fundec_updater prj = 
 object
   inherit (Visitor.frama_c_copy prj)
@@ -175,7 +175,7 @@ object
 	Cil.mkStmt ~ghost:false ~valid_sid:true
 	  (Block
 	     {
-	       (*bscoping = false;*)
+	       bscoping = false;
 	       battrs = [];
 	       blocals = [];
 	       bstmts =  s::s_list

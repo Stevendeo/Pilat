@@ -20,8 +20,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Pilat_matrix
-
 type limit = 
   Convergent of float
 | Divergent of float

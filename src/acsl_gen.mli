@@ -20,9 +20,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Cil_types 
 open Cil_datatype
-open Invariant_utils 
 
 module Make: functor (A:Poly_assign.S with type P.v = Varinfo.t) -> 
 sig

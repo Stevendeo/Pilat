@@ -22,7 +22,6 @@
 
 open Pilat_matrix
 
-let dkey_null = Mat_option.register_category "invar:nullspace"
 let dkey_inter = Mat_option.register_category "invar:lacaml:inter"
 let dkey_redun = Mat_option.register_category "invar:redun"
 
