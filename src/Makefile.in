@@ -24,7 +24,7 @@ PLUGIN_CMO 	:= mat_option\
 		acsl_gen\
 		main
 
-
+PLUGIN_REQUIRES         := zarith lacaml
 PLUGIN_OFLAGS 		:= -I $(dir @LACAML@) 
 
 PLUGIN_BFLAGS 		:= -I $(dir @LACAML@)
