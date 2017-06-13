@@ -18,19 +18,19 @@ check_plugin(pilat,PLUGIN_RELATIVE_PATH(plugin_file),[support for PILAT plug-in]
 if test "$ENABLE_PILAT" != "no"; then
 
 configure_library([LACAML],
-		  [$(ocamlc -where)/../lacaml/lacaml.cmxa],
+		  [$(ocamlfind query lacaml)/lacaml.cmxa],
 		  [lacaml not installed],
 		  yes
 		)
 
 configure_library([LACAML_TOP],
-		  [$(ocamlc -where)/../lacaml/lacaml_top.cmxa],
+		  [$(ocamlfind query lacaml)/lacaml_top.cmxa],
 		  [lacaml_top not installed],
 		  yes
 		)
 
 configure_library([ZARITH],
-		  [$(ocamlc -where)/../zarith/zarith.cmxa],
+		  [$(ocamlfind query zarith)/zarith.cmxa],
 		  [zarith not installed],
 		  yes
 		) 
