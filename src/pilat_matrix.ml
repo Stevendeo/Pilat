@@ -638,7 +638,7 @@ module QMat = Make(Qring)
 
 let lacaml_to_qmat lmat = 
   
-  lmat 	 |> Lacaml_D.Mat.to_array 
+  lmat 	 |> Lacaml__D.Mat.to_array 
 					      |> Array.map 
 						  (fun arr -> QMat.vec_from_array (Array.map (fun fl -> Q.of_float fl) arr)) 
 					      |> QMat.of_row_vecs
@@ -652,17 +652,17 @@ let qmat_to_lacaml qmat =
       (fun q -> (Z.to_float (Q.num q)) /. (Z.to_float (Q.den q))) 
       (QMat.vec_to_array vec))
     arr
-					      |> Lacaml_D.Mat.of_array
+					      |> Lacaml__D.Mat.of_array
 
 let lvec_to_qvec lvec = 
-  lvec |> Lacaml_D.Vec.to_array
+  lvec |> Lacaml__D.Vec.to_array
 					      |> Array.map (fun fl -> Q.of_float fl)
 					      |> QMat.vec_from_array
 
 let qvec_to_lvec lvec = 
   let arr = QMat.vec_to_array lvec in
   Array.map (fun fl -> (Z.to_float (Q.num fl)) /. (Z.to_float (Q.den fl))) arr 
-					      |> Lacaml_D.Vec.of_array
+					      |> Lacaml__D.Vec.of_array
 
 
 module PMat : Matrix with type elt = N_poly.t = 
@@ -673,7 +673,7 @@ module PQMat : Matrix with type elt = NQ_poly.t =
 
 let pmat_eval_to_zero m = 
   let dim = PMat.get_dim_col m in
-  let res = Lacaml_D.Mat.create dim dim in
+  let res = Lacaml__D.Mat.create dim dim in
   ignore (
     PMat.mapi (* TODO : PMat.iteri would be better *)
       (fun i j poly -> 
@@ -688,5 +688,5 @@ let fvec_to_pvec f_vec : PMat.vec =
   PMat.vec_from_array
     (Array.map
        N_poly.const    
-       (Lacaml_D.Vec.to_array f_vec)
+       (Lacaml__D.Vec.to_array f_vec)
     )

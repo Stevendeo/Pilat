@@ -49,11 +49,11 @@ module QMat : Matrix with type elt = Q.t
 *)
 
 (** Float <-> Rational translaters *)
-val lvec_to_qvec : Lacaml_D.vec -> QMat.vec
-val qvec_to_lvec : QMat.vec -> Lacaml_D.vec 
+val lvec_to_qvec : Lacaml__D.vec -> QMat.vec
+val qvec_to_lvec : QMat.vec -> Lacaml__D.vec 
 
-val lacaml_to_qmat : Lacaml_D.Mat.t -> QMat.t
-val qmat_to_lacaml : QMat.t -> Lacaml_D.Mat.t
+val lacaml_to_qmat : Lacaml__D.Mat.t -> QMat.t
+val qmat_to_lacaml : QMat.t -> Lacaml__D.Mat.t
 
 (** 3. Polynomial matrices implementation. 
     This is how we will deal with non deterministic loops *)
@@ -62,5 +62,5 @@ module PMat : Matrix with type elt = Poly_utils.N_poly.t
 
 module PQMat :  Matrix with type elt = Poly_utils.NQ_poly.t
 
-val pmat_eval_to_zero : PMat.t -> Lacaml_D.Mat.t
-val fvec_to_pvec : Lacaml_D.Vec.t -> PMat.vec 
+val pmat_eval_to_zero : PMat.t -> Lacaml__D.Mat.t
+val fvec_to_pvec : Lacaml__D.Vec.t -> PMat.vec 
