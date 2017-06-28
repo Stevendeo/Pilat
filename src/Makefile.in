@@ -1,4 +1,4 @@
-FRAMAC_SHARE 	:= $(dir @FRAMAC@)
+FRAMAC_SHARE 	:= $(shell frama-c-config -print-share-path)
 
 PLUGIN_DIR ?=.
 
