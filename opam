@@ -10,7 +10,7 @@ build: [
   ["sh" "make.sh"]
   
 ]
-homepage: "steven-de-oliveira.fr"
+homepage: "https://github.com/Stevendeo/Pilat/"
 install: ["sh" "install.sh"]
 
 remove: ["ocamlfind" "remove" "pilat"]
