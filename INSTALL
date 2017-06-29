@@ -5,9 +5,10 @@
 1) Requirements
 
 To use PILAT, we strongly recommend to install the Ocaml package manager OPAM.
-To install it from ubuntu, just execute 'sudo apt-get install opam'. Then, 
-initialize OPAM by executing 'opam init --comp 4.02.3' that will install 
-OCaml 4.02.3.
+To install it from debian, just execute 'sudo apt-get install opam'. Then, 
+initialize OPAM by executing 'opam init --comp 4.04.1' that will install 
+OCaml 4.04.1. Otherwise, check https://opam.ocaml.org/doc/Install.html to 
+install OPAM.
 
 -- With OPAM --
 
@@ -39,9 +40,10 @@ OCaml 4.02.3.
 
 2) Install
 
-To install Pilat, go to src/ and run :
+To install Pilat, you can run "sh make.sh" and "sh install.sh".
+Otherwise, go to src/ and run :
 	autoconf
-	./configure
+	./configure 
 	make depend
 	make
 	sudo make install
