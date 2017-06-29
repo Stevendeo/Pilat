@@ -5,10 +5,7 @@ maintainer: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
 authors: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
 license: "LGPLv2.1"
 build: [
-  [autoconf]
-  ["./src/configure" "--prefix=%{prefix}%"]
   ["sh" "make.sh"]
-  
 ]
 homepage: "steven-de-oliveira.fr"
 install: ["sh" "install.sh"]
