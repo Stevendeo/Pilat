@@ -1,6 +1,6 @@
 FRAMAC_SHARE 	:= $(dir @FRAMAC@)
 
-PLUGIN_DIR ?= src/
+PLUGIN_DIR ?= ./
 
 PLUGIN_NAME	:= Pilat
 
