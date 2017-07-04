@@ -20,9 +20,9 @@ To activate it, just type :
 
 frama-c your_file.c -pilat
 
-This will generate a new .c file with the degree 2 invariant written in ACSL,
-the specification language used by Frama-C plugins. You can select any degree
-by using the option -pilat-degree.
+This will generate by default the "whole_program_annot.c" file with the degree 
+2 invariant written in ACSL, the specification language used by Frama-C plugins. 
+You can select any degree by using the option -pilat-degree.
 
 Most options of the form '-pilat-option-name' and without any parameter
 have an opposite with the name '-pilat-no-option-name'.
@@ -39,15 +39,21 @@ Options taking a string as argument should preferably be written
                     solvable loop of the program (opposite option is
                     -no-pilat)
 -pilat-const-name <str>  sets the name of the constants used in invariants
-                    (default__PILAT__)
--pilat-degree <n>   sets the maximum degree of the invariants
+                    (default __PILAT__)
+-pilat-degree <n>   sets the maximum degree of the invariants (default : 2)
 -pilat-ev <n>       sets the maximal eigenvalue searched for when using
                     zarith
+-pilat-optim-epsilon <str>  Tolerance of error during optimization (default
+                    0.05)
+-pilat-optim-iters <n>  sets the maximal number of iterations performed
+                    during the optimisation (default 10)
+-pilat-optim-start <n>  sets the initial value of k during the optimisation
+                    (default 50)
 -pilat-output <s>   specifies generated file name for annotated C code
 -pilat-prove        when on, tries to prove already existing loop invariants
                     (opposite option is -pilat-no-prove)
--pilat-vars <x:y:...>  specifies which variables will be analyzed.
+-pilat-vars <x:y:...>  specifies which variables will be analyzed. 
 -pilat-z            when on, uses zarith library. Recommended if searching
                     for integer relations but depreciated when searching for
                     floating point relations. (set by default, opposite
-                    option is -pilat-no-z) 
+                    option is -pilat-no-z)
