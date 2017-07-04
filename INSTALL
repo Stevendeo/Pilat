@@ -12,16 +12,14 @@ install OPAM.
 
 -- With OPAM --
 
-   a) opam install frama-c 
-
-   b) opam install lacaml
-
-   c) opam install zarith
+   The simplest. "opam install pilat" 
 
 -- Without OPAM --
 
-   a) Get the latest version of Ocaml	
-
+   I strongly recommend you to retry installing opam. Otherwise
+   
+   a) Get the latest version of Ocaml (or at least the 4.03). 
+      
    b) Download the Frama-C source on http://frama-c.com/ and unzip it.
       Then go to the main directory and run : 
 	autoconf
@@ -37,11 +35,8 @@ install OPAM.
       Just make sure to install the libraries at the same place than the folder
       containing "ocamlc".
 
-
-2) Install
-
-To install Pilat, you can run "sh make.sh" and "sh install.sh".
-Otherwise, go to src/ and run :
+   e) You can run "sh make.sh" and "sh install.sh".
+      Otherwise, go to src/ and run :
 	autoconf
 	./configure 
 	make depend
