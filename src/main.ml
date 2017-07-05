@@ -354,6 +354,87 @@ object(self)
     | _ -> DoChildren 
 end
 
+let run_input_mat file = 
+  let module Str_var : Pilat_math.Variable with type t = string = 
+    struct 
+      include Datatype.String
+      let max _ = assert false
+      let min _ = assert false
+      let to_nvars _ = []
+    end 
+  in
+          
+  let (module A:Poly_assign.S with type P.v = string) = 
+    if Mat_option.Use_zarith.get () 
+    then (module 
+           Poly_assign.Make 
+             (Pilat_matrix.QMat) 
+             (Poly.Make (Qring)(Str_var)))
+    else (module Poly_assign.Make(Lacaml_matrix)(Poly.Make(Float)(Str_var)))
+  in
+  
+  (** 1. Matrix parsing *)
+  let chan = open_in file in 
+  let str = really_input_string chan (in_channel_length chan) in 
+  let matrices = Str.split (Str.regexp ";;") str in
+  let matrices = 
+    List.map
+      A.M.of_str 
+      matrices 
+  in
+  List.iter
+    (fun mat -> 
+       Mat_option.debug ~level:4
+         "MATRIX\n%a\n\n"
+         A.M.pp_print mat)
+    matrices;
+
+  (** 2. Invariant computation *)
+  
+  let module I = Invariant_utils.Make (A)
+  in
+  let first_invar = I.invariant_computation false (List.hd matrices)
+  in
+  let invars = 
+  List.fold_left
+    (fun acc mat -> 
+       I.intersection_invariants
+         acc
+         (I.invariant_computation false mat)
+    )
+    first_invar
+    (List.tl matrices) in
+  
+  (** 3. Variable management *)
+
+  let vars = Str.split (Str.regexp ":") (Mat_option.Var_focus.get ()) in 
+  let i = ref 0 in 
+  let var_map = 
+    List.fold_left
+      (fun acc v -> 
+         let new_acc = 
+           A.Imap.add !i (A.P.var_to_monom v) acc
+         in
+         i := !i + 1; new_acc)
+      A.Imap.empty
+      vars
+  in
+  
+  (** 4. Invariant as polynomials *)
+  
+  List.iter
+    (fun (limit,inv) -> 
+       Mat_option.feedback "%s :\n----\n" (I.lim_to_string limit);
+       List.iter
+         (fun vec -> 
+            let p = 
+              I.vec_to_poly 
+                var_map 
+                vec in 
+            Mat_option.feedback "\n%a\n--" A.P.pp_print p) inv;       
+       Mat_option.feedback "--"
+   )
+    invars
 let run () =  
   if Mat_option.Enabled.get () 
   then
@@ -362,6 +443,10 @@ let run () =
       Mat_option.feedback
       "Welcome to Frama-C's Pilat invariant generator"
   in 
+  let mat_input =  Mat_option.Mat_input.get ()  in 
+  if mat_input <> "" then run_input_mat mat_input
+  else 
+  
   let file = Ast.get () 
   in  
   let filename = 
