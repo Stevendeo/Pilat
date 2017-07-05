@@ -335,7 +335,7 @@ let vec_of_str size line =
     vec_from_array vec
 
 let of_str (s:string) : t =   
-  let line_separator = Str.regexp ";" in
+  let line_separator = Str.regexp "\n" in
   let line_list = (Str.split line_separator s) in
   let size = List.length line_list in
   let (vec_list : vec list) = 

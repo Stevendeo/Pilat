@@ -640,7 +640,7 @@ struct
     vec_from_array vec
 
   let of_str s = 
-    let line_separator = Str.regexp ";" in
+    let line_separator = Str.regexp "\n" in
     
     let str_vec_list = (Str.split line_separator s)
     in
