@@ -78,7 +78,8 @@ module Var_focus =
     (struct
       let option_name = "-pilat-vars"
       let arg_name = "x:y:..."
-      let help = "specifies which variables will be analyzed. "
+      let help = "specifies which variables will be analyzed. If the input is\
+                  matricial, uses those names as variables."
      
      end)
 
@@ -122,7 +123,15 @@ module Optim_epsilon = String
     let help = "Tolerance of error during optimization (default " ^ default ^ ")"
    end)
 
-
+module Mat_input = String  
+    (struct 
+      let option_name = "-pilat-input"
+      let arg_name = "file"
+      let default = ""
+      let help = "Specifies the input file if it is one or multiple numerical\
+                  matrices. Separate each matrix with ';;' and each line with\
+                  ';'."
+   end)
 
 (** Tools for ACSL generation *)
 
