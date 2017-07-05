@@ -46,6 +46,7 @@ module Optim_start: Parameter_sig.String
 module Optim_iters: Parameter_sig.String
 module Optim_epsilon: Parameter_sig.String
 
+module Mat_input: Parameter_sig.String
 (** Tools for ACSL generation *)
 
 val emitter : Emitter.t
