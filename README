@@ -20,8 +20,8 @@ To activate it, just type :
 
 frama-c your_file.c -pilat
 
-This will generate by default the "whole_program_annot.c" file with the degree 
-2 invariant written in ACSL, the specification language used by Frama-C plugins. 
+This will generate by default the "whole_program_annot.c" file with degree 
+2 invariants written in ACSL, the specification language used by Frama-C plugins. 
 You can select any degree by using the option -pilat-degree.
 
 Most options of the form '-pilat-option-name' and without any parameter
