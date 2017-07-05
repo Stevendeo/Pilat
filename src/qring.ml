@@ -43,4 +43,5 @@ let max = t_to_float
 let min = t_to_float
 
 let to_str = to_string
+let of_str f = float_to_t (float_of_string f)
 let to_nvars _ = []

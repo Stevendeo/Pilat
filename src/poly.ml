@@ -474,6 +474,8 @@ struct
 	)
 	p
 	[]
+
+    let of_str _ = (* TODO *) assert false
 end
 
 
