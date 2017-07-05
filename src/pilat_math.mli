@@ -253,5 +253,7 @@ module type Matrix = sig
   val pp_print : Format.formatter -> t -> unit
   val pp_vec : Format.formatter -> vec -> unit
 
+  (** Of string *)
+  val of_str : string -> t
 
 end  

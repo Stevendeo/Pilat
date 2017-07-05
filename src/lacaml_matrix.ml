@@ -323,3 +323,25 @@ let nullspace mat =
 
 let pp_print = Lacaml__D.pp_mat
 let pp_vec = Lacaml__D.pp_vec
+
+exception Not_square 
+
+let vec_of_str size line = 
+    let (num_list : string list) = Str.split (Str.regexp " ") line in 
+    let vec = 
+      (Array.make size 0.) in
+    List.iteri
+      (fun i f -> vec.(i) <- float_of_string f) num_list ;
+    vec_from_array vec
+
+let of_str (s:string) : t =   
+  let line_separator = Str.regexp ";" in
+  let line_list = (Str.split line_separator s) in
+  let size = List.length line_list in
+  let (vec_list : vec list) = 
+    List.map 
+      (vec_of_str size)
+      line_list
+  in
+  let arr = Array.of_list vec_list in 
+  of_row_vecs arr
