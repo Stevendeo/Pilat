@@ -628,26 +628,28 @@ struct
 	ev :: acc)
       res 
       []
-   
-  exception Not_square
 
-  let vec_of_str size line = 
+  let vec_of_str line = 
     let num_list = Str.split (Str.regexp " ") line in 
+    let size = List.length num_list in
     let vec = 
       (Array.make size F.zero) in
     List.iteri
-      (fun i r -> if i = size then raise Not_square else vec.(i) <- F.of_str r) num_list;
+      (fun i r -> vec.(i) <- F.of_str r) num_list;
     vec_from_array vec
 
   let of_str s = 
     let line_separator = Str.regexp "\n" in
     
-    let str_vec_list = (Str.split line_separator s)
+    let str_vec_list = 
+      List.filter
+        ((<>) "")
+        (Str.split line_separator s)
     in
     let size_mat = List.length str_vec_list in
     let vec_list = 
       List.map 
-        (vec_of_str size_mat)
+        vec_of_str
         str_vec_list
     in
     vec_list |> Array.of_list |> of_row_vecs

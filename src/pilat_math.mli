@@ -186,7 +186,7 @@ module type Matrix = sig
   type t
   
   exception Dimension_error of int*int*int*int
-
+  
   (** Matrix creation *)
   (* All function asking for coordonates is always row first. Index start at 0. *)
   val zero : int -> int -> t
