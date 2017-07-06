@@ -55,6 +55,7 @@ module type Ring = sig
   val compare : t -> t -> int
   val pp_print : Format.formatter -> t -> unit
   val to_str : t -> string
+  val of_str : string -> t
   (** 2. Ast translators : only required for Pilat *)
 
   val float_to_t : float -> t 
@@ -161,6 +162,7 @@ sig
   exception Not_divisible
   (** Euclidian division between two polynomials. Raise Not_divisible if they are not divisible. *)
   val div : t -> t -> t 
+  val of_str : string -> t
 
   (** Only required to match Pilat's ring. Undefined behavior *)  
   val float_to_t : float -> t
@@ -184,7 +186,7 @@ module type Matrix = sig
   type t
   
   exception Dimension_error of int*int*int*int
-
+  
   (** Matrix creation *)
   (* All function asking for coordonates is always row first. Index start at 0. *)
   val zero : int -> int -> t
@@ -251,5 +253,7 @@ module type Matrix = sig
   val pp_print : Format.formatter -> t -> unit
   val pp_vec : Format.formatter -> vec -> unit
 
+  (** Of string *)
+  val of_str : string -> t
 
 end  

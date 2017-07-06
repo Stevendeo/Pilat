@@ -42,6 +42,8 @@ let to_str f =
 
   sign ^ (string_of_float f)
 
+let of_str = float_of_string
+
 let t_to_float f = f
 let float_to_t f = f
 let approx coef = 
