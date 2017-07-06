@@ -354,7 +354,7 @@ object(self)
     | _ -> DoChildren 
 end
 
-exception Not_all_same_size 
+exception Size_error
 
 let run_input_mat file = 
   let module Str_var : Pilat_math.Variable with type t = string = 
@@ -380,9 +380,11 @@ let run_input_mat file =
   let str = really_input_string chan (in_channel_length chan) in 
   let matrices = Str.split (Str.regexp ";;") str in
   let matrices = 
-    List.map
-      A.M.of_str 
-      matrices 
+    try 
+      List.map
+        A.M.of_str 
+        matrices
+    with A.M.Dimension_error _ -> raise Size_error
   in
   List.iter
     (fun mat -> 
@@ -415,7 +417,7 @@ let run_input_mat file =
          in cols == A.M.get_dim_row mat && cols == mat_size)
       matrices in
   if (not all_same_size)
-  then raise Not_all_same_size;
+  then raise Size_error;
 
   (** 3. Invariant computation *)
   
@@ -463,7 +465,7 @@ let run () =
       try
         run_input_mat mat_input
       with
-      Not_all_same_size -> 
+      Size_error -> 
       Mat_option.feedback "Not all matrices have the same size or are not squared." 
     end 
   else 
