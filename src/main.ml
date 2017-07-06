@@ -354,6 +354,8 @@ object(self)
     | _ -> DoChildren 
 end
 
+exception Not_all_same_size 
+
 let run_input_mat file = 
   let module Str_var : Pilat_math.Variable with type t = string = 
     struct 
@@ -388,8 +390,34 @@ let run_input_mat file =
          "MATRIX\n%a\n\n"
          A.M.pp_print mat)
     matrices;
+  
+  (** 2. Variable management *)
 
-  (** 2. Invariant computation *)
+  let vars = Str.split (Str.regexp ":") (Mat_option.Var_focus.get ()) in 
+  let i = ref 0 in 
+  let var_map = 
+    List.fold_left
+      (fun acc v -> 
+         let new_acc = 
+           A.Imap.add !i (A.P.var_to_monom v) acc
+         in
+         i := !i + 1; new_acc)
+      A.Imap.empty
+      vars
+  in
+
+  (** 2.5 Tests *)
+  let mat_size = A.M.get_dim_col (List.hd matrices) in
+  let all_same_size = 
+    List.for_all 
+      (fun mat -> 
+         let cols = A.M.get_dim_col mat 
+         in cols == A.M.get_dim_row mat && cols == mat_size)
+      matrices in
+  if (not all_same_size)
+  then raise Not_all_same_size;
+
+  (** 3. Invariant computation *)
   
   let module I = Invariant_utils.Make (A)
   in
@@ -404,21 +432,7 @@ let run_input_mat file =
     )
     first_invar
     (List.tl matrices) in
-  
-  (** 3. Variable management *)
 
-  let vars = Str.split (Str.regexp ":") (Mat_option.Var_focus.get ()) in 
-  let i = ref 0 in 
-  let var_map = 
-    List.fold_left
-      (fun acc v -> 
-         let new_acc = 
-           A.Imap.add !i (A.P.var_to_monom v) acc
-         in
-         i := !i + 1; new_acc)
-      A.Imap.empty
-      vars
-  in
   
   (** 4. Invariant as polynomials *)
   
@@ -444,7 +458,14 @@ let run () =
       "Welcome to Frama-C's Pilat invariant generator"
   in 
   let mat_input =  Mat_option.Mat_input.get ()  in 
-  if mat_input <> "" then run_input_mat mat_input
+  if mat_input <> "" then 
+    begin
+      try
+        run_input_mat mat_input
+      with
+      Not_all_same_size -> 
+      Mat_option.feedback "Not all matrices have the same size or are not squared." 
+    end 
   else 
   
   let file = Ast.get () 
