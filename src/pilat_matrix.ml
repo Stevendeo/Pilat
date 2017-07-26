@@ -437,7 +437,7 @@ struct
 
   module XQ_poly : Polynomial with type c = Q.t and type v = Poly.var = Poly.XMake(Qring) 
 				     
-  module F_Set:Set.S with type elt = F.t = Set.Make (F)
+(*   module F_Set:Set.S with type elt = F.t = Set.Make (F) *)
   module Z_Set :Set.S with type elt = Z.t = Set.Make (Z)
   module Q_Set :Set.S with type elt = Q.t = Set.Make (Q)
     

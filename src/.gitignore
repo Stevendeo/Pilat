@@ -1,0 +1,14 @@
+*.o
+*.cm*
+top/
+.Makefile.plugin.generated
+.depend
+.merlin
+META.frama-c-pilat
+Makefile
+Pilat.check_mli_exists
+autom4te.cache
+config.log
+config.status
+configure
+*~

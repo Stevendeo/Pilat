@@ -33,7 +33,7 @@ module Make = functor
 	exception Loop_break 
 	 
 	module P = Assign.P
-	module R = P.R 
+(*	module R = P.R *)
 
 
 	let poly_hashtbl = Cil_datatype.Stmt.Hashtbl.create 12

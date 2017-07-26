@@ -15,14 +15,6 @@ check_plugin(pilat,PLUGIN_RELATIVE_PATH(plugin_file),[support for PILAT plug-in]
 # LACAML #
 ########
 
-if test "$ENABLE_PILAT" != "no"; then
-
-configure_library([FRAMAC],
-		  [$(frama-c -print-path)/Makefile.dynamic],
-		  [frama-c not installed],
-		  yes
-		)
-
 configure_library([LACAML],
 		  [$(ocamlfind query lacaml)/lacaml.cmxa],
 		  [lacaml not installed],
@@ -41,11 +33,9 @@ configure_library([ZARITH],
 		  yes
 		) 
 
-plugin_require_external(pilat,frama-c)
 plugin_require_external(pilat,zarith)
 plugin_require_external(pilat,lacaml)
-
-fi
+plugin_require_external(pilat,lacaml_top)
 
 check_plugin_dependencies
 

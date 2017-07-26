@@ -26,7 +26,7 @@ let dkey_inter = Mat_option.register_category "invar:lacaml:inter"
 let dkey_redun = Mat_option.register_category "invar:redun"
 
 
-module Int = Datatype.Int 
+(* module Int = Datatype.Int  *)
 
 type limit = 
   Convergent of float
