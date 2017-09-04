@@ -340,7 +340,6 @@ let of_str (s:string) : t =
         ((<>) "")
         (Str.split line_separator s) 
   in
-  let size = List.length line_list in
   let (vec_list : vec list) = 
     List.map 
       vec_of_str

@@ -646,7 +646,6 @@ struct
         ((<>) "")
         (Str.split line_separator s)
     in
-    let size_mat = List.length str_vec_list in
     let vec_list = 
       List.map 
         vec_of_str

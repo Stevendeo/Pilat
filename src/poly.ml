@@ -204,7 +204,7 @@ struct
 	      Format.fprintf fmt " + %a%a" A.pp_print coef Monom.pretty monom;
 	  )
           p
-	  
+
     let deg_monom (m:Monom.t) : int = 
        V.Map.fold
 	 (fun _ coef acc -> acc + coef)

@@ -30,7 +30,7 @@ module Make: functor
      )-> 
 sig 
   
-  (** 1. Utils *)
+  (** 1. Cil2Pilat *)
   (** Returns a polynomial representing the expression in argument *)
   val exp_to_poly : ?nd_var:(float*float) Varinfo.Map.t  -> Cil_types.exp -> Assign.P.t
     
@@ -44,4 +44,19 @@ sig
     Cil_types.stmt option -> 
     Cil_types.block -> 
     Assign.body list
+
+
+  (**2.  Pilat2Cil *)
+  
+  (** Returns the cil expression corresponding to the polynomial assignment input *)
+  val linassign_to_stmt : 
+    Cil_types.fundec -> Cil_types.typ -> Cil_types.location -> Assign.monom_assign 
+    -> Cil_types.stmt * (Cil_types.varinfo list)
+   
+  val block_linassign_to_block : 
+    Cil_types.fundec -> 
+    Cil_types.typ -> 
+    Cil_types.location -> 
+    Assign.monom_assign list -> Cil_types.block
+   
 end

@@ -348,6 +348,7 @@ object(self)
 		  num_variables
 	    in 
 	    
+     
 	    DoChildren
 		  
       end (* Loop *)

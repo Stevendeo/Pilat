@@ -22,7 +22,7 @@
 
 open Cil_datatype
 open Cil_types
-
+    
 let dkey_stmt = Mat_option.register_category "cil2assign:block_analyzer" 
 
 module Make = functor 
@@ -266,8 +266,77 @@ module Make = functor
 	  in
 	  Mat_option.debug ~dkey:dkey_stmt ~level:5
 	    "How many paths ? %i" (List.length res); res
-	      
-	      
-	      
-      end 
+
+
+ (**2.  Pilat2Cil *)
+  
+ let monom_to_var_memoizer : Cil_types.varinfo P.Monom.Hashtbl.t = P.Monom.Hashtbl.create 5
+
+ let monom_to_var fundec typ (monom:P.Monom.t) : Cil_types.varinfo = 
+   if P.Monom.Hashtbl.mem monom_to_var_memoizer monom 
+   then P.Monom.Hashtbl.find monom_to_var_memoizer monom
+   else 
+     let var = 
+       (Cil.makeLocalVar 
+         fundec 
+         (P.Monom.pretty Format.str_formatter monom |> Format.flush_str_formatter)
+         typ)
+     in
+     let () = P.Monom.Hashtbl.add monom_to_var_memoizer monom var 
+     in var 
+     
+
+ let poly_to_linexp fundec typ loc poly = 
+   
+   let monoms = P.get_monomials poly in 
+   let type_is_int = match typ with TInt _ -> true | TFloat _ -> false | _ -> assert false in
+   let res = 
+     P.Monom.Set.fold
+       (fun m (acc_rval,acc_var) -> 
+          let coef = P.coef poly m |> P.R.t_to_float in
+          if type_is_int && floor coef <> coef then assert false;
+          
+          let const = Cil.new_exp 
+              ~loc 
+              (Const 
+                 (if type_is_int 
+                  then (CInt64 ((Integer.of_float coef),IInt,None))
+                  else (CReal  (coef, FFloat, None))
+                 )) in
+          
+          let var = monom_to_var fundec typ m in
+          let var_exp = Cil.new_exp ~loc (Lval (Cil.var var)) in 
+          let poly_part = Cil.mkBinOp ~loc Mult const var_exp in
+          let poly_exp = 
+            match acc_rval with None -> poly_part | Some a -> Cil.mkBinOp ~loc PlusA poly_part a in 
+          (Some poly_exp, Varinfo.Set.add var acc_var)
+       )
+       monoms
+       (None,Varinfo.Set.empty)
+   in match res with 
+     (None,_) -> assert false
+   | (Some r1, r2) -> (r1,r2)
+
+ (** Returns the cil statement corresponding to the polynomial assignment input *)
+ let linassign_to_stmt fundec typ loc assign = 
+   match assign with
+     Assign.LinLoop _ -> assert false (* TODO *)
+   | Assign.LinAssign (monom,poly) -> 
+     let lval = monom_to_var fundec typ monom in
+     let rval,vars = poly_to_linexp fundec typ loc poly 
+     in 
+     Cil.mkStmt ~ghost:false ~valid_sid:true (Instr (Set (Cil.var lval, rval, loc))),vars
+
+ let block_linassigns_to_block fundec typ loc assigns = 
+   let s_list,_ = 
+     List.fold_right
+       (fun a (acc_stmt, acc_vars) -> 
+          let (stmt,varset) = linassign_to_stmt fundec typ loc a in
+          (stmt::acc_stmt, Varinfo.Set.union varset acc_vars)
+       ) 
+       assigns
+       ([], Varinfo.Set.empty)
+   in Cil.mkBlockNonScoping s_list
+
+end 
   

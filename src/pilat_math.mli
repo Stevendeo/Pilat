@@ -147,7 +147,7 @@ sig
   val eval : t -> v -> c -> t
   val to_str : t -> string
   val pp_print : Format.formatter -> t -> unit
-    
+
   (** Composition of two polynoms *)
   val compo : t -> v -> t -> t
     
