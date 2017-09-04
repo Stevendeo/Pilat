@@ -327,7 +327,7 @@ module Make = functor
      in 
      Cil.mkStmt ~ghost:false ~valid_sid:true (Instr (Set (Cil.var lval, rval, loc))),vars
 
- let block_linassigns_to_block fundec typ loc assigns = 
+ let block_linassign_to_block fundec typ loc assigns = 
    let s_list,_ = 
      List.fold_right
        (fun a (acc_stmt, acc_vars) -> 

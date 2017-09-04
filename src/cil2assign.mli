@@ -51,7 +51,7 @@ sig
   (** Returns the cil expression corresponding to the polynomial assignment input *)
   val linassign_to_stmt : 
     Cil_types.fundec -> Cil_types.typ -> Cil_types.location -> Assign.monom_assign 
-    -> Cil_types.stmt * (Cil_types.varinfo list)
+    -> Cil_types.stmt * (Cil_datatype.Varinfo.Set.t)
    
   val block_linassign_to_block : 
     Cil_types.fundec -> 
