@@ -344,15 +344,22 @@ acc_base = Assign_type.P.Monom.Set.union acc_base m_set in
                         (List.hd assigns)
                     in
                     (** Get newly created variables to add to fundec locals *)
+                    let monom_vars = (Cil_parser.export_variables()) in
                     let () = 
-                      self#add_vars (Cil_parser.export_variables())
+                      self#add_vars monom_vars
                     in
-                    let new_stmt = 
+
+                    (** Now, creating the new loop *)
+                    let new_loop = 
                       Cil.mkStmt
                         ~ghost:false
                         ~valid_sid:true
                         (Loop (annots,block,loc,conts,breaks)) in
-                    let () = Kernel_function.register_stmt kf new_stmt blocks in new_stmt
+                    let () = Kernel_function.register_stmt kf new_loop blocks in 
+                    (** Initialize variables before the loop, done by Pilat_visitors *)
+                    let init_list = Cil_parser.initializers loc in
+                    List.iter (Pilat_visitors.register_stmt new_loop) init_list;
+                    new_loop
 
                 else stmt
               in

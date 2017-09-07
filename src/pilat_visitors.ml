@@ -88,7 +88,9 @@ object(self)
 	  else DoChildren
 
 	| Some {skind = Instr (Call _)} -> 
-	  Mat_option.feedback "Function call in the loop without assignment : assert it does nothing."; DoChildren;
+	  Mat_option.feedback 
+             "Function call in the loop without assignment : assert it does nothing."; 
+          DoChildren;
 	| s -> 
 	  let () = Mat_option.debug ~dkey:dkey_var 
 	    "Variable %s added by statement %a"
@@ -122,17 +124,7 @@ let register_stmt loop_stmt init =
     with 
       Not_found -> [] in 
   Cil_datatype.Stmt.Hashtbl.replace stmt_init_table loop_stmt (init :: old_bind)
-(*
-let print_stmt_list sl = 
-Mat_option.debug ~dkey:dkey_stmt ~level:4
-  "\nBEGIN\n";
-  List.iter
-    (fun s -> Mat_option.debug ~dkey:dkey_stmt ~level:4
-      "-- %a" Printer.pp_stmt s
-    )sl;
-Mat_option.debug ~dkey:dkey_stmt ~level:4
-  "\nEND\n";
-*)  
+
 class fundec_updater prj = 
 object
   inherit (Visitor.frama_c_copy prj)
@@ -158,8 +150,12 @@ object
 	      Cil.mkStmt(*Cfg ~ref_stmt:next_stmt ~before:true ~*)
 		~valid_sid:true 
 		new_stmtkind in
-	    
-	    stmt.ghost <- true;
+            let is_ghost = 
+              match new_stmtkind with
+                Instr(Set((Var v,_),_,_)) -> v.vghost
+              | _ -> assert false (* Now, there are only Instr added by Pilat visitors *)
+            in
+            stmt.ghost <- is_ghost;
 	    next_stmt.succs <- [stmt];
 	    (*next_stmt.preds <- stmt :: next_stmt.preds;*)
 	    let () = Mat_option.debug ~dkey:dkey_stmt 

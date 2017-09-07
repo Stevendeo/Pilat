@@ -369,5 +369,29 @@ module Make = functor
       (fun _ v acc -> v :: acc) 
       monom_to_var_memoizer
       []
+
+  let initializers loc = 
+    P.Monom.Hashtbl.fold
+      (fun m v acc -> 
+         let lval = Cil.var v in 
+         
+         let vars = P.to_var m in 
+         let some_exp = 
+           List.fold_left
+             (fun acc v -> 
+                match acc with 
+                  None -> Some(Cil.new_exp ~loc (Lval (Cil.var v)))
+                | Some exp -> Some (
+                    (Cil.mkBinOp ~loc Mult exp (Cil.new_exp ~loc (Lval (Cil.var v))))
+                  )
+             )
+             None 
+             vars
+         in
+         Instr(Set(lval,(Extlib.the some_exp),loc)) :: acc)
+      monom_to_var_memoizer
+      []
+      
+
 end 
   

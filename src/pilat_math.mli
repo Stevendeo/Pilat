@@ -125,6 +125,7 @@ sig
   val const : c -> t
   val is_const : t -> bool
 
+  (** Returns the list of variable appearing in the monomial. Example : v appears twice in v*v. *)
   val to_var : Monom.t -> v list
     (** Same than before, but each variable appears only once *)
   val to_var_set : Monom.t -> v list
