@@ -24,6 +24,7 @@ open Cil_datatype
 open Cil_types
     
 let dkey_stmt = Mat_option.register_category "cil2assign:block_analyzer" 
+let dkey_linear = Mat_option.register_category "cil2assign:linearizer" 
 
 module Make = functor 
     (Assign : Poly_assign.S with type P.v = Varinfo.t
@@ -111,8 +112,14 @@ module Make = functor
 	let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> Assign.t option = 
 	  function
 	  | Set ((Var v, _),e,_) -> 
-	    if P.Var.Set.mem v varinfo_used 
-	    then Some (Assign.Assign (v,(exp_to_poly ~nd_var e)))
+            if P.Var.Set.mem v varinfo_used 
+            then 
+              let assign = Assign.Assign (v,(exp_to_poly ~nd_var e)) in 
+              let () = 
+                Mat_option.debug ~dkey:dkey_stmt ~level:3 
+                  "Assign generated : %a" 
+                  Assign.pretty_assign assign in 
+              Some assign
 	    else None 
 	  | Call(_,{enode = Lval(Var v,NoOffset) },_,_) as i -> 
 	    if (v.vorig_name = Mat_option.non_det_name) then None
@@ -170,7 +177,7 @@ module Make = functor
 		    ;
 		    
 		  in
-		  Some (Assign.Loop (block_to_poly_lists varinfo_used break b))
+		  Some (Assign.Loop (loop_to_poly_lists varinfo_used break s))
 		else 
 		  Mat_option.abort 
 		    "Non deterministic nested loop are not allowed"   
@@ -178,11 +185,15 @@ module Make = functor
 	      | _ -> 
 		None
 		  
-	and block_to_poly_lists 
+	and loop_to_poly_lists 
 	    varinfo_used 
 	    ?(nd_var = Varinfo.Map.empty) 
 	    break
-	    block : Assign.body list = 
+	    (head : Cil_types.stmt) : Assign.body list = 
+           (*let block = 
+            match head.skind with 
+            | Loop (_,b,_,_,_) -> b.bstmts
+            | _ -> assert false
 	  let head = 
 	    try 
 	      List.hd 
@@ -190,9 +201,9 @@ module Make = functor
 		  Mat_option.feedback 
 		    "Error incoming : head of the block is %a" Printer.pp_stmt (List.hd block.bstmts);
 		  
-		  failwith "hd"
+		  failwith "hd"*)
 	  (* It must be the entry of the loop *)
-	  in
+	 (* in *)
 	  let () = 
 	    Mat_option.debug ~dkey:dkey_stmt "Loop head : %a"
 	      Printer.pp_stmt head in
@@ -272,71 +283,91 @@ module Make = functor
   
  let monom_to_var_memoizer : Cil_types.varinfo P.Monom.Hashtbl.t = P.Monom.Hashtbl.create 5
 
- let monom_to_var fundec typ (monom:P.Monom.t) : Cil_types.varinfo = 
+ let monom_to_var fundec typ (monom:P.Monom.t) : Cil_types.varinfo option = 
    if P.Monom.Hashtbl.mem monom_to_var_memoizer monom 
-   then P.Monom.Hashtbl.find monom_to_var_memoizer monom
-   else 
-     let var = 
-       (Cil.makeLocalVar 
+   then Some (P.Monom.Hashtbl.find monom_to_var_memoizer monom)
+   else match P.deg_monom monom with 
+       0 -> None
+     | 1 -> Some (List.hd (P.to_var monom))
+     | _ -> 
+       let () = Mat_option.debug ~dkey:dkey_linear ~level:2 
+           "Adding %s to the monom list"
+           (P.Monom.varname monom) in
+       let  var = 
+       (Cil.makeLocalVar
          fundec 
          (P.Monom.pretty Format.str_formatter monom |> Format.flush_str_formatter)
          typ)
      in
      let () = P.Monom.Hashtbl.add monom_to_var_memoizer monom var 
-     in var 
+     in Some var 
      
 
  let poly_to_linexp fundec typ loc poly = 
-   
    let monoms = P.get_monomials poly in 
    let type_is_int = match typ with TInt _ -> true | TFloat _ -> false | _ -> assert false in
-   let res = 
-     P.Monom.Set.fold
-       (fun m (acc_rval,acc_var) -> 
-          let coef = P.coef poly m |> P.R.t_to_float in
-          if type_is_int && floor coef <> coef then assert false;
-          
-          let const = Cil.new_exp 
-              ~loc 
-              (Const 
-                 (if type_is_int 
-                  then (CInt64 ((Integer.of_float coef),IInt,None))
-                  else (CReal  (coef, FFloat, None))
-                 )) in
-          
-          let var = monom_to_var fundec typ m in
-          let var_exp = Cil.new_exp ~loc (Lval (Cil.var var)) in 
-          let poly_part = Cil.mkBinOp ~loc Mult const var_exp in
-          let poly_exp = 
-            match acc_rval with None -> poly_part | Some a -> Cil.mkBinOp ~loc PlusA poly_part a in 
-          (Some poly_exp, Varinfo.Set.add var acc_var)
-       )
-       monoms
-       (None,Varinfo.Set.empty)
-   in match res with 
-     (None,_) -> assert false
-   | (Some r1, r2) -> (r1,r2)
+   Extlib.the 
+     (P.Monom.Set.fold
+        (fun m (acc_rval) -> 
+           let coef = P.coef poly m |> P.R.t_to_float in
+           if type_is_int && floor coef <> coef then assert false;
+           
+           let const = Cil.new_exp 
+               ~loc 
+               (Const 
+                  (if type_is_int 
+                   then (CInt64 ((Integer.of_float coef),IInt,None))
+                   else (CReal  (coef, FFloat, None))
+                  )) in
+           
+           let var = monom_to_var fundec typ m in
+           let poly_exp = 
+             match var,acc_rval with 
+               None,None -> const
+             | None, Some a -> Cil.mkBinOp ~loc PlusA const a
+             | Some var,_ ->  
+               let var_exp = Cil.new_exp ~loc (Lval (Cil.var var)) in 
+               let poly_part = Cil.mkBinOp ~loc Mult const var_exp in
+               match acc_rval with 
+                 None -> poly_part 
+               | Some a -> Cil.mkBinOp ~loc PlusA poly_part a in 
+           Some poly_exp
+        )
+        monoms
+        None)
+     
 
  (** Returns the cil statement corresponding to the polynomial assignment input *)
- let linassign_to_stmt fundec typ loc assign = 
+ let linassign_to_stmt blocks (kf:Kernel_function.t) typ loc assign = 
+   let fundec = match kf.fundec with
+       Definition(fundec,_) -> fundec 
+     | Declaration _ -> assert false in
    match assign with
      Assign.LinLoop _ -> assert false (* TODO *)
    | Assign.LinAssign (monom,poly) -> 
-     let lval = monom_to_var fundec typ monom in
-     let rval,vars = poly_to_linexp fundec typ loc poly 
+     let lval = Extlib.the (monom_to_var fundec typ monom) (* Can't be None, you can't assign 1 *) in
+     let rval = poly_to_linexp fundec typ loc poly 
      in 
-     Cil.mkStmt ~ghost:false ~valid_sid:true (Instr (Set (Cil.var lval, rval, loc))),vars
-
- let block_linassign_to_block fundec typ loc assigns = 
-   let s_list,_ = 
+     let stmt = Cil.mkStmt ~ghost:false ~valid_sid:true (Instr (Set (Cil.var lval, rval, loc)))
+     in
+     let () = Kernel_function.register_stmt kf stmt blocks
+     in stmt
+     
+ let block_linassign_to_block blocks (kf:Kernel_function.t) typ loc assigns = 
+   let s_list = 
      List.fold_right
-       (fun a (acc_stmt, acc_vars) -> 
-          let (stmt,varset) = linassign_to_stmt fundec typ loc a in
-          (stmt::acc_stmt, Varinfo.Set.union varset acc_vars)
+       (fun a acc_stmt -> 
+          let stmt = linassign_to_stmt blocks kf typ loc a in
+          stmt::acc_stmt
        ) 
        assigns
-       ([], Varinfo.Set.empty)
+       []
    in Cil.mkBlockNonScoping s_list
 
+  let export_variables () = 
+    P.Monom.Hashtbl.fold
+      (fun _ v acc -> v :: acc) 
+      monom_to_var_memoizer
+      []
 end 
   

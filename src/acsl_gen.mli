@@ -22,10 +22,13 @@
 
 open Cil_datatype
 
+(** Emmits the registered annotations *)
+val emit_annots : unit -> unit
+
 module Make: functor (A:Poly_assign.S with type P.v = Varinfo.t) -> 
 sig
   
-  val add_loop_annots :  
+  val register_loop_annots :  
     bool ->
     ?mat:A.M.t ->
     Cil_types.kernel_function ->

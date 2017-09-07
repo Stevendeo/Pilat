@@ -24,12 +24,33 @@ open Cil_types
 open Invariant_utils
 open Cil_datatype
 
+let dkey_acsl =  Mat_option.register_category "acsl_gen:acsl"   
 let dkey_term = Mat_option.register_category "acsl_gen:term"   
-
 let dkey_zterm = Mat_option.register_category "acsl_gen:zterm"  
 let dkey_zero = Mat_option.register_category "acsl_gen:iszero"  
 
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
+
+let annotations_to_emit = Stmt.Hashtbl.create 5
+
+let emit_annots () =  
+  Stmt.Hashtbl.iter (
+    fun stmt (kf,annots)  -> 
+      List.iter (fun annot ->
+          let () = 
+            Mat_option.debug ~dkey:dkey_acsl 
+              "Annotation emited: %a on statement %a"
+              Printer.pp_code_annotation annot
+              Printer.pp_stmt stmt
+          in  
+          let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot 
+          in 
+          let ip = Property.ip_of_code_annot_single kf stmt annot in 
+          Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
+        ) annots) 
+    annotations_to_emit
+
+
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
 module Make(A:Poly_assign.S with type P.v = Varinfo.t) =
@@ -436,7 +457,7 @@ let vec_space_to_predicate_zarith
 	stmt
 	num_vars
 
-let add_loop_annots  
+let register_loop_annots  
     (deter : bool) 
     ?(mat : A.M.t option) 
     (kf:kernel_function) 
@@ -483,12 +504,6 @@ let add_loop_annots
 (*
   Pilat_visitors.register_annot stmt annots
 *)
-  List.iter (
-    fun annot -> 
-      let () = Annotations.add_code_annot Mat_option.emitter ~kf stmt annot 
-      in 
-      let ip = Property.ip_of_code_annot_single kf stmt annot in 
-      Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
-  )annots
+  Stmt.Hashtbl.add annotations_to_emit stmt (kf,annots)
     
 end

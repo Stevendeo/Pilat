@@ -98,6 +98,14 @@ module Redundancy =
      end)
 
 
+module Linearized_file = 
+  False
+    (struct 
+      let option_name = "-pilat-lin"
+      let help = "Outputs the loop-linearized program."
+     end)
+
+
 
 module Optim_start = String
     (struct

@@ -38,25 +38,24 @@ sig
       succession of affectations for each possible path in the loop, while omitting 
       variable absent of the set in argument
       Raises Not_solvable if a statement of the loop is not solvable. *)
-  val block_to_poly_lists : 
+  val loop_to_poly_lists : 
     Assign.P.Var.Set.t -> 
     ?nd_var:(float*float) Varinfo.Map.t -> 
     Cil_types.stmt option -> 
-    Cil_types.block -> 
+    Cil_types.stmt -> 
     Assign.body list
 
 
   (**2.  Pilat2Cil *)
-  
-  (** Returns the cil expression corresponding to the polynomial assignment input *)
-  val linassign_to_stmt : 
-    Cil_types.fundec -> Cil_types.typ -> Cil_types.location -> Assign.monom_assign 
-    -> Cil_types.stmt * (Cil_datatype.Varinfo.Set.t)
-   
+                                                      
   val block_linassign_to_block : 
-    Cil_types.fundec -> 
+    Cil_types.block list -> 
+    Kernel_function.t -> 
     Cil_types.typ -> 
     Cil_types.location -> 
     Assign.monom_assign list -> Cil_types.block
-   
+
+  (** Returns all the varinfo created by this module. *)
+  val export_variables : unit -> Varinfo.t list 
+
 end

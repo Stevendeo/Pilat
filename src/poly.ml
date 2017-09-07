@@ -52,14 +52,17 @@ struct
 	type t = (int V.Map.t)
 	let name = "Monom_"  ^ V.name  ^ "_" ^ (string_of_int (Vmod_id.next ()))
 	let equal = V.Map.equal (fun (a:int) (b:int) -> a = b)   
-	let hash = Hashtbl.hash (* For now, do not hash monomials *)
 	let compare v1 v2 = V.Map.compare Pervasives.compare v1 v2
 	let varname (x:t) = 
 	  V.Map.fold
 	    (fun var pow acc -> (V.varname var) ^ (string_of_int pow) ^ acc)
 	    x
 	    ""
-	let reprs = [V.Map.empty]
+	let hash m = 
+          V.Map.fold
+            (fun _ pow acc -> pow + 2*acc) m 0
+	
+        let reprs = [V.Map.empty]
 	  
 	let copy = Datatype.identity
 	let rehash = Datatype.identity
@@ -72,7 +75,7 @@ struct
 	match pow with
 	| 1 -> Format.fprintf fmt "%a" V.pretty var
 	| _ -> 
-	  Format.fprintf fmt "(%a^%i)" V.pretty var pow)
+	  Format.fprintf fmt "%a%i" V.pretty var pow)
       m
   end
     
