@@ -57,12 +57,12 @@ module type S = sig
   type monomial = P.Monom.t
   type m_set = P.Monom.Set.t
   type p = P.t
-
-
   type t = 
-    Assign of Var.t * P.t
-  | Loop of body list 
-      
+      Assign of Var.t * P.t
+    | Assert of Cil_types.exp * body * body (* Todo : do not depend on Frama-C *)
+    | Loop of body 
+    | Other_stmt of Cil_types.stmt (* Todo : do not depend on Frama-C *)
+                        
   and body = t list
 
   val pretty_assign : Format.formatter -> t -> unit
@@ -71,10 +71,11 @@ module type S = sig
       by the assignment. *)
 
   type monom_assign = 
-    
     LinAssign of monomial * p
-  | LinLoop of lin_body list
-      
+  | LinAssert of Cil_types.exp * lin_body * lin_body
+  | LinLoop of lin_body
+  | LinOther_stmt of Cil_types.stmt (* Todo : do not depend on Frama-C *)
+                            
   and lin_body = monom_assign list
 
   val pretty_linassign : Format.formatter -> monom_assign -> unit
@@ -87,7 +88,7 @@ module type S = sig
       set of all monomials used. Raises Missing_variables if variables not present in the
       set in argument are used as r-values in the body list. *)
   val add_monomial_modifications : 
-    P.Var.Set.t -> body list -> lin_body list * P.Monom.Set.t
+    P.Var.Set.t -> body -> lin_body * P.Monom.Set.t
 
   module Imap : Map.S with type key = int
 
@@ -184,7 +185,9 @@ struct
 
   type t = 
     Assign of var * p
-  | Loop of body list 
+  | Assert of Cil_types.exp * body * body (* Todo : do not depend on Frama-C *)
+  | Loop of body
+  | Other_stmt of Cil_types.stmt (* Todo : do not depend on Frama-C *)
 
   and body = t list
 
@@ -197,17 +200,22 @@ struct
 	  "%a = %a"
 	  Poly.Var.pretty var
 	  Poly.pp_print p
-    | Loop l -> 
-      List.iter
-	(fun bdy -> 
+    | Loop bdy -> 
 	  Format.fprintf fmt 
 	    "-- Body %i"
 	    !cpt; 
 	  cpt := !cpt + 1;
 	  List.iter (__pretty_assign fmt) bdy;
 	  Format.fprintf fmt 
-	    "-- ")
-	l
+	    "-- "
+    | Assert (e,b1,b2) -> 
+      Format.fprintf fmt 
+        "if(%a)\n then{%a}\nelse{%a}"
+        Printer.pp_exp e
+        (Format.pp_print_list __pretty_assign) b1
+        (Format.pp_print_list __pretty_assign) b2
+    | Other_stmt s -> Format.fprintf fmt "%a" Printer.pp_stmt s
+
     in __pretty_assign fmt a
     
 
@@ -216,8 +224,10 @@ struct
 
 type monom_assign = 
   
-  LinAssign of P.Monom.t * P.t
-| LinLoop of lin_body list
+  LinAssign of P.Monom.t * P.t  
+| LinAssert of Cil_types.exp * lin_body * lin_body (* Todo : do not depend on Frama-C *)
+| LinLoop of lin_body
+| LinOther_stmt of Cil_types.stmt (* Todo : do not depend on Frama-C *)
 
 and lin_body = monom_assign list
 
@@ -231,17 +241,22 @@ let pretty_linassign fmt a =
 	  "%a = %a"
 	  Poly.Monom.pretty var
 	  Poly.pp_print p
-    | LinLoop l -> 
-      List.iter
-	(fun bdy -> 
-	  Format.fprintf fmt 
-	    "-- Body %i"
-	    !cpt;
-	  cpt := !cpt + 1;
-	  List.iter (__pretty_linassign fmt) bdy;
-	  Format.fprintf fmt 
-	    "-- ")
-	l
+    | LinLoop bdy -> 
+      Format.fprintf fmt 
+        "-- Body %i"
+        !cpt;
+      cpt := !cpt + 1;
+      List.iter (__pretty_linassign fmt) bdy;
+      Format.fprintf fmt 
+	"-- "
+    | LinAssert (e,b1,b2) -> 
+      Format.fprintf fmt 
+        "if(%a)\n then{%a}\nelse{%a}"
+        Printer.pp_exp e
+        (Format.pp_print_list __pretty_linassign) b1
+        (Format.pp_print_list __pretty_linassign) b2
+    | LinOther_stmt s -> Format.fprintf fmt "%a" Printer.pp_stmt s
+
   in __pretty_linassign fmt a
 
 
@@ -338,7 +353,7 @@ let basic_assigns v_set =
     []
     
 let add_monomial_modifications 
-    (var_used : P.Var.Set.t) (p_list:body list) : lin_body list * P.Monom.Set.t = 
+    (var_used : P.Var.Set.t) (p_list:body) : lin_body * P.Monom.Set.t = 
   let () = 
     Mat_option.debug ~dkey:dkey_lowerizer ~level:5
       "%i paths studied"
@@ -360,8 +375,11 @@ let add_monomial_modifications
       (List.length a_list);
     List.iter 
       (fun affect -> 
-	match affect with 
-	  Assign (v,p) -> 
+         match affect with 
+         
+         Other_stmt _ -> ()
+         | Assert (_,b1,b2) -> reg_monomials b1;reg_monomials b2
+         | Assign (v,p) -> 
 	    Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
 	      "Assign treated : %a = %a" 
 	      Var.pretty v
@@ -408,11 +426,11 @@ let add_monomial_modifications
 		  
 	      Var.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
 	  
-	| Loop l -> List.iter reg_monomials l
+	| Loop l -> reg_monomials l
       )
       a_list
   in
-  let () = List.iter reg_monomials p_list in
+  let () = reg_monomials p_list in
 
   Var.Hashtbl.iter
     (fun v _ -> Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
@@ -528,12 +546,13 @@ let add_monomial_modifications
   let rec linearize affect_list = 
     (List.fold_right
        (fun affect acc  -> 
-	 match affect with
-	   Assign (v,poly) -> 
-	     let monoms_modified = Var.Map.find v modification_map
-	     in 
-	     
-	     M_set.fold
+          match affect with
+          Other_stmt s -> LinOther_stmt s :: acc
+          | Assert (e,b1,b2) -> LinAssert (e,linearize b1, linearize b2) :: acc
+          | Assign (v,poly) -> 
+            let monoms_modified = Var.Map.find v modification_map
+            in 
+            M_set.fold
 	       (fun monom acc2 -> 
 		 let semi_poly = P.mono_poly R.one monom
 		 in
@@ -546,7 +565,7 @@ let add_monomial_modifications
 	       )
 	       monoms_modified
 	       acc
-	 | Loop l -> LinLoop (List.map linearize l) :: acc
+	 | Loop l -> LinLoop (linearize l) :: acc
        )
        affect_list
        [])
@@ -555,10 +574,7 @@ let add_monomial_modifications
   (* Constant variables are treated apart. *)
     
   let cst_assigns = basic_assigns cst_vars in
-  (List.map 
-     (fun bdy -> 
-       linearize (cst_assigns@bdy)) 
-     p_list),s
+       linearize (cst_assigns@p_list),s
   
 let monomial_base set = 
     let i = ref (-1) in
@@ -611,7 +627,10 @@ let vec_to_poly rev_base vec =
     P.zero
  let rec matrices_for_a_loop base all_modifs =     
    let matrices = loop_matrix base all_modifs in   
-(** In order to consider all the behaviors of the loop, we need to       consider as many matrices as they are monomials assigned in a body.       An over approximation is to consider all the variables in       the loop. *)   
+(** In order to consider all the behaviors of the loop, we need to       
+    consider as many matrices as they are monomials assigned in a body.       
+    An over approximation is to consider all the variables in       
+    the loop. *)   
    let number_of_iterations = P.Monom.Map.cardinal base   in   
    List.fold_left     
      (fun acc loop_mat ->       
@@ -635,7 +654,8 @@ let vec_to_poly rev_base vec =
     List.fold_left 	
       (fun (acc : M.t list) affect -> 	  
 	match affect with
- 	  LinAssign (v,poly_affect) -> 	      	      
+           LinOther_stmt _ -> acc
+         | LinAssign (v,poly_affect) -> 	      	      
 	    let new_matrix = 		
 	      (snd
  		 (to_mat
@@ -652,18 +672,19 @@ let vec_to_poly rev_base vec =
 		Mat_option.debug ~dkey:dkey_loop_mat ~level:4 "%a * %a"
  		 M.pp_print new_matrix
  		  M.pp_print acc_mat) acc;
- 	    new_matrix ++ acc 	  
-	| LinLoop b_list -> 	    
-	  let matrices_for_each_path = 	      
-	    List.fold_left
- 	      (fun acc body -> (matrices_for_a_loop base body) @ acc) 		
-	      [] 		
-	      b_list 			    
-	  in 	    
-	  List.fold_left 	      
-	    (fun acc2 new_mat -> (new_mat ++ acc) @ acc2 	      
-	    ) 	      
-	    acc (* If [], then we don't consider the case where the loop is not taken. *) 	      matrices_for_each_path
+ 	    new_matrix ++ acc
+        | LinAssert (_,b1,b2) -> 
+          let mat_b1 = loop_matrix base b1 and mat_b2 = loop_matrix base b2 in
+          List.fold_left
+            (fun acc2 m1 -> (m1 ++ acc) @ acc2 ) [] (mat_b1 @ mat_b2)
+        | LinLoop body -> 	    
+          let matrices_for_each_path = 
+            matrices_for_a_loop base body		    
+          in 	    
+          List.fold_left 	      
+            (fun acc2 new_mat -> (new_mat ++ acc) @ acc2) 	      
+            acc (* If [], then we don't consider the case where the loop is not taken. *) 	     
+            matrices_for_each_path
       ) 	
       [(M.identity mat_size)] 	
       all_modifs     

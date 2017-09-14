@@ -1,6 +1,5 @@
-int main ()
+int gcd2 (int x, int y)
     {
-      int x,y;
       int a,b,p,q,r,s;
       
       a=x;

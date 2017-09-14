@@ -26,6 +26,7 @@ open Cil
 (*open Logic_const
 *)
 let dkey_stmt = Mat_option.register_category "main:loop_analyser"
+let dkey_vars = Mat_option.register_category "main:vars"
 let dkey_time = Mat_option.register_category "main:timer"
 let dkey_base = Mat_option.register_category "main:base"
 let dkey_annot = Mat_option.register_category "main:annot"
@@ -59,9 +60,9 @@ let loop_analyzer prj =
     method! vfunc _ = 
       DoChildrenPost (
         fun f -> 
-          Mat_option.feedback "Adding: ";
+          Mat_option.debug ~dkey:dkey_vars "Adding: ";
           List.iter
-            (fun v -> Mat_option.feedback "%a" Cil_datatype.Varinfo.pretty v)
+            (fun v -> Mat_option.debug ~dkey:dkey_vars "%a" Cil_datatype.Varinfo.pretty v)
             new_variables;
           f.slocals <- new_variables @  f.slocals ; 
           f.sbody.blocals <- new_variables @ f.sbody.blocals  ; 
@@ -70,6 +71,7 @@ let loop_analyzer prj =
 
     method! vstmt_aux stmt =
       let kf = Extlib.the self#current_kf in
+      
       match stmt.skind with
       | Cil_types.Loop (annots,b,loc,conts,breaks) -> 
 
@@ -122,17 +124,24 @@ let loop_analyzer prj =
 	  in
 	  (** 1st step : Computation of the block as a list of list of polynomials assignments. *)
 	  let module Cil_parser = Cil2assign.Make(Assign_type) in
-
-	  let polys_opt = 
-	    try Some (Cil_parser.loop_to_poly_lists varinfos_used ~nd_var breaks stmt)
+          let polys_opt = 
+	    let out_of_loop_stmt =
+            (Extlib.the breaks)
+            in
+            try 
+              Some 
+                (Cil_parser.block_to_body 
+                   varinfos_used 
+                   ~nd_var 
+                   breaks 
+                   stmt [stmt;out_of_loop_stmt])
 	    with Poly_assign.Not_solvable -> None 
 	  in
-
 	  match polys_opt with 
             None -> 
             Mat_option.debug ~dkey:dkey_stmt "The loop is not solvable"; DoChildren
 
-	  | Some poly_lists -> 
+	  | Some body -> 
             Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 
 
@@ -151,50 +160,20 @@ let loop_analyzer prj =
 		   ~level:3 
 		   "%a between %f and %f" 
 		   Printer.pp_varinfo v f1 f2) nd_var ;
-
-            List.iter
-              (fun body -> 
+ 
                  Mat_option.debug ~dkey:dkey_stmt ~level:5
-		   "Main loop body";
+                   "Assign: %a"
+                   (Format.pp_print_list Assign_type.pretty_assign) body;
 
-                 List.iter
-		   (fun a ->  
-	              Mat_option.debug ~dkey:dkey_stmt ~level:5
-	                "Assign: %a"
-	                Assign_type.pretty_assign a) body 
-
-              ) poly_lists;
-
-            (*let basic_assigns = 
-              (* In order to compute the transformations for all variables in each 
-                 loop, even if a variable doesn't appear on all loops, we need to 
-                 add identity assignment *)
-              Assign_type.basic_assigns varinfos_used
-
-
-              in *)  
             let assigns,bases_for_each_loop = 
-              Assign_type.add_monomial_modifications varinfos_used poly_lists(*
-    List.fold_left
-      (fun (acc_assign,acc_base) p_list -> 
-let assign,m_set = 
-Assign_type.add_monomial_modifications  varinfos_used
-[((*basic_assigns@*)p_list)] in 
+              Assign_type.add_monomial_modifications varinfos_used body
 
-let acc_assign = assign @ acc_assign and  
-acc_base = Assign_type.P.Monom.Set.union acc_base m_set in
-(acc_assign,acc_base))
-      ([],Assign_type.P.Monom.Set.empty)
-      poly_lists*)
             in
             let base = Assign_type.monomial_base bases_for_each_loop 
             in
             let rev_base = Assign_type.reverse_base base in
-            let matrices =     
-              List.flatten
-                (List.map
- 	           (Assign_type.loop_matrix base)
- 	           assigns) in
+            let matrices =  
+ 	           Assign_type.loop_matrix base assigns in
 
             let () = List.iter
                 (fun mat -> 
@@ -314,15 +293,13 @@ acc_base = Assign_type.P.Monom.Set.union acc_base m_set in
                 then 
                   (* Check if the assignemnts satisfies the actual hypotheses : no nested loop nor 
                      conditions *) 
-                  let test_loops l =
-                    match l with 
-                      [] -> assert false
-                    | hd :: [] -> 
-                      List.for_all
-                        (function Assign_type.LinLoop _ -> false | Assign_type.LinAssign _ -> true )
-                        hd
-                    | _ -> false in
-                  if not(test_loops assigns) then stmt 
+                  let rec test_loop =
+                    List.for_all
+                      (function
+                        | Assign_type.LinLoop _ -> false 
+                        |  _ -> true )
+                  in
+                  if not(test_loop assigns) then stmt 
                   else 
                     (* Builds the loop *)
  
@@ -332,7 +309,12 @@ acc_base = Assign_type.P.Monom.Set.union acc_base m_set in
                         varinfos_used in
                     let typ = if typ_is_int then TInt(IInt,[]) else TFloat(FFloat,[])
                     in 
-                    let blocks = Kernel_function.find_all_enclosing_blocks stmt in
+                    let blocks = 
+                      (*try*) Kernel_function.find_all_enclosing_blocks stmt
+                      (*with Not_found -> 
+                        Mat_option.fatal "stmt %a not registered, cannot be found by kernel" 
+                          Printer.pp_stmt stmt
+                      *)in
                     let kf = 
                         (Extlib.the self#current_kf) in
                     let block = 
@@ -340,8 +322,8 @@ acc_base = Assign_type.P.Monom.Set.union acc_base m_set in
                         blocks
                         kf
                         typ
-                        loc 
-                        (List.hd assigns)
+                        loc
+                        assigns
                     in
                     (** Get newly created variables to add to fundec locals *)
                     let monom_vars = (Cil_parser.export_variables()) in
@@ -560,12 +542,14 @@ let run () =
       List.iter
         (function
           |GFun (f,_) -> 
-            Cfg.prepareCFG f; (* Registers break points of loops, do not remove *)
-            (*Cfg.clearCFGinfo f;
-            Cfg.cfgFun f;*)
+            Cfg.prepareCFG f; (* Registers break points of loops *)
+            Cfg.clearCFGinfo f; (* Prepares cfgFun *)
+            Cfg.cfgFun f;(* Sets the correct break statements in loops *)
+            
           | _ -> ())
         file.globals;
-
+      Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
+                                            will be recomputed automatically. *)
 
       let lin_prj = 
 
@@ -574,13 +558,19 @@ let run () =
       let () = Project.set_current lin_prj in
 
       Acsl_gen.emit_annots ();
-
+        List.iter
+        (function
+          |GFun (f,_) -> 
+            Cfg.clearCFGinfo f; (* Prepares cfgFun *)
+            Cfg.cfgFun f;(* Necessary for the next visitor *)
+            
+          | _ -> ())
+        file.globals;
       let prj =
         File.create_project_from_visitor 
           ~last:true
           "new_pilat_project" 
           (fun p -> new Pilat_visitors.fundec_updater p) 
-
       in
       (*List.iter
         (function

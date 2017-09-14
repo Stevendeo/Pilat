@@ -129,9 +129,6 @@ class fundec_updater prj =
 object
   inherit (Visitor.frama_c_copy prj)
     
-  method! vfunc _ =
-    DoChildrenPost (fun f -> let () = File.must_recompute_cfg f in f) 
-
   method! vstmt_aux s = 
     try 
       let succ = List.hd s.succs in

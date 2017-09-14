@@ -11,6 +11,6 @@ int petter(int N){
 }
 
 int main(){
-  petter(12);
+  petter(Frama_C_interval(0,10));
 
 }

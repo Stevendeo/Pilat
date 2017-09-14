@@ -52,10 +52,11 @@ module type S = sig
   type m_set = P.Monom.Set.t
   type p = P.t
 
-
   type t = 
-    Assign of Var.t * P.t
-  | Loop of body list 
+      Assign of Var.t * P.t
+    | Assert of Cil_types.exp * body * body (* Todo : do not depend on Frama-C *)
+    | Loop of body
+    | Other_stmt of Cil_types.stmt (* Todo : do not depend on Frama-C *)
       
   and body = t list
 
@@ -67,7 +68,9 @@ module type S = sig
   type monom_assign = 
     
     LinAssign of monomial * p
-  | LinLoop of lin_body list
+  | LinAssert of Cil_types.exp * lin_body * lin_body (* Todo : do not depend on Frama-C *)
+  | LinLoop of lin_body
+  | LinOther_stmt of Cil_types.stmt (* Todo : do not depend on Frama-C *)
       
   and lin_body = monom_assign list
 
@@ -81,7 +84,7 @@ module type S = sig
       set of all monomials used. Raises Missing_variables if variables not present in the
       set in argument are used as r-values in the body list. *)
   val add_monomial_modifications : 
-    P.Var.Set.t -> body list -> lin_body list * P.Monom.Set.t
+    P.Var.Set.t -> body -> lin_body * P.Monom.Set.t
 
   module Imap : Map.S with type key = int
 

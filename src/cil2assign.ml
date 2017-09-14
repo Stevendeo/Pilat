@@ -31,7 +31,7 @@ module Make = functor
 			    and type P.Var.Map.key = Varinfo.t 
 			    and type P.Var.Set.t = Varinfo.Set.t) -> 
       struct 
-	exception Loop_break 
+	exception Loop_break of stmt
 	 
 	module P = Assign.P
 (*	module R = P.R *)
@@ -149,7 +149,7 @@ module Make = functor
 		  if break = None then None 
 		  else 
 		    if Stmt.equal s (Extlib.the break)
-		    then raise Loop_break
+		    then raise (Loop_break s)
 		    else 
 		      let () = Mat_option.debug ~dkey:dkey_stmt
 			"Instruction"
@@ -160,8 +160,10 @@ module Make = functor
 			    register_poly s (Some p); 
 			    Some p
 			| None -> register_poly s None; None
-		      end
-	      | Cil_types.Loop (_,b,_,_,break) -> 
+                      end
+
+	      
+              | Cil_types.Loop (_,b,_,_,break) -> 
 		
 		if Varinfo.Map.is_empty nd_var
 		then 
@@ -176,100 +178,138 @@ module Make = functor
 		      b.bstmts
 		    ;
 		    
-		  in
-		  Some (Assign.Loop (loop_to_poly_lists varinfo_used break s))
+                  in
+                  let out_of_loop_stmt = List.hd (Extlib.the break).succs in 
+		  Some (Assign.Loop (block_to_body varinfo_used break s ([s;out_of_loop_stmt])))
 		else 
 		  Mat_option.abort 
 		    "Non deterministic nested loop are not allowed"   
-	      | Break _ -> raise Loop_break
-	      | _ -> 
-		None
+	      | Break _ -> raise (Loop_break s)
+	      | Block _ | If _ -> None
+              | _ -> 
+	        Some (Assign.Other_stmt s)
 		  
-	and loop_to_poly_lists 
+	and block_to_body
 	    varinfo_used 
 	    ?(nd_var = Varinfo.Map.empty) 
 	    break
-	    (head : Cil_types.stmt) : Assign.body list = 
-           (*let block = 
-            match head.skind with 
-            | Loop (_,b,_,_,_) -> b.bstmts
-            | _ -> assert false
-	  let head = 
-	    try 
-	      List.hd 
-		(List.hd block.bstmts).preds with Failure _ ->  
-		  Mat_option.feedback 
-		    "Error incoming : head of the block is %a" Printer.pp_stmt (List.hd block.bstmts);
-		  
-		  failwith "hd"*)
-	  (* It must be the entry of the loop *)
-	 (* in *)
+	    (head : Cil_types.stmt) 
+            (last_stmts : Cil_types.stmt list) : Assign.body = 
+ 
 	  let () = 
-	    Mat_option.debug ~dkey:dkey_stmt "Loop head : %a"
+	    Mat_option.debug ~dkey:dkey_stmt "Block start : %a"
 	      Printer.pp_stmt head in
-	  let rec dfs stmt = 
+	  let rec dfs stmt : (Assign.body) = 
 	    Mat_option.debug ~dkey:dkey_stmt ~level:2
 	      "Stmt %a studied" 
 	      Stmt.pretty stmt
 	    ;
-	    if Stmt.equal stmt head
+	    if List.exists (Stmt.equal stmt) last_stmts
 	    then 
 	      begin  
 		Mat_option.debug ~dkey:dkey_stmt ~level:3
-		  "Stmt already seen : loop." 
+		  "End of dfs."
 		;
-		[[]] 
+                []
 	      end
 	    else 
 	      begin
 		Mat_option.debug ~dkey:dkey_stmt ~level:3
-		  "Stmt never seen" 
-		;
-		
-		try
+		  "Stmt never seen";
+              try
 		  
-		  let poly_opt = stmt_to_poly_assign varinfo_used nd_var break stmt in
-		  
-		  let succs = 
-		    match stmt.skind with
-		      Cil_types.Loop(_,_,_,_,None) -> 
-			assert false
-		    | Cil_types.Loop(_,_,_,_,Some s) -> s.succs
-		    | _ -> 
-		      stmt.succs in    
-		  
-		  let future_lists = 
-		    List.fold_left
-		      (fun acc succ -> 		
-			Mat_option.debug ~dkey:dkey_stmt ~level:4
-			  "Successor of %a analyzed :\n %a"
-			  Printer.pp_stmt stmt
-			  Printer.pp_stmt succ;
-			(dfs succ) @ acc)
-		      []
-		      succs
-		  in
-		  Mat_option.debug ~dkey:dkey_stmt ~level:3
-		    "List of paths : %i" (List.length future_lists) ;
-		  let (++) elt l = List.map (fun li -> elt :: li) l
-		  in
-		  match poly_opt with 
-		    None -> 
-		      Mat_option.debug ~dkey:dkey_stmt ~level:3
-			"No polynom generated from stmt %a"
-			Printer.pp_stmt stmt
-		      ;
-		      future_lists
+                let poly_opt = stmt_to_poly_assign varinfo_used nd_var break stmt in
+    
+                let succs = 
+                  match stmt.skind with
+	            Cil_types.Loop(_,_,_,_,None) -> 
+	              assert false
+                  | Cil_types.Loop(_,_,_,_,Some s) -> s.succs
+                  | _ -> 
+                    stmt.succs in    
+                
+                let next_state = 
+                  match stmt.skind with
+                    If(e,b1,b2,_) -> 
+                    let if_merge_stmt =
+                      let rec last = 
+                        function 
+                        | ([],[]) -> (* Only reached when both then and else are empty from the 
+                                        beginning *) 
+                          Some (List.hd stmt.succs)
+
+                        | (hd :: [],l) | (l,hd::[]) ->  
+                          (* One of the list is empty *)
+                          if (try (List.mem (List.hd hd.succs) last_stmts) with Failure _ -> true)
+                          then match l with [] -> None | _ -> last ([],l)
+                          else 
+                            Some(List.hd hd.succs)
+                        | ([],_ :: tl) | (_ :: tl,[]) -> last (tl,[])
+                        | (_ :: tl1),(_ :: tl2) -> last (tl1,tl2)
+                      in  
+                      match last (b1.bstmts,b2.bstmts) with
+                        Some s -> Some s
+                      | _ -> (* At least one of the blocks have a terminal statement *)
+                        let possible_succs = 
+                          List.filter 
+                            (fun s -> not(List.mem s b1.bstmts) && not(List.mem s b2.bstmts))
+                            stmt.succs
+                        in
+                          match possible_succs with
+                            [] -> None
+                          | hd :: [] -> Some hd 
+                          | _ -> assert false 
+                    in                
+                    
+                    let res_post_if = 
+                      match if_merge_stmt with 
+                        None -> [] 
+                      | Some s -> dfs s in
+                    
+                    let if_bdy b = 
+                      let last_stmts = 
+                        match if_merge_stmt with 
+                        None -> last_stmts
+                      | Some s -> s :: last_stmts in
+                      match b.bstmts with 
+                      [] -> []
+                      | hd :: _ -> 
+                        let bdy_less_first = 
+                          block_to_body varinfo_used ~nd_var break hd last_stmts
+                        in
+                        match stmt_to_poly_assign  varinfo_used nd_var break hd  with 
+                          None -> bdy_less_first
+                        | Some s -> s :: bdy_less_first
+                    in
+                    
+                    let bdy_b1 = if_bdy b1 and bdy_b2 =  if_bdy b2 in
+  
+                    Assign.Assert(e, bdy_b1, bdy_b2) :: res_post_if
+                  | _ ->
+                    begin 
+                      assert (List.length succs = 1);
+		      dfs (List.hd succs)
+	            end 
+                in
+                match poly_opt with 
+                    None -> next_state
+                  | Some (Assign.Assert _) -> assert false; 
+                    (* Assert treated by block_to_body *)
 		  | Some (Assign.Assign (_,p) as aff) ->
 		    Mat_option.debug ~dkey:dkey_stmt 
 		      "Polynom generated : %a"
 		      P.pp_print p;
 		    
-		    aff ++ future_lists
-		  | Some ((Assign.Loop _) as l) -> l ++ future_lists
+		    aff :: next_state 
+		  | Some ((Assign.Loop _) as l) -> l :: next_state
+		  | Some ((Assign.Other_stmt s) as l) -> 
+                    Mat_option.debug ~dkey:dkey_stmt ~level:3
+                      "No polynom generated from stmt %a"
+	              Printer.pp_stmt s;
+                    l :: next_state
 		    
 		with
-		  Loop_break -> []
+		  Loop_break s-> [Assign.Other_stmt s]
 	      end 
 	  in
 	  
@@ -338,12 +378,17 @@ module Make = functor
      
 
  (** Returns the cil statement corresponding to the polynomial assignment input *)
- let linassign_to_stmt blocks (kf:Kernel_function.t) typ loc assign = 
+ let rec linassign_to_stmt blocks (kf:Kernel_function.t) typ loc assign = 
    let fundec = match kf.fundec with
        Definition(fundec,_) -> fundec 
      | Declaration _ -> assert false in
    match assign with
      Assign.LinLoop _ -> assert false (* TODO *)
+   | Assign.LinOther_stmt s -> s (* TODO *)
+   | Assign.LinAssert (e,b1,b2) -> 
+     let f = block_linassign_to_block blocks kf typ loc in
+     let skind = If(e, f b1, f b2, loc) in
+     Cil.mkStmt ~ghost:false ~valid_sid:true skind
    | Assign.LinAssign (monom,poly) -> 
      let lval = Extlib.the (monom_to_var fundec typ monom) (* Can't be None, you can't assign 1 *) in
      let rval = poly_to_linexp fundec typ loc poly 
@@ -353,7 +398,7 @@ module Make = functor
      let () = Kernel_function.register_stmt kf stmt blocks
      in stmt
      
- let block_linassign_to_block blocks (kf:Kernel_function.t) typ loc assigns = 
+ and block_linassign_to_block blocks (kf:Kernel_function.t) typ loc assigns = 
    let s_list = 
      List.fold_right
        (fun a acc_stmt -> 

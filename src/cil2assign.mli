@@ -34,16 +34,15 @@ sig
   (** Returns a polynomial representing the expression in argument *)
   val exp_to_poly : ?nd_var:(float*float) Varinfo.Map.t  -> Cil_types.exp -> Assign.P.t
     
-  (** Returns a list of list of polynomial affectations. Each list correspond to a the 
-      succession of affectations for each possible path in the loop, while omitting 
-      variable absent of the set in argument
-      Raises Not_solvable if a statement of the loop is not solvable. *)
-  val loop_to_poly_lists : 
+  (** Returns the loop body in the Pilat CFG. The first stmt is the loop entry, the list are the
+      last statement studied, themselves excluded. *)
+  val block_to_body : 
     Assign.P.Var.Set.t -> 
     ?nd_var:(float*float) Varinfo.Map.t -> 
     Cil_types.stmt option -> 
-    Cil_types.stmt -> 
-    Assign.body list
+    Cil_types.stmt ->  
+    Cil_types.stmt list -> 
+    Assign.body
 
 
   (**2.  Pilat2Cil *)
