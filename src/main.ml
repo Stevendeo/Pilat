@@ -293,7 +293,7 @@ let loop_analyzer prj =
                 then 
                   (* Check if the assignemnts satisfies the actual hypotheses : no nested loop nor 
                      conditions *) 
-                  let rec test_loop =
+                  let test_loop =
                     List.for_all
                       (function
                         | Assign_type.LinLoop _ -> false 
@@ -374,14 +374,15 @@ let loop_analyzer prj =
                 let () = 
                   Mat_option.whole_rel_time := Sys.time() -. t_whole +. !Mat_option.whole_rel_time 
                 in
-                let () = Annot_generator.register_loop_annots
+                let vars_to_add = Annot_generator.register_loop_annots
                     assign_is_deter
                     kf
                     new_loop
                     rev_base 
                     (Extlib.the invar_inter)
                     Cil_datatype.Varinfo.Map.empty
-                    num_variables in 
+                    num_variables in
+                self#add_vars vars_to_add;
                 if Mat_option.Linearized_file.get () 
                 then DoChildrenPost
                     (fun _ -> new_loop) 
@@ -394,7 +395,9 @@ let loop_analyzer prj =
                   let () = 
                     Mat_option.whole_rel_time := Sys.time() -. t_whole +. !Mat_option.whole_rel_time 
                   in
-                  let () = Annot_generator.register_loop_annots
+                  let () = 
+                    self#add_vars
+                      (Annot_generator.register_loop_annots
                       assign_is_deter
                       ~mat
                       kf
@@ -402,7 +405,7 @@ let loop_analyzer prj =
                       rev_base
                       invar
                       nd_var
-                      num_variables
+                      num_variables)
                   in 
                   if Mat_option.Linearized_file.get () 
                   then

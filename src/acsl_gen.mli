@@ -37,6 +37,6 @@ sig
     A.M.vec Invariant_utils.inv list -> 
     'a Varinfo.Map.t -> 
     int -> 
-    unit
+    Varinfo.t list
      
 end

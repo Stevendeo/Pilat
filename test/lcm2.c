@@ -1,5 +1,6 @@
-int main(){
-  int a,b;
+#include "__fc_builtin.h"
+
+int lcm2(int a, int b){
 
  int x,y,u,v;
 
@@ -24,4 +25,11 @@ int main(){
 
 
     return (u+v)/2;
+}
+
+int main(){
+  int x =  Frama_C_interval(1,22);
+  int y = lcm(x,23);
+  return 0;
+  
 }

@@ -1,3 +1,6 @@
+#include "__fc_builtin.h"
+
+
 int gcd2 (int x, int y)
     {
       int a,b,p,q,r,s;
@@ -20,3 +23,11 @@ int gcd2 (int x, int y)
       
       return a;
     }
+
+int main(){
+  int x = Frama_C_interval(0,10);
+  int y = gcd2(x,23);
+  /*@ assert (y == 1);*/
+  return 0;
+
+}

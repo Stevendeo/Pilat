@@ -51,6 +51,7 @@ let emit_annots () =
     annotations_to_emit
 
 
+
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
 module Make(A:Poly_assign.S with type P.v = Varinfo.t) =
@@ -58,6 +59,7 @@ struct
 
   module Invar_utils = Invariant_utils.Make(A)
 
+let variables_to_add = ref []
 let to_code_annot (preds:predicate list) = 
   
   List.map 
@@ -284,10 +286,13 @@ let term_list_to_predicate
     (term_list : (A.M.vec *  term) list)
     (limit : limit) 
     (rev_base : A.P.Monom.t A.Imap.t)
-    (fundec  : fundec)
+    (kf  : Kernel_function.t)
     (stmt : stmt)  
     (num_vars:int) =
-
+  let fundec = match kf.fundec with
+      Definition(f,_) -> f
+    | Declaration _ -> assert false
+  in
   match limit,deter with
   | Zero,_ -> (* invar.X = 0 is an invariant *) 
 
@@ -306,7 +311,9 @@ let term_list_to_predicate
 	  (fun acc (_,term) -> 
 	    let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) (TInt (IInt,[]))
 	    in
-	    new_ghost_var.vghost <- true;     
+            let () = 
+              new_ghost_var.vghost <- true;
+              variables_to_add := new_ghost_var :: !variables_to_add in
 	    let lvar = Cil.cvar_to_lvar new_ghost_var in
             let term_gvar = 
 	      Logic_const.term
@@ -399,8 +406,10 @@ let term_list_to_predicate
       List.map
 	(fun (_,term) -> 
 	  let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) type_vars
-	  in
-	  new_ghost_var.vghost <- true;     
+          in
+          let () = 
+            new_ghost_var.vghost <- true;
+            variables_to_add := new_ghost_var :: !variables_to_add in
 	  let lvar = Cil.cvar_to_lvar new_ghost_var in
           let term_gvar = 
 	    Logic_const.term
@@ -421,7 +430,7 @@ let term_list_to_predicate
 let vec_space_to_predicate_zarith
     (deter : bool) 
     (mat : A.M.t option) 
-    (fundec: Cil_types.fundec)
+    (kf : Kernel_function.t)
     (stmt: Cil_types.stmt)
     (rev_base: A.P.Monom.t A.Imap.t) 
     (invar : Invar_utils.invar) 
@@ -443,7 +452,7 @@ let vec_space_to_predicate_zarith
 	term_list 
 	limit 
 	rev_base
-	fundec 
+	kf
 	stmt
 	num_vars
   else 
@@ -453,7 +462,7 @@ let vec_space_to_predicate_zarith
 	term_list 
 	limit 
 	rev_base
-	fundec 
+	kf 
 	stmt
 	num_vars
 
@@ -468,10 +477,7 @@ let register_loop_annots
     (num_vars:  int)
     = 
 
-  let fundec = match kf.fundec with
-      Definition(f,_) -> f
-    | Declaration _ -> assert false
-  in
+  
   let vec_lists = (* if we use zarith, we try to simplify the invariants by "integrating" them. *)
   if (Mat_option.Use_zarith.get ())
   then 
@@ -489,7 +495,7 @@ let register_loop_annots
 	  vec_space_to_predicate_zarith 
 	    deter 
 	    mat
-	    fundec 
+	    kf
 	    stmt
 	    rev_base
 	    invar
@@ -504,6 +510,7 @@ let register_loop_annots
 (*
   Pilat_visitors.register_annot stmt annots
 *)
-  Stmt.Hashtbl.add annotations_to_emit stmt (kf,annots)
+  Stmt.Hashtbl.add annotations_to_emit stmt (kf,annots);
+  let res = !variables_to_add in variables_to_add := []; res
     
 end
