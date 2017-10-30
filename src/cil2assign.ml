@@ -349,19 +349,26 @@ module Make = functor
    Extlib.the 
      (P.Monom.Set.fold
         (fun m (acc_rval) -> 
-           let coef = P.coef poly m |> P.R.t_to_float in
-           if type_is_int && floor coef <> coef then assert false;
-           
-           let const = Cil.new_exp 
-               ~loc 
-               (Const 
-                  (if type_is_int 
-                   then (CInt64 ((Integer.of_float coef),IInt,None))
-                   else (CReal  (coef, FFloat, None))
-                  )) in
-           
+
            let var = monom_to_var fundec typ m in
-           let poly_exp = 
+           let poly_exp =                       
+             let const = 
+               try 
+                 let coef = P.coef poly m |> P.R.t_to_float in
+                 assert (not(type_is_int && floor coef <> coef));
+                 Cil.new_exp 
+                   ~loc 
+                   (Const 
+                      (if type_is_int 
+                       then (CInt64 ((Integer.of_float coef),IInt,None))
+                       else (CReal  (coef, FFloat, None))
+                      )) 
+               with
+               Failure s ->
+                 assert (s = "Poly.t_to_float");
+                 Mat_option.fatal "Non deterministic linearization not available yet."
+             in
+             
              match var,acc_rval with 
                None,None -> const
              | None, Some a -> Cil.mkBinOp ~loc PlusA const a

@@ -315,6 +315,7 @@ let loop_analyzer prj =
                         Mat_option.fatal "stmt %a not registered, cannot be found by kernel" 
                           Printer.pp_stmt stmt
                       *)in
+
                     let kf = 
                         (Extlib.the self#current_kf) in
                     let block = 

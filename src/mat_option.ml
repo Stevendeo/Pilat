@@ -152,7 +152,7 @@ let emitter = Emitter.create
 
 (** Misc. *)
 
-let non_det_name = "float_interval"
+let non_det_name = "Frama_C_float_interval"
 
 let var_list () = 
   let str = Var_focus.get () in

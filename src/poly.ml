@@ -454,7 +454,10 @@ struct
       let card = Monom.Map.cardinal poly in
       try (assert (card = 1)); (Monom.Map.find empty_monom poly) |> A.t_to_float
       with
-	_ -> assert (card = 0);0.
+	_ -> 
+      if (card <> 0)
+      then failwith "Trying to cast polynomial into float" 
+      else 0.
 
     let leq _ _ = assert false  
     let geq _ _ = assert false
