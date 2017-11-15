@@ -12,7 +12,8 @@ install OPAM.
 
 -- With OPAM --
 
-   The simplest. "opam install pilat" 
+   The simplest. "opam install pilat". If it fails, try to update and upgrade 
+   your package list with "opam install update" then "opam install upgrade".
 
 -- Without OPAM --
 
