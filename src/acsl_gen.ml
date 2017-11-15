@@ -54,7 +54,8 @@ let emit_annots () =
 
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
-module Make(A:Poly_assign.S with type P.v = Varinfo.t) =
+module Make(A:Poly_assign.S with type P.v = Varinfo.t)
+    (C2A: sig val export_variables : unit -> Cil_types.varinfo A.P.Monom.Map.t end) =
 struct 
 
   module Invar_utils = Invariant_utils.Make(A)
@@ -73,12 +74,12 @@ let term_is_zero t =
     Printer.pp_term t ;
   match t.term_node with
   | TConst (Integer (i,_)) -> i = Integer.zero
-  | TConst (LReal lr) -> lr.r_nearest <> 0.
+  | TConst (LReal lr) -> lr.r_nearest = 0.
   | _ -> false
 
-let monomial_to_mul_term (m:A.P.Monom.t) = 
-  
-  let rec __m_to_term vars = 
+let monomial_to_term (m:A.P.Monom.t) = 
+
+    let rec __m_to_term vars = 
     match vars with
       [] -> Logic_const.term (TConst (Integer (Integer.one,(Some "1")))) Linteger
     | var :: [] -> 
@@ -119,6 +120,14 @@ let monomial_to_mul_term (m:A.P.Monom.t) =
     Printer.pp_term res ;
   res
 
+let monomial_to_term (m:A.P.Monom.t) = 
+  if Mat_option.Linearized_file.get () 
+  then 
+    try
+    let var = A.P.Monom.Map.find m (C2A.export_variables ()) in
+    Logic_const.term (TLval (TVar (Cil.cvar_to_lvar var),TNoOffset)) Linteger
+    with Not_found -> monomial_to_term m
+  else monomial_to_term m
 
 (** Zarith *)
 exception Bad_invariant 
@@ -194,7 +203,7 @@ let vec_to_term_zarith
 		(TBinOp
 		   (Mult,
  		    term_cst,
-		    monomial_to_mul_term monom)
+		    monomial_to_term monom)
 		)  typ
 		
 	    in

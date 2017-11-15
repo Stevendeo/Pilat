@@ -25,7 +25,9 @@ open Cil_datatype
 (** Emmits the registered annotations *)
 val emit_annots : unit -> unit
 
-module Make: functor (A:Poly_assign.S with type P.v = Varinfo.t) -> 
+module Make: functor 
+  (A:Poly_assign.S with type P.v = Varinfo.t)
+  (C2A: sig val export_variables : unit -> Cil_types.varinfo A.P.Monom.Map.t end) -> 
 sig
   
   val register_loop_annots :  

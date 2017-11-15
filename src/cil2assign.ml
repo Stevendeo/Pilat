@@ -416,11 +416,19 @@ module Make = functor
        []
    in Cil.mkBlockNonScoping s_list
 
+ let exported_vars = ref None 
+
   let export_variables () = 
-    P.Monom.Hashtbl.fold
-      (fun _ v acc -> v :: acc) 
-      monom_to_var_memoizer
-      []
+    match !exported_vars with 
+      None -> 
+      let res = 
+        P.Monom.Hashtbl.fold
+          (fun m v acc -> P.Monom.Map.add m v acc) 
+          monom_to_var_memoizer
+          P.Monom.Map.empty
+      in
+      exported_vars := Some res; res
+    | Some r -> r
 
   let initializers loc = 
     P.Monom.Hashtbl.fold

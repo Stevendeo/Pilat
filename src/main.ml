@@ -329,7 +329,8 @@ let loop_analyzer prj =
                     (** Get newly created variables to add to fundec locals *)
                     let monom_vars = (Cil_parser.export_variables()) in
                     let () = 
-                      self#add_vars monom_vars
+                      Assign_type.P.Monom.Map.iter
+                         (fun _ v -> new_variables <- v :: new_variables) monom_vars
                     in
 
                     (** Now, creating the new loop *)
@@ -347,7 +348,7 @@ let loop_analyzer prj =
                 else stmt
               in
 
-              let module Annot_generator = Acsl_gen.Make(Assign_type) in 
+              let module Annot_generator = Acsl_gen.Make(Assign_type)(Cil_parser) in 
 
               let t_inter = Sys.time () in
               (** Intersecting the invariants if necessary *)

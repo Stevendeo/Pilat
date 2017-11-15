@@ -55,7 +55,7 @@ sig
     Assign.monom_assign list -> Cil_types.block
 
   (** Returns all the varinfo created by this module. *)
-  val export_variables : unit -> Varinfo.t list 
+  val export_variables : unit -> Varinfo.t Assign.P.Monom.Map.t
 
   (** Retirn the initializers of the monomials registered *)
   val initializers : Location.t -> Cil_types.stmtkind list
