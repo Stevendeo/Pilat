@@ -187,7 +187,9 @@ let loop_analyzer prj =
             in
             if Mat_option.Prove.get () 
             then
-              let () = Mat_option.feedback "Proving invariants" in
+              let () = Mat_option.feedback "Proving invariants : %i invariants to prove"
+                  (List.length (Annotations.code_annot stmt))
+              in
               let t_prove = Sys.time () in
               let open Property_status in
               let module Prover = Invar_prover.Make(Assign_type) in
@@ -520,53 +522,15 @@ let run_input_mat file =
        Mat_option.feedback "--"
     )
     invars
-let run () =  
-  if Mat_option.Enabled.get () 
-  then
-    let () = 
-      Mat_option.Enabled.set false;
-      Mat_option.feedback
-        "Welcome to Frama-C's Pilat invariant generator"
-    in 
-    let mat_input =  Mat_option.Mat_input.get ()  in 
-    if mat_input <> "" then 
-      begin
-        try
-          run_input_mat mat_input
-        with
-          Size_error -> 
-          Mat_option.feedback "Not all matrices have the same size or are not squared." 
-      end 
-    else 
 
+let annot_file_generator () = 
       let file = Ast.get () 
-      in  
+      in        
       let filename = 
         let fname = Mat_option.Output_C_File.get () in 
-
+        
         if  fname = "" then file.fileName ^ "_annot.c" else fname
       in
-
-      Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
-                                            will be recomputed automatically. 
-                                            Maybe to do after the next step *)
-      List.iter
-        (function
-          |GFun (f,_) -> 
-            Cfg.clearCFGinfo f;  (*Prepares cfgFun *)
-            Cfg.prepareCFG f;  (* Registers break points of loops *)
-            Cfg.cfgFun f;(* Sets the correct break statements in loops *)
-          | _ -> ())
-        file.globals;
-
-      (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
-                                            will be recomputed automatically. *)*)
-
-      let lin_prj = 
-
-        File.create_project_from_visitor "tmp_project" loop_analyzer
-      in 
-      let () = Project.set_current lin_prj in
 
       Acsl_gen.emit_annots ();
         List.iter
@@ -583,13 +547,6 @@ let run () =
           "new_pilat_project" 
           (fun p -> new Pilat_visitors.fundec_updater p) 
       in
-      (*List.iter
-        (function
-        |GFun (f,_) -> 
-          File.must_recompute_cfg f;
-        | _ -> ())
-        file.globals;
-      *)
       Mat_option.debug ~dkey:dkey_time 
         "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
 
@@ -613,6 +570,50 @@ let run () =
              Mat_option.feedback "C file generation      : done\n";
           ) ()
 
+
+let run () =  
+  if Mat_option.Enabled.get () 
+  then
+    let () = 
+      Mat_option.Enabled.set false;
+      Mat_option.feedback
+        "Welcome to Frama-C's Pilat invariant generator"
+    in 
+    let mat_input =  Mat_option.Mat_input.get ()  in 
+    if mat_input <> "" then 
+      begin
+        try
+          run_input_mat mat_input
+        with
+          Size_error -> 
+          Mat_option.feedback "Not all matrices have the same size or are not squared." 
+      end 
+    else 
+
+      let file = Ast.get () 
+      in  
+
+
+      Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
+                                            will be recomputed automatically. 
+                                            Maybe to do after the next step *)
+      List.iter
+        (function
+          |GFun (f,_) -> 
+            Cfg.clearCFGinfo f;  (*Prepares cfgFun *)
+            Cfg.prepareCFG f;  (* Registers break points of loops *)
+            Cfg.cfgFun f;(* Sets the correct break statements in loops *)
+          | _ -> ())
+        file.globals;
+
+      (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
+                                            will be recomputed automatically. *)*)
+
+      let lin_prj = 
+
+        File.create_project_from_visitor "tmp_project" loop_analyzer
+      in 
+      Project.on lin_prj annot_file_generator () 
 
 
 let () = Db.Main.extend run
