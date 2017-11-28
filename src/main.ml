@@ -127,14 +127,16 @@ let loop_analyzer prj =
           let polys_opt = 
 	    let out_of_loop_stmt =
             (Extlib.the breaks)
-            in
+     in assert (match out_of_loop_stmt.skind with Cil_types.Break _ -> false | _ -> true);
             try 
               Some 
                 (Cil_parser.block_to_body 
                    varinfos_used 
                    ~nd_var 
                    breaks 
-                   stmt [stmt;out_of_loop_stmt])
+                   stmt 
+                   (Cil_parser.stmt_set b.bstmts)
+                   [stmt])
 	    with Poly_assign.Not_solvable -> None 
 	  in
 	  match polys_opt with 
@@ -544,17 +546,21 @@ let run () =
 
         if  fname = "" then file.fileName ^ "_annot.c" else fname
       in
+
+      Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
+                                            will be recomputed automatically. 
+                                            Maybe to do after the next step *)
       List.iter
         (function
           |GFun (f,_) -> 
-            Cfg.prepareCFG f; (* Registers break points of loops *)
-            Cfg.clearCFGinfo f; (* Prepares cfgFun *)
+            Cfg.clearCFGinfo f;  (*Prepares cfgFun *)
+            Cfg.prepareCFG f;  (* Registers break points of loops *)
             Cfg.cfgFun f;(* Sets the correct break statements in loops *)
-            
           | _ -> ())
         file.globals;
-      Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
-                                            will be recomputed automatically. *)
+
+      (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
+                                            will be recomputed automatically. *)*)
 
       let lin_prj = 
 

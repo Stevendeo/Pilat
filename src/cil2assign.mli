@@ -29,6 +29,8 @@ module Make: functor
 			     and type P.Var.Set.t = Varinfo.Set.t
      )-> 
 sig 
+
+  val stmt_set : Stmt.t list -> Stmt.Set.t
   
   (** 1. Cil2Pilat *)
   (** Returns a polynomial representing the expression in argument *)
@@ -41,6 +43,7 @@ sig
     ?nd_var:(float*float) Varinfo.Map.t -> 
     Cil_types.stmt option -> 
     Cil_types.stmt ->  
+    Stmt.Set.t ->
     Cil_types.stmt list -> 
     Assign.body
 

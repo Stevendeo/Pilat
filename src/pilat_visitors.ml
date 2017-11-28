@@ -50,7 +50,7 @@ let studied_variables block =
   let non_det_variables = ref Cil_datatype.Varinfo.Map.empty
   in
   let visitor = 
-object(self)
+    object(self)
       inherit Visitor.frama_c_inplace
 
       method! vvrbl v = 

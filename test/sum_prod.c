@@ -8,7 +8,8 @@ int petter(int N){
       x += y;
       y++;
     }
-  y--;
+  y--;  
+
   return x;
 }
 

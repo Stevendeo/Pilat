@@ -145,7 +145,6 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
    this is not an invariant. If it is not raised, then it is an invariant. *)
     exception Not_an_invariant
     let prove_invariant (mat:A.M.t) (base:int A.P.Monom.Map.t) (pred:predicate) = 
-
       try 
 	let vec = predicate_to_vector base pred in
 
@@ -189,8 +188,15 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
 	  
     let prove_annot mat map annot = 
       match annot.annot_content with
-	AInvariant (_,_,p) -> 
-	  prove_invariant mat map p
+        AInvariant (_,_,p) -> 
+        let res = prove_invariant mat map p in
+        let () = 
+          Mat_option.feedback "Status of invariant %a : %s" 
+            Printer.pp_predicate p
+            (match res with Property_status.True -> "True" | Property_status.False_if_reachable -> "False" | Property_status.Dont_know -> "Don't know" | _ -> assert false)
+        in res
+
+
       | _ -> raise Bad_invariant
 
   end

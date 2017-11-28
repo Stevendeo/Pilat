@@ -41,6 +41,17 @@ module Make = functor
 
 	let non_det_var_memoizer = Varinfo.Hashtbl.create 2
 
+        let rec stmt_set block = 
+          List.fold_left
+            (fun acc s -> 
+               match s.skind with 
+                 Block b ->  Stmt.Set.add s (Stmt.Set.union acc (stmt_set b.bstmts))
+               | If (_,b1,b2,_) -> Stmt.Set.add s (
+                 Stmt.Set.union (Stmt.Set.union acc (stmt_set b1.bstmts)) (stmt_set b2.bstmts))
+               | _ -> Stmt.Set.add s acc)
+            Stmt.Set.empty
+            block
+            
 	let exp_to_poly ?(nd_var=Varinfo.Map.empty) exp =
 	  let float_of_const c = 
 	    match c with
@@ -136,7 +147,7 @@ module Make = functor
 	      
 	let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl   
 	  
-	let rec stmt_to_poly_assign varinfo_used nd_var break s : Assign.t option = 
+	let rec stmt_to_poly_assign varinfo_used nd_var break block_stmts s : Assign.t option = 
 	  
 	  try 
 	    Stmt.Hashtbl.find poly_hashtbl s 
@@ -163,7 +174,7 @@ module Make = functor
                       end
 
 	      
-              | Cil_types.Loop (_,b,_,_,break) -> 
+              | Cil_types.Loop (_,b,_,_,_) -> 
 		
 		if Varinfo.Map.is_empty nd_var
 		then 
@@ -179,8 +190,7 @@ module Make = functor
 		    ;
 		    
                   in
-                  let out_of_loop_stmt = List.hd (Extlib.the break).succs in 
-		  Some (Assign.Loop (block_to_body varinfo_used break s ([s;out_of_loop_stmt])))
+		  Some (Assign.Loop (block_to_body varinfo_used break s block_stmts ([s])))
 		else 
 		  Mat_option.abort 
 		    "Non deterministic nested loop are not allowed"   
@@ -188,28 +198,44 @@ module Make = functor
 	      | Block _ | If _ -> None
               | _ -> 
 	        Some (Assign.Other_stmt s)
-		  
-	and block_to_body
-	    varinfo_used 
-	    ?(nd_var = Varinfo.Map.empty) 
-	    break
-	    (head : Cil_types.stmt) 
-            (last_stmts : Cil_types.stmt list) : Assign.body = 
- 
-	  let () = 
-	    Mat_option.debug ~dkey:dkey_stmt "Block start : %a"
-	      Printer.pp_stmt head in
+                       
+           and block_to_body
+               varinfo_used 
+               ?(nd_var = Varinfo.Map.empty) 
+               break
+               (head : Cil_types.stmt)
+               (block_stmts : Stmt.Set.t)
+               (last_stmts : Cil_types.stmt list)
+             : Assign.body = 
+
+             let end_test s = 
+               List.exists (Stmt.equal s) last_stmts || not (Stmt.Set.mem s block_stmts) in
+
+             let () = 
+               Mat_option.debug ~dkey:dkey_stmt "Block start : %a"
+                 Printer.pp_stmt head in
+             
+             let () =
+               match break with 
+                 None -> Mat_option.debug ~dkey:dkey_stmt "Breaks not specified"
+               | Some s -> 
+	         Mat_option.debug ~dkey:dkey_stmt "Block breaks: %a.%i" Printer.pp_stmt s s.sid in
+             
+	    
+
 	  let rec dfs stmt : (Assign.body) = 
 	    Mat_option.debug ~dkey:dkey_stmt ~level:2
-	      "Stmt %a studied" 
-	      Stmt.pretty stmt
+	      "Stmt %a.%i studied" 
+	      Stmt.pretty stmt stmt.sid
 	    ;
-	    if List.exists (Stmt.equal stmt) last_stmts
+	    if end_test stmt
 	    then 
 	      begin  
+         let pp_stmt fmt s = Format.fprintf fmt "%a.%i" Printer.pp_stmt s s.sid in 
 		Mat_option.debug ~dkey:dkey_stmt ~level:3
-		  "End of dfs."
-		;
+		  "Not in %a, end of dfs. TO REMOVE"
+                (Format.pp_print_list pp_stmt) (Stmt.Set.elements block_stmts)
+  ;
                 []
 	      end
 	    else 
@@ -218,7 +244,7 @@ module Make = functor
 		  "Stmt never seen";
               try
 		  
-                let poly_opt = stmt_to_poly_assign varinfo_used nd_var break stmt in
+                let poly_opt = stmt_to_poly_assign varinfo_used nd_var break block_stmts stmt in
     
                 let succs = 
                   match stmt.skind with
@@ -240,7 +266,7 @@ module Make = functor
 
                         | (hd :: [],l) | (l,hd::[]) ->  
                           (* One of the list is empty *)
-                          if (try (List.mem (List.hd hd.succs) last_stmts) with Failure _ -> true)
+                          if (try (end_test (List.hd hd.succs)) with Failure _ -> true)
                           then match l with [] -> None | _ -> last ([],l)
                           else 
                             Some(List.hd hd.succs)
@@ -263,8 +289,12 @@ module Make = functor
                     
                     let res_post_if = 
                       match if_merge_stmt with 
-                        None -> [] 
-                      | Some s -> dfs s in
+                        None -> Mat_option.debug ~dkey:dkey_stmt ~level:2 "If has no merge stmt";[]
+                      | Some s -> 
+                        Mat_option.debug ~dkey:dkey_stmt ~level:2 
+                          "Continuing dfs from %a"
+                          Printer.pp_stmt s;
+                        dfs s in
                     
                     let if_bdy b = 
                       let last_stmts = 
@@ -273,11 +303,11 @@ module Make = functor
                       | Some s -> s :: last_stmts in
                       match b.bstmts with 
                       [] -> []
-                      | hd :: _ -> 
+                      | hd :: tl -> 
                         let bdy_less_first = 
-                          block_to_body varinfo_used ~nd_var break hd last_stmts
+                          block_to_body varinfo_used ~nd_var break hd (stmt_set tl) last_stmts
                         in
-                        match stmt_to_poly_assign  varinfo_used nd_var break hd  with 
+                        match stmt_to_poly_assign varinfo_used nd_var break (stmt_set tl) hd  with 
                           None -> bdy_less_first
                         | Some s -> s :: bdy_less_first
                     in
@@ -287,7 +317,9 @@ module Make = functor
                     Assign.Assert(e, bdy_b1, bdy_b2) :: res_post_if
                   | _ ->
                     begin 
-                      assert (List.length succs = 1);
+                      if (List.length succs <> 1) then 
+                        Mat_option.fatal "Failure at statement %a" Printer.pp_stmt stmt
+                      else 
 		      dfs (List.hd succs)
 	            end 
                 in
