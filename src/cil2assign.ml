@@ -147,7 +147,7 @@ module Make = functor
 	      
 	let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl   
 	  
-	let rec stmt_to_poly_assign varinfo_used nd_var break block_stmts s : Assign.t option = 
+	let rec stmt_to_poly_assign varinfo_used nd_var break s : Assign.t option = 
 	  
 	  try 
 	    Stmt.Hashtbl.find poly_hashtbl s 
@@ -189,8 +189,12 @@ module Make = functor
 		      b.bstmts
 		    ;
 		    
-                  in
-		  Some (Assign.Loop (block_to_body varinfo_used break s block_stmts ([s])))
+                in let res = Assign.Loop (block_to_body varinfo_used break s (stmt_set b.bstmts)  ([s]))
+                in let () =   
+		    Mat_option.debug ~dkey:dkey_stmt
+		      "Nested loop done";
+                in 
+                Some res
 		else 
 		  Mat_option.abort 
 		    "Non deterministic nested loop are not allowed"   
@@ -244,7 +248,7 @@ module Make = functor
 		  "Stmt never seen";
               try
 		  
-                let poly_opt = stmt_to_poly_assign varinfo_used nd_var break block_stmts stmt in
+                let poly_opt = stmt_to_poly_assign varinfo_used nd_var break stmt in
     
                 let succs = 
                   match stmt.skind with
@@ -307,7 +311,7 @@ module Make = functor
                         let bdy_less_first = 
                           block_to_body varinfo_used ~nd_var break hd (stmt_set tl) last_stmts
                         in
-                        match stmt_to_poly_assign varinfo_used nd_var break (stmt_set tl) hd  with 
+                        match stmt_to_poly_assign varinfo_used nd_var break hd  with 
                           None -> bdy_less_first
                         | Some s -> s :: bdy_less_first
                     in
