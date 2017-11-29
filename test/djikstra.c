@@ -1,3 +1,6 @@
+/*run.config
+   OPT: -pilat-degree 2 -pilat-lin
+*/
 int main(){
   int n;
   int p = 0,q = 1,r = n,h;

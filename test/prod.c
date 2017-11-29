@@ -1,3 +1,7 @@
+/*run.config
+   OPT: -pilat-degree 2 -pilat-lin
+*/
+
 int main(){
   int x,y,z;
   while (1)

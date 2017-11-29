@@ -1,4 +1,6 @@
-
+/*run.config
+   OPT: -pilat-degree 2 -pilat-lin
+*/
 
 /* algorithm searching for a divisor for factorization, by Knuth */
 

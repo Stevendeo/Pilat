@@ -1,3 +1,6 @@
+/*run.config
+   OPT: -pilat-degree 2 -pilat-lin
+*/
 #include <stdio.h>
 
 int main(){

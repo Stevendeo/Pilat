@@ -1,4 +1,6 @@
-
+/*run.config
+   OPT: -pilat-degree 1
+*/
 int main (){
   int c1,c2,k0;
   int r,w,k;

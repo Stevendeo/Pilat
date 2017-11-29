@@ -1,3 +1,7 @@
+/*run.config
+   OPT: -pilat-degree 2 -pilat-lin
+*/
+
 int prodbin(int a, int b){
   int x,y,z;
 

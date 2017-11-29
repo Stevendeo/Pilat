@@ -1,3 +1,6 @@
+/*run.config
+   OPT: -pilat-degree 2 -pilat-lin
+*/
 
 int lcm (int a, int b)
     {

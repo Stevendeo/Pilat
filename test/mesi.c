@@ -1,3 +1,8 @@
+/*run.config
+   OPT: -pilat-degree 1
+*/
+
+
 // From Inference of polynomial invariants for imperative programs:
 // A farewell to Gröbner bases
 

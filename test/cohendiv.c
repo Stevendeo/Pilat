@@ -1,3 +1,6 @@
+/*run.config
+   OPT: -pilat-degree 2 -pilat-lin
+*/
 int division (int x, int y){
     int q,r;
 

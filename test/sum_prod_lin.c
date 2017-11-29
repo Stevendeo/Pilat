@@ -1,3 +1,7 @@
+/*run.config
+   OPT: -pilat-degree 3 -pilat-lin
+*/
+
 int petter(int N){
   int x = 0, y = 0;
   int y2 = y*y;

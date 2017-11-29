@@ -1,3 +1,6 @@
+/*run.config
+   OPT: -pilat-degree 1 -pilat-lin
+*/
 
 int modified = 1 ,shared = 2,exclusive = 3,invalid = 4 ,owned = 5;
 int main(){

@@ -1,3 +1,6 @@
+/*run.config
+   OPT: -pilat-degree 2 -pilat-no-z
+*/
 int main(){
   float x,y;
   int N = 1000;

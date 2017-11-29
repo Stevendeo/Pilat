@@ -1,3 +1,6 @@
+/*run.config
+   OPT: -pilat-degree 1
+*/
 int main (){
   int dirty,shared,exclusive,invalid;
   exclusive = 0;

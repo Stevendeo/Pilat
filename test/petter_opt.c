@@ -1,3 +1,7 @@
+/*run.config
+   OPT: -pilat-degree 2
+*/
+
 int petter(int N){
   int x = 0, y = 0,a,b,z;
   

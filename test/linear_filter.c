@@ -1,3 +1,6 @@
+/*run.config
+   OPT: -pilat-degree 2 -pilat-no-z
+*/
 float float_interval(float,float);
 
 int main(int N) {
