@@ -1,1 +1,1 @@
-cd src && make install
+make install
