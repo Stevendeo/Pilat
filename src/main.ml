@@ -524,33 +524,25 @@ let run_input_mat file =
     invars
 
 let annot_file_generator () = 
-      let file = Ast.get () 
-      in        
-      let filename = 
-        let fname = Mat_option.Output_C_File.get () in 
-        
-        if  fname = "" then file.fileName ^ "_annot.c" else fname
-      in
-
-      Acsl_gen.emit_annots ();
-        List.iter
+  (*Acsl_gen.emit_annots ();
+  List.iter
         (function
           |GFun (f,_) -> 
             Cfg.clearCFGinfo f; (* Prepares cfgFun *)
             Cfg.cfgFun f;(* Necessary for the next visitor *)
-            
+    
           | _ -> ())
-        file.globals;
-      let prj =
-        File.create_project_from_visitor 
-          ~last:true
-          "new_pilat_project" 
-          (fun p -> new Pilat_visitors.fundec_updater p) 
-      in
-      Mat_option.debug ~dkey:dkey_time 
-        "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
-
-      Mat_option.debug ~dkey:dkey_time ~level:2
+        file.globals;*)
+  let prj =
+    File.create_project_from_visitor 
+      ~last:true
+      "new_pilat_project" 
+      (fun p -> new Pilat_visitors.fundec_updater p) 
+  in
+  Mat_option.debug ~dkey:dkey_time 
+    "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
+  
+  Mat_option.debug ~dkey:dkey_time ~level:2
         "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly : %f\nRedundancy analysis : %f" 
         !Mat_option.invar_timer 
         !Mat_option.inter_timer 
@@ -559,6 +551,10 @@ let annot_file_generator () =
         !Mat_option.char_poly_timer
         !Mat_option.redun_timer
       ;
+
+      let filename = 
+        let fname = Mat_option.Output_C_File.get () in 
+        if  fname = "" then (Ast.get ()).fileName ^ "_annot.c" else fname in
 
       if not(Mat_option.Prove.get ()) then 
         let cout = open_out filename in
@@ -609,11 +605,11 @@ let run () =
       (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
                                             will be recomputed automatically. *)*)
 
-      let lin_prj = 
+          let lin_prj = 
 
-        File.create_project_from_visitor "tmp_project" loop_analyzer
-      in 
-      Project.on lin_prj annot_file_generator () 
+            File.create_project_from_visitor "pilat_tmp_project" loop_analyzer
+          in 
+          Project.on lin_prj annot_file_generator () 
 
 
 let () = Db.Main.extend run

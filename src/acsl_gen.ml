@@ -33,10 +33,8 @@ module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" e
 
 let annotations_to_emit = Stmt.Hashtbl.create 5
 
-let emit_annots () =  
-  Stmt.Hashtbl.iter (
-    fun stmt (kf,annots)  -> 
-      List.iter (fun annot ->
+let emit_annot_list annots stmt kf = 
+  List.iter (fun annot ->
           let () = 
             Mat_option.debug ~dkey:dkey_acsl 
               "Annotation emited: %a on statement %a"
@@ -47,7 +45,12 @@ let emit_annots () =
           in 
           let ip = Property.ip_of_code_annot_single kf stmt annot in 
           Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
-        ) annots) 
+        ) annots
+
+let emit_annots () = 
+  Stmt.Hashtbl.iter (
+    fun stmt (kf,annots)  -> 
+      emit_annot_list annots stmt kf) 
     annotations_to_emit
 
 
@@ -518,8 +521,9 @@ let register_loop_annots
   in
 (*
   Pilat_visitors.register_annot stmt annots
-*)
-  Stmt.Hashtbl.add annotations_to_emit stmt (kf,annots);
+*) 
+  emit_annot_list annots stmt kf;
+  (*Stmt.Hashtbl.add annotations_to_emit stmt (kf,annots);*)
   let res = !variables_to_add in variables_to_add := []; res
     
 end
