@@ -22,23 +22,23 @@
 
 open Cil_datatype
 
-(** Emmits the registered annotations *)
-val emit_annots : unit -> unit
-
+  val emit_annot_list : 
+    Cil_types.code_annotation list -> Cil_types.stmt -> Kernel_function.t -> unit
+  
 module Make: functor 
   (A:Poly_assign.S with type P.v = Varinfo.t)
   (C2A: sig val export_variables : unit -> Cil_types.varinfo A.P.Monom.Map.t end) -> 
 sig
   
-  val register_loop_annots :  
+  val loop_annots_vars_init :  
     bool ->
-    ?mat:A.M.t ->
+    A.M.t option ->
     Cil_types.kernel_function ->
     Cil_types.stmt ->
     A.P.Monom.t A.Imap.t -> 
     A.M.vec Invariant_utils.inv list -> 
     'a Varinfo.Map.t -> 
     int -> 
-    Varinfo.t list
+    Cil_types.code_annotation list * Varinfo.t list * Cil_types.stmtkind list
      
 end

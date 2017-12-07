@@ -21,11 +21,11 @@ configure_library([LACAML],
 		  yes
 		)
 
-configure_library([LACAML_TOP],
-		  [$(ocamlfind query lacaml)/lacaml_top.cmxa],
-		  [lacaml_top not installed],
-		  yes
-		)
+#configure_library([LACAML_TOP],
+#		  [$(ocamlfind query lacaml)/lacaml_top.cmxa],
+#		  [lacaml_top not installed],
+#		  yes
+#		)
 
 configure_library([ZARITH],
 		  [$(ocamlfind query zarith)/zarith.cmxa],

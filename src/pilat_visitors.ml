@@ -125,6 +125,48 @@ let register_stmt loop_stmt init =
       Not_found -> [] in 
   Cil_datatype.Stmt.Hashtbl.replace stmt_init_table loop_stmt (init :: old_bind)
 
+let make_ghost_assign skind = 
+  let stmt = 
+    Cil.mkStmt(*Cfg ~ref_stmt:next_stmt ~before:true ~*)
+      ~valid_sid:true 
+      skind in
+  let is_ghost = 
+    match skind with
+      Instr(Set((Var v,_),_,_)) -> v.vghost
+    | _ -> assert false (* Now, there are only Instr added by Pilat visitors *)
+  in
+  stmt.ghost <- is_ghost;
+  stmt
+
+let make_assign_block skinds next_stmt = 
+  let s_list,_ = 
+	List.fold_left
+	  (fun (acc_stmts, next_stmt) new_stmtkind -> 
+                 let stmt = make_ghost_assign new_stmtkind in
+                 let () = Mat_option.debug ~dkey:dkey_stmt 
+	             "Adding stmt %a of id %i to the cfg before %a" 
+	             Printer.pp_stmt stmt stmt.sid Printer.pp_stmt next_stmt in
+	         next_stmt.preds <- [stmt];
+                 stmt.succs <- [next_stmt];
+	         (stmt::acc_stmts,stmt))
+	  ([],next_stmt)
+	  skinds
+  in
+  let s_list = List.rev(next_stmt::s_list) in
+  let () = 
+    Mat_option.debug ~dkey:dkey_stmt ~level:4 
+      "New block is %a"
+      (Format.pp_print_list ~pp_sep: (fun fmt _ -> Format.fprintf fmt "\n") Printer.pp_stmt) s_list in
+  Cil.mkStmt ~ghost:false ~valid_sid:true
+    (Block
+       {
+         bscoping = false;
+         battrs = [];
+         blocals = [];
+         bstmts =  s_list
+       }
+    )
+ (*
 class fundec_updater prj = 
 object
   inherit (Visitor.frama_c_copy prj)
@@ -139,47 +181,13 @@ object
 	Printer.pp_stmt s;
        Cil_datatype.Stmt.Hashtbl.remove stmt_init_table succ in
       
-      let s_list,_ = 
-	List.fold_left
-	  (fun (acc_stmts, next_stmt) new_stmtkind -> 
-	    
-	    let stmt = 
-	      Cil.mkStmt(*Cfg ~ref_stmt:next_stmt ~before:true ~*)
-		~valid_sid:true 
-		new_stmtkind in
-            let is_ghost = 
-              match new_stmtkind with
-                Instr(Set((Var v,_),_,_)) -> v.vghost
-              | _ -> assert false (* Now, there are only Instr added by Pilat visitors *)
-            in
-            stmt.ghost <- is_ghost;
-	    next_stmt.succs <- [stmt];
-	    (*next_stmt.preds <- stmt :: next_stmt.preds;*)
-	    let () = Mat_option.debug ~dkey:dkey_stmt 
-	      "Adding stmt %a of id %i to the cfg after %a" 
-	      Printer.pp_stmt stmt stmt.sid Printer.pp_stmt next_stmt;
-	      
-	    in (stmt::acc_stmts,stmt))
-	  ([],s)
-	  new_stmtkinds
-      in
-
-      let new_block = 
-	Cil.mkStmt ~ghost:false ~valid_sid:true
-	  (Block
-	     {
-	       bscoping = false;
-	       battrs = [];
-	       blocals = [];
-	       bstmts =  s::s_list
-	     }
-	  )
-      in
       
-      ChangeDoChildrenPost (new_block, fun i -> i)
+      
+      ChangeDoChildrenPost (s,make_assign_block new_stmtkinds)
   
     with 
       Not_found (* Stmt.Hashtbl.find stmt_init_table s *) -> DoChildren
     | Failure _ (*"hd"*) -> DoChildren
      
 end
+*)

@@ -12,7 +12,6 @@ int petter(int N){
       x += y;
       y++;
     }
-  y--;  
 
   /*@ assert x > 0; */
   return x;

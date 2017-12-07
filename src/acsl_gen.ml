@@ -31,8 +31,6 @@ let dkey_zero = Mat_option.register_category "acsl_gen:iszero"
 
 module Var_cpt = State_builder.SharedCounter(struct let name = "pilat_counter" end)
 
-let annotations_to_emit = Stmt.Hashtbl.create 5
-
 let emit_annot_list annots stmt kf = 
   List.iter (fun annot ->
           let () = 
@@ -47,14 +45,6 @@ let emit_annot_list annots stmt kf =
           Property_status.emit Mat_option.emitter ~hyps:[] ip Property_status.True
         ) annots
 
-let emit_annots () = 
-  Stmt.Hashtbl.iter (
-    fun stmt (kf,annots)  -> 
-      emit_annot_list annots stmt kf) 
-    annotations_to_emit
-
-
-
 let new_name () = Mat_option.NameConst.get () ^ (string_of_int (Var_cpt.next ()))
 
 module Make(A:Poly_assign.S with type P.v = Varinfo.t)
@@ -64,12 +54,21 @@ struct
   module Invar_utils = Invariant_utils.Make(A)
 
 let variables_to_add = ref []
-let to_code_annot (preds:predicate list) = 
+let to_code_annot preds = 
   
-  List.map 
-    (fun pred -> 
-      Logic_const.new_code_annotation (AInvariant ([],true,pred))
-    ) preds 
+  List.fold_left
+    (fun acc (pred,init_opt) ->
+       let new_annot = 
+         Logic_const.new_code_annotation (AInvariant ([],true,pred))
+       in
+       let new_init = 
+         match init_opt with None -> snd acc
+                           | Some s -> s :: snd acc
+       in
+       ((new_annot :: fst acc), new_init)
+    ) 
+    ([],[])
+    preds 
 
 let term_is_zero t = 
   
@@ -284,7 +283,7 @@ let add_k_stmt new_ghost_var sum_term stmt =
       (get_stmt_loc stmt)
   in
   
-  Pilat_visitors.register_stmt stmt init_k
+  init_k
 
 (** Returns a predicate list based on the term list. 
     SUM(ki*ei) is the general invariant, but : 
@@ -311,7 +310,7 @@ let term_list_to_predicate
     let zero =  (Logic_const.term (TConst (Integer (Integer.zero,(Some "0"))))) Linteger 
     in
     List.map
-      (fun (_,term) -> Logic_const.unamed (Prel(Req,term,zero)))
+      (fun (_,term) -> Logic_const.unamed (Prel(Req,term,zero)),None)
       term_list
 
   | Altern,_ -> 
@@ -355,7 +354,7 @@ let term_list_to_predicate
 	   zero)
       in
       
-      [Logic_const.unamed pred]
+      [(Logic_const.unamed pred), None]
 
   | Convergent ev, false -> 
     
@@ -376,7 +375,7 @@ let term_list_to_predicate
 	      let pred = make_pred (TLval (TVar k, TNoOffset)) term in 
 	      (Logic_const.unamed  
 		 (Pexists
-		    ([k],pred)))
+		    ([k],pred))),None
 	    )term_list
 	    
     | Some m -> 
@@ -400,7 +399,7 @@ let term_list_to_predicate
 	      r_upper = k_float;
 	      r_lower = k_float	      
 	    } in
-	  make_pred (TConst (LReal k_real)) term
+	  make_pred (TConst (LReal k_real)) term, None
 	    
 	) term_list
     end (* Matching mat *)
@@ -428,7 +427,7 @@ let term_list_to_predicate
 	      (TLval ((TVar lvar),TNoOffset)) 
 	      logic_type_vars
 	  in
-	  let () = add_k_stmt new_ghost_var term stmt
+	  let new_skind = add_k_stmt new_ghost_var term stmt
 	  in
 	  
 	  let pred = 
@@ -436,8 +435,8 @@ let term_list_to_predicate
 	      (operator,
 	       term,
 	       term_gvar)
-	  in Logic_const.unamed pred
-	) term_list
+	  in (Logic_const.unamed pred),(Some new_skind)
+	) term_list 
      
 let vec_space_to_predicate_zarith
     (deter : bool) 
@@ -448,7 +447,7 @@ let vec_space_to_predicate_zarith
     (invar : Invar_utils.invar) 
     (nd_vars : 'a Varinfo.Map.t) 
     (num_vars : int)
-    : predicate list =
+    : (predicate * stmtkind option) list =
 
   let limit,vec_list = invar in
   
@@ -478,9 +477,9 @@ let vec_space_to_predicate_zarith
 	stmt
 	num_vars
 
-let register_loop_annots  
+let loop_annots_vars_init  
     (deter : bool) 
-    ?(mat : A.M.t option) 
+    (mat : A.M.t option) 
     (kf:kernel_function) 
     (stmt:stmt) 
     (rev_base:A.P.Monom.t A.Imap.t) 
@@ -500,30 +499,28 @@ let register_loop_annots
     
   else vec_lists in
     
-  let annots =   
+  let annots,init_list =   
     List.fold_left 
       (fun acc invar -> 
-	(to_code_annot (
-	  vec_space_to_predicate_zarith 
-	    deter 
-	    mat
-	    kf
-	    stmt
-	    rev_base
-	    invar
-	    nd_vars
-	    num_vars
-	 )) @ acc
+	 let annot_list,init_list = 
+           to_code_annot (
+	     vec_space_to_predicate_zarith 
+	       deter 
+	       mat 
+               kf
+               stmt
+	       rev_base
+	       invar
+	       nd_vars
+               num_vars)
+         in  
+         (annot_list@(fst acc),init_list@(snd acc))
       )
-      []
+      ([],[])
       vec_lists
       
   in
-(*
-  Pilat_visitors.register_annot stmt annots
-*) 
-  emit_annot_list annots stmt kf;
   (*Stmt.Hashtbl.add annotations_to_emit stmt (kf,annots);*)
-  let res = !variables_to_add in variables_to_add := []; res
+  let res = !variables_to_add in variables_to_add := []; annots,res,init_list
     
 end

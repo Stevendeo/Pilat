@@ -28,6 +28,9 @@ val studied_variables : block -> Varinfo.Set.t * (float*float) Varinfo.Map.t
 (** Used to register generated assignments to loop heads. *)
 val register_stmt : stmt -> stmtkind -> unit
 
+val make_assign_block : stmtkind list -> stmt -> stmt
+
 (** fundec_updater adds the constant initialisation as new stmts in the CFG. It is based on the 
-    stmts registered by register_stmt *)
+    stmts registered by register_stmt
 class fundec_updater : Project.t -> Visitor.frama_c_copy
+ *)

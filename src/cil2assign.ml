@@ -349,10 +349,8 @@ module Make = functor
 	      end 
 	  in
 	  
-	  let res = dfs (List.hd head.succs)
-	  in
-	  Mat_option.debug ~dkey:dkey_stmt ~level:5
-	    "How many paths ? %i" (List.length res); res
+   let res = dfs (List.hd head.succs)
+   in res
 
 
  (**2.  Pilat2Cil *)

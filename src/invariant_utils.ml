@@ -35,6 +35,14 @@ type limit =
 | One
 | Zero
 
+let pp_limit fmt = function
+    Convergent f -> Format.fprintf fmt "Convergent : %f" f
+  | Divergent f ->  Format.fprintf fmt "Divergent : %f" f
+  | Altern ->  Format.fprintf fmt "Altern"
+  | One ->  Format.fprintf fmt "One" 
+  | Zero ->  Format.fprintf fmt "Zero"
+
+
 type 'v inv = limit * 'v list
 
 type q_invar = Pilat_matrix.QMat.vec inv

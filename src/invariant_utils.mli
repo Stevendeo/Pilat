@@ -27,6 +27,8 @@ type limit =
 | One
 | Zero
 
+val pp_limit : Format.formatter -> limit -> unit
+
 type 'v inv = limit * 'v list
 
 type q_invar = Pilat_matrix.QMat.vec inv

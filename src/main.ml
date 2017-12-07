@@ -52,26 +52,27 @@ let read_file chan =
 
 let loop_analyzer prj = 
   object(self)
-    inherit Visitor.frama_c_copy prj
+    inherit Visitor.frama_c_refresh prj
+        
+    method private __add_var kf v = 
+      let () = Mat_option.debug ~dkey:dkey_vars
+          "Adding %a to %a"
+          Printer.pp_varinfo v
+          Printer.pp_varinfo kf.svar in
 
-    val mutable new_variables = []
-    method private add_vars vars = new_variables <- vars @ new_variables
+      let fundec = Cil.get_fundec self#behavior kf in fundec.slocals <- v :: fundec.slocals
 
-    method! vfunc _ = 
-      DoChildrenPost (
-        fun f -> 
-          Mat_option.debug ~dkey:dkey_vars "Adding: ";
-          List.iter
-            (fun v -> Mat_option.debug ~dkey:dkey_vars "%a" Cil_datatype.Varinfo.pretty v)
-            new_variables;
-          f.slocals <- new_variables @  f.slocals ; 
-          f.sbody.blocals <- new_variables @ f.sbody.blocals  ; 
-          new_variables <- []; 
-          f)
+    method private add_var kf v = 
+      Queue.push (fun _ -> self#__add_var kf v)
+        self#get_filling_actions 
 
     method! vstmt_aux stmt =
-      let kf = Extlib.the self#current_kf in
-      
+      let kf = 
+        (Extlib.the self#current_kf) in (* self#plain_copy_visitor = visiteur juste copie *)
+      let fundec = match kf.fundec with
+          Definition (f,_) -> f
+        | Declaration _ -> assert false in
+                      
       match stmt.skind with
       | Cil_types.Loop (annots,b,loc,conts,breaks) -> 
 
@@ -90,6 +91,15 @@ let loop_analyzer prj =
 	  in
 
 	  let (varinfos_used,nd_var) = Pilat_visitors.studied_variables b in
+         (* let varinfos_used = 
+            Cil_datatype.Varinfo.Set.fold 
+              (fun v acc -> 
+                 Cil_datatype.Varinfo.Set.add 
+                   (Cil.get_varinfo self#behavior v)
+                   acc)
+              varinfos_used
+              Cil_datatype.Varinfo.Set.empty
+          in*)
 	  let num_variables = 
             Cil_datatype.Varinfo.Set.cardinal varinfos_used 
 	  in
@@ -104,8 +114,11 @@ let loop_analyzer prj =
                    "Var %a" 
                    Printer.pp_varinfo v) varinfos_used in
 
-	  let assign_is_deter = Cil_datatype.Varinfo.Map.is_empty nd_var
-	  in
+	  let assign_is_deter = Cil_datatype.Varinfo.Map.is_empty nd_var in
+          let () = 
+            if assign_is_deter 
+            then Mat_option.debug ~level:2 "Loop is deterministic" 
+            else Mat_option.debug ~level:2 "Loop is non deterministic : %i noises"(Cil_datatype.Varinfo.Map.cardinal nd_var)  in
 	  let (module Assign_type : 
                 Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
 		               and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
@@ -176,8 +189,12 @@ let loop_analyzer prj =
             let rev_base = Assign_type.reverse_base base in
             let matrices =  
  	           Assign_type.loop_matrix base assigns in
-
-            let () = List.iter
+            
+            let () = 
+              Mat_option.debug ~dkey:dkey_stmt ~level:2
+                "Number of paths: %i"
+                (List.length matrices);
+              List.iter
                 (fun mat -> 
                    Mat_option.debug ~dkey:dkey_stmt ~level:3
 		     "Matrix generated : \n%a"
@@ -291,19 +308,19 @@ let loop_analyzer prj =
 		  whole_loop_invar
               in
               Mat_option.redun_timer := !Mat_option.redun_timer +. Sys.time () -. t_redundancy;
-
-              let new_loop =   
+              
+              let new_loop,monomial_vars =   
                 if Mat_option.Linearized_file.get () 
                 then 
-                  (* Check if the assignemnts satisfies the actual hypotheses : no nested loop nor 
-                     conditions *) 
+                  (* Check if the assignemnts satisfies the actual hypotheses : 
+                     no nested loop *) 
                   let test_loop =
                     List.for_all
                       (function
                         | Assign_type.LinLoop _ -> false 
                         |  _ -> true )
                   in
-                  if not(test_loop assigns) then stmt 
+                  if not(test_loop assigns) then stmt,[] 
                   else 
                     (* Builds the loop *)
  
@@ -320,9 +337,7 @@ let loop_analyzer prj =
                           Printer.pp_stmt stmt
                       *)in
 
-                    let kf = 
-                        (Extlib.the self#current_kf) in
-                    let block = 
+                      let block = 
                       Cil_parser.block_linassign_to_block
                         blocks
                         kf
@@ -332,9 +347,10 @@ let loop_analyzer prj =
                     in
                     (** Get newly created variables to add to fundec locals *)
                     let monom_vars = (Cil_parser.export_variables()) in
-                    let () = 
-                      Assign_type.P.Monom.Map.iter
-                         (fun _ v -> new_variables <- v :: new_variables) monom_vars
+                    let (var_list : Cil_datatype.Varinfo.t list) = 
+                      Assign_type.P.Monom.Map.fold
+                         (fun _ v acc -> self#add_var fundec v; v::acc) monom_vars []
+                    
                     in
 
                     (** Now, creating the new loop *)
@@ -344,82 +360,75 @@ let loop_analyzer prj =
                         ~valid_sid:true
                         (Loop (annots,block,loc,conts,breaks)) in
                     let () = Kernel_function.register_stmt kf new_loop blocks in 
-                    (** Initialize variables before the loop, done by Pilat_visitors *)
-                    let init_list = Cil_parser.initializers loc in
-                    List.iter (Pilat_visitors.register_stmt new_loop) init_list;
-                    new_loop
-
-                else stmt
+                    (new_loop,var_list)
+                else (stmt,[])
               in
 
               let module Annot_generator = Acsl_gen.Make(Assign_type)(Cil_parser) in 
 
               let t_inter = Sys.time () in
               (** Intersecting the invariants if necessary *)
-              if whole_loop_invar = [] then 
-                if Mat_option.Linearized_file.get () 
-                then DoChildrenPost (fun _ -> new_loop)
-                else DoChildren 
-              else if (assign_is_deter || List.length whole_loop_invar >= 2)
-              then
-                let invar_inter = 
-                  List.fold_left
-                    (fun acc (_,invar) -> 
-                       if acc = Some [] then Some [] else
-                         match acc with
-	                   None -> Some invar
-                         | Some l ->  
-                           Some (Invariant_maker.intersection_invariants invar l))
-                    None
-                    whole_loop_invar 
-                in
-    
-                
-                let () = Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t_inter
-                in 
-                let () = 
-                  Mat_option.whole_rel_time := Sys.time() -. t_whole +. !Mat_option.whole_rel_time 
-                in
-                let vars_to_add = Annot_generator.register_loop_annots
-                    assign_is_deter
-                    kf
-                    new_loop
-                    rev_base 
-                    (Extlib.the invar_inter)
-                    Cil_datatype.Varinfo.Map.empty
-                    num_variables in
-                self#add_vars vars_to_add;
-                if Mat_option.Linearized_file.get () 
-                then DoChildrenPost
-                    (fun _ -> new_loop) 
-                   else 
-                     DoChildren
-                else 
-                  (* Non deterministic case *)
-                  let mat,invar = List.hd whole_loop_invar
-                  in 
-                  let () = 
-                    Mat_option.whole_rel_time := Sys.time() -. t_whole +. !Mat_option.whole_rel_time 
-                  in
-                  let () = 
-                    self#add_vars
-                      (Annot_generator.register_loop_annots
+              
+              let ((mat_if_not_inter,inter_invar_list):
+                     Assign_type.mat option * Invariant_maker.invar list)  = 
+                match whole_loop_invar with
+                  [] -> None,[]
+                | (m,vect) :: [] -> ((Some m), vect) 
+                | _ -> 
+                    None, Extlib.the (List.fold_left
+                      (fun acc (_,invar) -> 
+                         if acc = Some [] then Some [] else
+                           match acc with
+	                     None -> Some invar
+                           | Some l ->  
+                             Some (Invariant_maker.intersection_invariants invar l))
+                      None
+                      whole_loop_invar)
+              in
+              let () = 
+                Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t_inter;
+                Mat_option.whole_rel_time := Sys.time() -. t_whole +. !Mat_option.whole_rel_time 
+              in
+              
+              let new_loop_and_initializers kf n_loop = 
+                let annots,vars_to_add,skinds_to_add = 
+                      Annot_generator.loop_annots_vars_init
                       assign_is_deter
-                      ~mat
+                      mat_if_not_inter
                       kf
-                      new_loop
-                      rev_base
-                      invar
-                      nd_var
-                      num_variables)
-                  in 
-                  if Mat_option.Linearized_file.get () 
-                  then
-                    DoChildrenPost
-                      (fun _ ->  
-                         
-                         new_loop) 
-                  else DoChildren
+                      n_loop
+                      rev_base 
+                      inter_invar_list
+                      Cil_datatype.Varinfo.Map.empty
+                      num_variables 
+                  
+                in
+                let () = 
+                  List.iter (self#add_var fundec) vars_to_add ;
+                  
+                  Queue.push 
+                    (fun _ -> Acsl_gen.emit_annot_list annots n_loop kf) 
+                    self#get_filling_actions 
+                in 
+                let init_list = Cil_parser.initializers loc in
+                let block = 
+                  Pilat_visitors.make_assign_block (init_list@skinds_to_add) n_loop in 
+                let () = match block.skind with 
+                    Block b -> 
+                    b.blocals <- monomial_vars@vars_to_add @ b.blocals;
+                    b.bscoping <- true;
+                    Mat_option.debug ~dkey:dkey_stmt ~level:5 
+                      "Statements of the new block: %a"
+                      (Format.pp_print_list 
+                         ~pp_sep:(fun fmt _ -> Format.fprintf fmt "\n") 
+                         Printer.pp_stmt)
+                      b.bstmts
+                  | _ -> let () = assert false in ();
+                in block
+              in  
+              
+              ChangeToPost 
+                (new_loop, new_loop_and_initializers (Extlib.the self#current_kf)) 
 
         end (* Loop *)
       | _ -> DoChildren 
@@ -523,58 +532,15 @@ let run_input_mat file =
     )
     invars
 
-let annot_file_generator () = 
-  (*Acsl_gen.emit_annots ();
-  List.iter
-        (function
-          |GFun (f,_) -> 
-            Cfg.clearCFGinfo f; (* Prepares cfgFun *)
-            Cfg.cfgFun f;(* Necessary for the next visitor *)
-    
-          | _ -> ())
-        file.globals;*)
-  let prj =
-    File.create_project_from_visitor 
-      ~last:true
-      "new_pilat_project" 
-      (fun p -> new Pilat_visitors.fundec_updater p) 
-  in
-  Mat_option.debug ~dkey:dkey_time 
-    "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
-  
-  Mat_option.debug ~dkey:dkey_time ~level:2
-        "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly : %f\nRedundancy analysis : %f" 
-        !Mat_option.invar_timer 
-        !Mat_option.inter_timer 
-        !Mat_option.nullspace_timer
-        !Mat_option.ev_timer
-        !Mat_option.char_poly_timer
-        !Mat_option.redun_timer
-      ;
-
-      let filename = 
-        let fname = Mat_option.Output_C_File.get () in 
-        if  fname = "" then (Ast.get ()).fileName ^ "_annot.c" else fname in
-
-      if not(Mat_option.Prove.get ()) then 
-        let cout = open_out filename in
-        let fmt = Format.formatter_of_out_channel cout in
-        Kernel.Unicode.without_unicode
-          (fun () ->
-             File.pretty_ast ~prj ~fmt ();
-             close_out cout;
-             Mat_option.feedback "C file generation      : done\n";
-          ) ()
-
-
-let run () =  
-  if Mat_option.Enabled.get () 
+let run () = 
+  if (Mat_option.Degree.get () <> -1) 
   then
     let () = 
-      Mat_option.Enabled.set false;
-      Mat_option.feedback
+      (*Mat_option.Enabled.set false;
+      *)Mat_option.feedback
         "Welcome to Frama-C's Pilat invariant generator"
     in 
+    let filename = Mat_option.Output_C_File.get () in
     let mat_input =  Mat_option.Mat_input.get ()  in 
     if mat_input <> "" then 
       begin
@@ -605,11 +571,38 @@ let run () =
       (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
                                             will be recomputed automatically. *)*)
 
-          let lin_prj = 
+      let lin_prj = 
 
-            File.create_project_from_visitor "pilat_tmp_project" loop_analyzer
-          in 
-          Project.on lin_prj annot_file_generator () 
+        File.create_project_from_visitor "pilat_tmp_project" loop_analyzer
+      in 
+      Mat_option.Degree.set (-1);
+
+        Mat_option.debug ~dkey:dkey_time 
+        "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
+      
+      Mat_option.debug ~dkey:dkey_time ~level:2
+        "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly : %f\nRedundancy analysis : %f" 
+        !Mat_option.invar_timer 
+        !Mat_option.inter_timer 
+        !Mat_option.nullspace_timer
+        !Mat_option.ev_timer
+        !Mat_option.char_poly_timer
+        !Mat_option.redun_timer
+      ;
+
+      let () = Mat_option.feedback "Printing in %s" filename 
+      in
+      if not(Mat_option.Prove.get ()) then 
+        let cout = 
+          if filename = "stdout" then stdout else open_out filename in
+        let fmt = Format.formatter_of_out_channel cout in
+        Kernel.Unicode.without_unicode
+          (fun () ->
+             Mat_option.feedback "C file generation      : in progress...\n";
+             File.pretty_ast ~prj:lin_prj ~fmt ();
+             if filename <> "stdout" then close_out cout;
+             Mat_option.feedback "C file generation      : done\n";
+          ) ()
 
 
 let () = Db.Main.extend run

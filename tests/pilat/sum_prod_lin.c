@@ -1,5 +1,5 @@
 /*run.config
-   OPT: -pilat-degree 3 -pilat-lin
+   OPT: -pilat-degree 3 -pilat-lin -pilat-output "stdout"
 */
 
 int petter(int N){

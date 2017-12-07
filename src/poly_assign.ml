@@ -354,10 +354,6 @@ let basic_assigns v_set =
     
 let add_monomial_modifications 
     (var_used : P.Var.Set.t) (p_list:body) : lin_body * P.Monom.Set.t = 
-  let () = 
-    Mat_option.debug ~dkey:dkey_lowerizer ~level:5
-      "%i paths studied"
-      (List.length p_list) in
   
   let module M_set = P.Monom.Set in
   let module M_map = P.Monom.Map in

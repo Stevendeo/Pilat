@@ -40,7 +40,7 @@ module Make (P_assign : Poly_assign.S) =
 
     let vec_to_poly_string rev_base vec = 
       let poly = P_assign.vec_to_poly rev_base vec
-      in let () = Mat_option.feedback "Poly : %a" P.pp_print poly
+      in let () = Mat_option.debug ~dkey ~level:4 "Poly : %a" P.pp_print poly
       in P_assign.P.to_str poly
 
     let lower_bound (n:N_poly.Var.t) = 

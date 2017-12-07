@@ -1,5 +1,5 @@
-/*run.config
-   OPT: -pilat-degree 2 -pilat-lin
+/*run.config 
+  OPT: -pilat-degree 2 -pilat-lin
 */
 
 int main ()
