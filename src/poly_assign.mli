@@ -82,7 +82,7 @@ module type S = sig
 
   (** Returns the list of monomial assignments needed to linearize the loop, and the
       set of all monomials used. Raises Missing_variables if variables not present in the
-      set in argument are used as r-values in the body list. *)
+      map in argument are used as r-values in the body. *)
   val add_monomial_modifications : 
     P.Var.Set.t -> body -> lin_body * P.Monom.Set.t
 
@@ -109,6 +109,6 @@ module Make:
   functor 
     (M : Matrix)
     (Poly : Polynomial with type c = M.elt) -> S with type P.c = M.elt 
-						 and type P.v = Poly.v
-						 and type P.Var.Set.t = Poly.Var.Set.t
+						  and type P.v = Poly.v
+						  and type P.Var.Set.t = Poly.Var.Set.t
   

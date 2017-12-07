@@ -52,7 +52,15 @@ module Make = functor
             Stmt.Set.empty
             block
             
-	let exp_to_poly ?(nd_var=Varinfo.Map.empty) exp =
+        let prj_var_to_pvar : 
+          Assign.P.Var.Set.t -> (Assign.P.v -> Assign.P.v) -> Assign.P.v Assign.P.Var.Map.t
+          = fun set f -> 
+            P.Var.Set.fold
+              (fun v -> P.Var.Map.add v (f v))
+              set 
+              P.Var.Map.empty
+
+	let exp_to_poly ?(nd_var=Varinfo.Map.empty) var_map exp =
 	  let float_of_const c = 
 	    match c with
 	      CInt64 (i,_,_) -> Integer.to_float i
@@ -88,7 +96,7 @@ module Make = functor
 		    P.const new_rep
 		  with
 		    Not_found (* Varinfo.Map.find *) -> 
-		      P.monomial P.R.one [v,1]
+		      P.monomial P.R.one [(P.Var.Map.find v var_map),1]
 	      end
 	    | Lval _ -> assert false   
 	    | SizeOf _ | SizeOfE _ | SizeOfStr _ | AlignOf _ | AlignOfE _ -> assert false
@@ -123,16 +131,18 @@ module Make = functor
 	let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> Assign.t option = 
 	  function
 	  | Set ((Var v, _),e,_) -> 
-            if P.Var.Set.mem v varinfo_used 
-            then 
-              let assign = Assign.Assign (v,(exp_to_poly ~nd_var e)) in 
-              let () = 
-                Mat_option.debug ~dkey:dkey_stmt ~level:3 
-                  "Assign generated : %a" 
-                  Assign.pretty_assign assign in 
-              Some assign
-	    else None 
-	  | Call(_,{enode = Lval(Var v,NoOffset) },_,_) as i -> 
+            begin
+              try 
+                let v = P.Var.Map.find v varinfo_used in 
+                let assign = Assign.Assign (v,(exp_to_poly ~nd_var varinfo_used e)) in 
+                let () = 
+                  Mat_option.debug ~dkey:dkey_stmt ~level:3 
+                    "Assign generated : %a" 
+                    Assign.pretty_assign assign in 
+                Some assign
+	      with Not_found -> None 
+            end 
+          | Call(_,{enode = Lval(Var v,NoOffset) },_,_) as i -> 
 	    if (v.vorig_name = Mat_option.non_det_name) then None
 	    else 
 	      let () = Mat_option.feedback
@@ -204,7 +214,7 @@ module Make = functor
 	        Some (Assign.Other_stmt s)
                        
            and block_to_body
-               varinfo_used 
+               (varinfo_used : Assign.P.Var.t Assign.P.Var.Map.t)
                ?(nd_var = Varinfo.Map.empty) 
                break
                (head : Cil_types.stmt)

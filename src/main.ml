@@ -91,15 +91,7 @@ let loop_analyzer prj =
 	  in
 
 	  let (varinfos_used,nd_var) = Pilat_visitors.studied_variables b in
-         (* let varinfos_used = 
-            Cil_datatype.Varinfo.Set.fold 
-              (fun v acc -> 
-                 Cil_datatype.Varinfo.Set.add 
-                   (Cil.get_varinfo self#behavior v)
-                   acc)
-              varinfos_used
-              Cil_datatype.Varinfo.Set.empty
-          in*)
+          
 	  let num_variables = 
             Cil_datatype.Varinfo.Set.cardinal varinfos_used 
 	  in
@@ -121,8 +113,7 @@ let loop_analyzer prj =
             else Mat_option.debug ~level:2 "Loop is non deterministic : %i noises"(Cil_datatype.Varinfo.Map.cardinal nd_var)  in
 	  let (module Assign_type : 
                 Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
-		               and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
-	      ) = 
+		               and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t) = 
 
 
             match (Mat_option.Use_zarith.get ()), assign_is_deter with
@@ -137,6 +128,16 @@ let loop_analyzer prj =
 	  in
 	  (** 1st step : Computation of the block as a list of list of polynomials assignments. *)
 	  let module Cil_parser = Cil2assign.Make(Assign_type) in
+          let prj_var_pvar_map = 
+            Cil_parser.prj_var_to_pvar 
+              varinfos_used 
+              (Cil.get_varinfo self#behavior)
+          in
+          let new_var_set = 
+            Assign_type.P.Var.Map.fold
+              (fun _ v acc -> Assign_type.P.Var.Set.add v acc)
+              prj_var_pvar_map
+              Assign_type.P.Var.Set.empty in
           let polys_opt = 
 	    let out_of_loop_stmt =
             (Extlib.the breaks)
@@ -144,7 +145,7 @@ let loop_analyzer prj =
             try 
               Some 
                 (Cil_parser.block_to_body 
-                   varinfos_used 
+                   prj_var_pvar_map
                    ~nd_var 
                    breaks 
                    stmt 
@@ -181,7 +182,7 @@ let loop_analyzer prj =
                    (Format.pp_print_list Assign_type.pretty_assign) body;
 
             let assigns,bases_for_each_loop = 
-              Assign_type.add_monomial_modifications varinfos_used body
+              Assign_type.add_monomial_modifications new_var_set body
 
             in
             let base = Assign_type.monomial_base bases_for_each_loop 

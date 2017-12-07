@@ -26,7 +26,7 @@ open Poly_utils
 let dkey= Mat_option.register_category "assign:deter"
 
 module Float_deterministic : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
-					   and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t = 
+					   and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t= 
   Poly_assign.Make(Lacaml_matrix)(F_poly)
 
 module Q_deterministic : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t

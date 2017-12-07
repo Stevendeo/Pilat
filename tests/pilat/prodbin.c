@@ -15,7 +15,6 @@ int prodbin(int a, int b){
       if ( y % 2 ==1 )
 	{
 	  z = z+x;
-	  y = y-1;
 	}
       x = 2*x;
       y = y/2;

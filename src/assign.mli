@@ -30,10 +30,8 @@ module Float_non_deterministic : Poly_assign.S with type P.c = Poly_utils.N_poly
 					       and type P.v = Cil_datatype.Varinfo.t
 			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
 
-
 module Q_non_deterministic : Poly_assign.S  with type P.v = Cil_datatype.Varinfo.t
 			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
-
 
 module Determinizer : functor (ND_assign :Poly_assign.S) -> 
   sig

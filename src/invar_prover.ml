@@ -25,7 +25,8 @@ open Cil_datatype
 exception Bad_invariant
 
 module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
-			       and type P.Var.Set.t = Varinfo.Set.t) = 
+			       and type P.Var.Set.t = Varinfo.Set.t
+) = 
   struct 
     module Cil2Ply = Cil2assign.Make(A)
 
@@ -39,7 +40,9 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
   (* We can do a better job by searching for the best real for which it is
      an invariant. For now, we will just try on the nearest float. *)
       | LReal lr -> A.P.const (A.P.R.float_to_t lr.r_nearest)
-      | LEnum enumitem -> Cil2Ply.exp_to_poly enumitem.eival
+      | LEnum enumitem -> 
+        (* This case shouldn't contain any variable, so empty map *)
+        Cil2Ply.exp_to_poly A.Var.Map.empty enumitem.eival
 
     let poly_of_termlval (term_lhost,t_offset) = 
       let () = 

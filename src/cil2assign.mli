@@ -33,13 +33,21 @@ sig
   val stmt_set : Stmt.t list -> Stmt.Set.t
   
   (** 1. Cil2Pilat *)
+  
+  val prj_var_to_pvar : 
+    Assign.P.Var.Set.t -> (Assign.P.v -> Assign.P.v) -> Assign.P.v Assign.P.Var.Map.t
+
   (** Returns a polynomial representing the expression in argument *)
-  val exp_to_poly : ?nd_var:(float*float) Varinfo.Map.t  -> Cil_types.exp -> Assign.P.t
+  val exp_to_poly : 
+    ?nd_var:(float*float) Varinfo.Map.t  -> 
+    Assign.P.v Assign.P.Var.Map.t -> 
+    Cil_types.exp -> 
+    Assign.P.t
     
   (** Returns the loop body in the Pilat CFG. The first stmt is the loop entry, the list are the
       last statement studied, themselves excluded. *)
   val block_to_body : 
-    Assign.P.Var.Set.t -> 
+    Assign.P.v Assign.P.Var.Map.t -> 
     ?nd_var:(float*float) Varinfo.Map.t -> 
     Cil_types.stmt option -> 
     Cil_types.stmt ->  

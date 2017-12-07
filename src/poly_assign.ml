@@ -109,7 +109,11 @@ module type S = sig
 
 end
 
-module Make (M:Matrix) (Poly:Polynomial with type c = M.elt) = 
+module Make (M:Matrix) (Poly:Polynomial with type c = M.elt) : 
+ S with type P.c = M.elt 
+    and type P.v = Poly.v
+    and type P.Var.Set.t = Poly.Var.Set.t
+ = 
 struct 
 
   module M = M
@@ -365,8 +369,9 @@ let add_monomial_modifications
   let num_var_used =  P.Var.Set.cardinal var_used in
   let cst_vars = ref P.Monom.Set.empty in
   (* Registration of the monomials used in the transformation of each var. *)
+
   let rec reg_monomials a_list = 
-    Mat_option.debug ~dkey:dkey_lowerizer ~level:7
+    Mat_option.debug ~dkey:dkey_lowerizer ~level:5
       "Size of path : %i"
       (List.length a_list);
     List.iter 
@@ -376,17 +381,21 @@ let add_monomial_modifications
          Other_stmt _ -> ()
          | Assert (_,b1,b2) -> reg_monomials b1;reg_monomials b2
          | Assign (v,p) -> 
-	    Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
+	    Mat_option.debug ~dkey:dkey_lowerizer ~level:5
 	      "Assign treated : %a = %a" 
 	      Var.pretty v
 	      P.pp_print p;
 	    if P.Var.Set.mem v var_used
 	    then 
+              let () = 
+                Mat_option.debug ~dkey:dkey_lowerizer ~level:5
+                  "Variable %a treated"
+                  P.Var.pretty v in
 	      let useful_monoms = (P.get_monomials p) in
 	      let () = 
 		M_set.iter
 		  (fun m -> 
-		    Mat_option.debug ~dkey:dkey_lowerizer ~level:7 
+		    Mat_option.debug ~dkey:dkey_lowerizer ~level:5
 		      "Monomial treated : %a"
 		      P.Monom.pretty m;
 		    let var_set = 
@@ -396,7 +405,16 @@ let add_monomial_modifications
 		      if var_set 
 			|> (P.Var.Set.union var_used) 
 			|> P.Var.Set.cardinal <> num_var_used
-		      then raise Missing_variables
+		      then 
+                        let () = (** Error reached *)
+                          P.Var.Set.iter
+                            (fun v -> 
+                               Mat_option.debug ~dkey:dkey_lowerizer
+                                 "Possible variable: %a"
+                                 Var.pretty v)
+                            (P.Var.Set.union var_used var_set)
+                        in
+                        raise Missing_variables
 		      else 
 			P.Var.Set.iter
 			  (fun v -> 
@@ -421,7 +439,18 @@ let add_monomial_modifications
 	      in 	  
 		  
 	      Var.Hashtbl.replace var_monom_tbl v (M_set.union old_bind useful_monoms)
-	  
+            else
+              let () = 
+                Mat_option.debug ~dkey:dkey_lowerizer ~level:4
+                  "Variable %a does not appear in used variable set" 
+                  Var.pretty v
+              in
+              Var.Set.iter
+                (fun v -> 
+                   Mat_option.debug  ~dkey:dkey_lowerizer ~level:5
+                     "%a" Var.pretty v)  var_used
+                
+                
 	| Loop l -> reg_monomials l
       )
       a_list
