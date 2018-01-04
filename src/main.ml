@@ -72,10 +72,18 @@ let loop_analyzer prj =
       let fundec = match kf.fundec with
           Definition (f,_) -> f
         | Declaration _ -> assert false in
-                      
+      
+      (** Copying the treated stmt. Used to update varinfo ids. *)
+      let stmt = Cil.visitCilStmt self#plain_copy_visitor stmt in
       match stmt.skind with
       | Cil_types.Loop (annots,b,loc,conts,breaks) -> 
-
+        (*let b = List.map (Cil.visitCilStmt self#plain_copy_visitor) b in
+        *)
+        let copy_opt o = 
+          match o with 
+            Some s -> Some (Cil.visitCilStmt self#plain_copy_visitor s)
+          | None -> None in     
+        let conts,breaks = (copy_opt conts),(copy_opt breaks) in
         let t_whole = Sys.time() in
 
 
@@ -150,7 +158,9 @@ let loop_analyzer prj =
                    breaks 
                    stmt 
                    (Cil_parser.stmt_set b.bstmts)
-                   [stmt])
+                   [stmt]
+                   (Cil.get_stmt self#behavior)
+                )
 	    with Poly_assign.Not_solvable -> None 
 	  in
 	  match polys_opt with 
@@ -332,11 +342,11 @@ let loop_analyzer prj =
                     let typ = if typ_is_int then TInt(IInt,[]) else TFloat(FFloat,[])
                     in 
                     let blocks = 
-                      (*try*) Kernel_function.find_all_enclosing_blocks stmt
-                      (*with Not_found -> 
-                        Mat_option.fatal "stmt %a not registered, cannot be found by kernel" 
-                          Printer.pp_stmt stmt
-                      *)in
+                      try Kernel_function.find_all_enclosing_blocks stmt
+                      with Not_found -> 
+                        Mat_option.feedback "stmt %a not registered, cannot be found by kernel. Assuming empty list" 
+                          Printer.pp_stmt stmt; []
+                      in
 
                       let block = 
                       Cil_parser.block_linassign_to_block
@@ -570,8 +580,8 @@ let run () =
         file.globals;
 
       (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations, 
-                                            will be recomputed automatically. *)*)
-
+                                            will be recomputed automatically. *)
+      *)
       let lin_prj = 
 
         File.create_project_from_visitor "pilat_tmp_project" loop_analyzer

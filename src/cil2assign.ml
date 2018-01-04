@@ -157,7 +157,7 @@ module Make = functor
 	      
 	let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl   
 	  
-	let rec stmt_to_poly_assign varinfo_used nd_var break s : Assign.t option = 
+	let rec stmt_to_poly_assign varinfo_used nd_var break s get_stmt : Assign.t option = 
 	  
 	  try 
 	    Stmt.Hashtbl.find poly_hashtbl s 
@@ -199,7 +199,7 @@ module Make = functor
 		      b.bstmts
 		    ;
 		    
-                in let res = Assign.Loop (block_to_body varinfo_used break s (stmt_set b.bstmts)  ([s]))
+                in let res = Assign.Loop (block_to_body varinfo_used break s (stmt_set b.bstmts) [s] get_stmt)
                 in let () =   
 		    Mat_option.debug ~dkey:dkey_stmt
 		      "Nested loop done";
@@ -220,6 +220,7 @@ module Make = functor
                (head : Cil_types.stmt)
                (block_stmts : Stmt.Set.t)
                (last_stmts : Cil_types.stmt list)
+               (get_stmt : stmt -> stmt)
              : Assign.body = 
 
              let end_test s = 
@@ -238,17 +239,17 @@ module Make = functor
 	    
 
 	  let rec dfs stmt : (Assign.body) = 
+            let project_stmt = get_stmt stmt in 
 	    Mat_option.debug ~dkey:dkey_stmt ~level:2
 	      "Stmt %a.%i studied" 
 	      Stmt.pretty stmt stmt.sid
 	    ;
-	    if end_test stmt
+	    if end_test project_stmt
 	    then 
 	      begin  
-         let pp_stmt fmt s = Format.fprintf fmt "%a.%i" Printer.pp_stmt s s.sid in 
 		Mat_option.debug ~dkey:dkey_stmt ~level:3
 		  "Not in %a, end of dfs. TO REMOVE"
-                (Format.pp_print_list pp_stmt) (Stmt.Set.elements block_stmts)
+                (Format.pp_print_list Printer.pp_stmt) (Stmt.Set.elements block_stmts)
   ;
                 []
 	      end
@@ -258,7 +259,8 @@ module Make = functor
 		  "Stmt never seen";
               try
 		  
-                let poly_opt = stmt_to_poly_assign varinfo_used nd_var break stmt in
+                let poly_opt = 
+                  stmt_to_poly_assign varinfo_used nd_var break project_stmt get_stmt in
     
                 let succs = 
                   match stmt.skind with
@@ -319,9 +321,9 @@ module Make = functor
                       [] -> []
                       | hd :: tl -> 
                         let bdy_less_first = 
-                          block_to_body varinfo_used ~nd_var break hd (stmt_set tl) last_stmts
+                          block_to_body varinfo_used ~nd_var break hd (stmt_set tl) last_stmts get_stmt
                         in
-                        match stmt_to_poly_assign varinfo_used nd_var break hd  with 
+                        match stmt_to_poly_assign varinfo_used nd_var break hd get_stmt  with 
                           None -> bdy_less_first
                         | Some s -> s :: bdy_less_first
                     in

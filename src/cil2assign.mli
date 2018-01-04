@@ -53,6 +53,7 @@ sig
     Cil_types.stmt ->  
     Stmt.Set.t ->
     Cil_types.stmt list -> 
+    (Cil_types.stmt -> Cil_types.stmt) -> 
     Assign.body
 
 
