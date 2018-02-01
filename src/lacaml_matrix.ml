@@ -100,6 +100,22 @@ let sub m n =
 
 let sub_vec v w = Lacaml__D.Vec.sub v w 
 
+let collinear v1 v2 = 
+  let size = Lacaml__D.Vec.dim v1 in
+  let rec __col (index,coef) = 
+    if index >= size then true
+    else if (coef *. v1.{index})= v2.{index}
+    then __col ((index + 1),coef)
+    else false
+  in
+  let rec good_coef_index idx =
+    if idx >= size then (size,0.)
+    else if v1.{idx} = 0. then good_coef_index (idx + 1)
+    else (idx,(v2.{idx} /. v1.{idx}))
+  in
+  __col (good_coef_index 0)
+    
+
 let transpose m = Lacaml__D.Mat.transpose_copy m
 
 let scal_mul m a = map (fun elt -> a *. elt) m

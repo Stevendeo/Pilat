@@ -493,23 +493,21 @@ F.print Format.std_formatter (F.add (F.monomial 2. []) j);;
 F.print Format.std_formatter (F.compo (F.add i j) "b" (F.add (F.const 2.) j));;
 *)
 
-type var = | X
-
-module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var) 
+module XMake (A:Ring) : (Polynomial with type c = A.t and type v = unit) 
  = 
   struct include Make 
     (A) 
     (struct
       include Datatype.Make_with_collections 
        (struct  
-	 type t = var
+	 type t = unit
 	 let compare _ _ = 0
-	 let copy _ = X
+	 let copy _ = ()
 	 let name = "X_type"  ^ (string_of_int (Xmod_id.next ()))
 	 let hash = Hashtbl.hash
 	 let rehash s = s
 	 let structural_descr = Structural_descr.t_abstract
-	 let reprs = [X]
+	 let reprs = [()]
 	 let equal = (=)
 	 let internal_pretty_code = Datatype.undefined
 	 let pretty fmt _ = Format.fprintf fmt "X"
@@ -522,8 +520,67 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = var)
       let min _ = assert false     
       let to_nvars _ = assert false
      end
-    )
-    
+    ) 
+
+    let rootsd0 p = 
+      is_const p && A.equal A.zero (coef (eval p () A.zero) empty_monom)
+      
+      
+    let rootsd1 p = (*assert deg p = 1; p = ax + b *) 
+      let a = coef p (mono_minimal [(),1])
+      and b = coef p empty_monom
+      in
+      [A.div 
+        (A.sub A.zero b)
+        a]      
+
+    let rootsd2 p = (*assert deg p = 1; p = ax2 + bx + c *) 
+      let a = coef p (mono_minimal [(),2]) 
+      and b = coef p (mono_minimal [(),1])
+      and c = coef p empty_monom
+      in
+
+      let d = 
+        A.sub 
+          (A.mul b b) 
+          (A.mul (A.float_to_t 4.) (A.mul a c))
+      in
+      let mb = A.sub A.zero b
+      and ta = A.mul (A.float_to_t 2.) a in
+      if A.equal d A.zero
+      then [A.div mb ta]
+      else if A.leq d A.zero then []
+      else 
+        let sqr = d |> A.t_to_float |> sqrt |> A.float_to_t in 
+        [A.div (A.add mb sqr) ta; A.div (A.sub mb sqr) ta]
+
+      
+    (** For generalized eigenvectors, knowing if all roots of a polynomial 
+        are negative allows to give new invariants.  *)
+    let negative_roots p =
+      match deg p with
+        0 -> assert false
+      | 1 -> List.for_all (A.geq A.zero) (rootsd1 p)
+      | 2 -> List.for_all (A.geq A.zero) (rootsd2 p)
+      | _ -> 
+        let res = ref true in
+        let _ = 
+          Monom.Set.fold
+            (fun monom sgn (* Some true -> + / Some false -> - *) -> 
+               if !res = false then sgn else
+                 let c = coef p monom in 
+                 if A.equal c A.zero then sgn
+                 else 
+                   let coef_sign = A.geq c A.zero in             
+                   match sgn with
+                     None -> Some coef_sign
+                   | Some t -> if t = coef_sign then Some t 
+                     else let () = res:=false in None
+            )
+            (get_monomials p)
+            None
+        in
+        !res
   end
 ;;
   

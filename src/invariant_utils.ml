@@ -22,6 +22,7 @@
 
 open Pilat_matrix
 
+let dkey_integ = Mat_option.register_category "invar:integrate"
 let dkey_inter = Mat_option.register_category "invar:lacaml:inter"
 let dkey_redun = Mat_option.register_category "invar:redun"
 
@@ -41,7 +42,6 @@ let pp_limit fmt = function
   | Altern ->  Format.fprintf fmt "Altern"
   | One ->  Format.fprintf fmt "One" 
   | Zero ->  Format.fprintf fmt "Zero"
-
 
 type 'v inv = limit * 'v list
 
@@ -134,6 +134,45 @@ let invariant_computation is_deter mat : invar list =
 	)
 	[] 
 	evs
+
+let generalized_invariant_computation is_deter mat order invar_list : invar list = 
+  let test_ok = is_deter && order > 1 in 
+  if test_ok then
+    let accepted_ev = function 
+      | One -> true
+      | _ -> false in
+    let ev_base = 
+      List.filter
+        (fun (lim,_) -> accepted_ev lim)
+        invar_list 
+    in
+    List.fold_left
+      (fun acc (lim,invar) -> 
+         if invar = [] || lim = Altern then acc
+         else
+           let ev = match lim with 
+               One -> A.R.one
+             | Zero -> A.R.zero
+             | Convergent e | Divergent e -> A.R.float_to_t e
+             | _ -> assert false
+           in 
+           let matt = (A.M.transpose mat) in
+           let mat_dim = A.M.get_dim_row mat in
+           let studied_mat = 
+             A.M.pow
+               (A.M.sub matt (A.M.scal_mul (A.M.identity mat_dim) ev))
+               order
+           in
+           let null_space = A.M.nullspace studied_mat in 
+           let new_gen_vecs = 
+             List.filter
+               (fun vec -> List.exists (A.M.collinear vec) invar)
+               null_space
+           in
+           (lim,new_gen_vecs) :: acc           
+    ) [] ev_base
+  else []
+
 
 let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) = 
    if b1 = [] || b2 = [] then [||]
@@ -296,15 +335,26 @@ let to_invar ((lim,inv):q_invar) =
 
 
 let integrate_vec (qvec : QMat.vec) : QMat.vec = 
-  
-  let prod_den = ref Q.one in
- 
-  QMat.create_vec (qvec |> QMat.vec_to_array |> Array.length)
-    (fun i -> 
-      let elt = QMat.get_coef_vec i qvec in
-      let den = Q.den elt in 
-      let () = prod_den := (Q.mul !prod_den (Q.of_bigint den)) in
-      Q.mul elt !prod_den)  
+  let () = 
+    Mat_option.debug ~dkey:dkey_integ 
+      "Integrating %a"
+      QMat.pp_vec qvec in 
+
+  let rec __integ i den = 
+    if i = (qvec |> QMat.vec_to_array |> Array.length) then den
+    else 
+      let den_coef = Q.den (QMat.get_coef_vec i qvec)
+      in 
+      if Z.equal (Z.rem den den_coef) Z.zero
+      then __integ (i+1) den
+      else  __integ (i+1) (Z.mul den den_coef) in 
+  let res = 
+    QMat.scal_mul_vec qvec (Q.(~$$) (__integ 0 Z.one))
+  in let () = 
+       Mat_option.debug ~dkey:dkey_integ 
+         "Result : %a"
+         QMat.pp_vec res in res
+
 
 let integrate_invar  ((lim,inv):invar) = 
   lim, 

@@ -9,8 +9,8 @@ int petter(int N){
   
   while(y < N)
     {
-      x += y;
-      y++;
+      x++;
+      y+=x;
     }
 
   /*@ assert x > 0; */

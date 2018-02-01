@@ -232,6 +232,8 @@ module type Matrix = sig
   val sub : t -> t -> t
   val sub_vec : vec -> vec -> vec
 
+  val collinear : vec -> vec -> bool
+
   val transpose : t -> t
 
   val scal_mul : t -> elt -> t

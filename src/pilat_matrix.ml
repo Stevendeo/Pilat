@@ -70,7 +70,7 @@ struct
 
   
   let identity n = create_mat n n (fun i j -> if i = j then F.one else F.zero)
-      
+     
   let transpose mat = 
     let d1 = Array.length mat.m in
     if d1 = 0 then mat
@@ -156,6 +156,7 @@ struct
   let map (f : elt -> elt) = mapi (fun _ _ -> f) 
 
 (* 4. Matrix operations *)
+     
 
   let add m1 m2 = 
     if m1.rows <> m2.rows || m1.cols <> m2.cols
@@ -225,7 +226,24 @@ struct
     in
       
     create_mat m1.rows m2.cols scal
- 
+
+  let collinear v1 v2 = 
+    let size = Array.length v1 in
+    let rec __col (index,coef) = 
+      if index >= size then true
+      else if (F.equal) (F.mul coef v1.(index)) v2.(index)
+      then __col ((index + 1),coef)
+      else false
+    in
+    let rec good_coef_index idx =
+      if idx >= size then (size,F.zero)
+      else if F.equal v1.(idx) F.zero then good_coef_index (idx + 1)
+      else (idx,(F.div v2.(idx) v1.(idx)))
+    in
+    __col (good_coef_index 0)
+    
+        
+    
   let scal_prod v1 v2 =       
     if Array.length v1 <> Array.length v2
     then error_vec v1 v2 else
@@ -435,7 +453,7 @@ struct
 
 (** Polynomial for matrix eigenvalue search *)
 
-  module XQ_poly : Polynomial with type c = Q.t and type v = Poly.var = Poly.XMake(Qring) 
+  module XQ_poly : Polynomial with type c = Q.t and type v = unit = Poly.XMake(Qring) 
 				     
 (*   module F_Set:Set.S with type elt = F.t = Set.Make (F) *)
   module Z_Set :Set.S with type elt = Z.t = Set.Make (Z)
@@ -457,12 +475,12 @@ struct
       then 
 	let mk_coef = F.div (trace mk) (index |> float_of_int |> F.float_to_t) in
 	
-	let new_monom = (XQ_poly.monomial (f_to_q (F.sub F.zero mk_coef)) [Poly.X,(dim-index)]) in
+	let new_monom = (XQ_poly.monomial (f_to_q (F.sub F.zero mk_coef)) [(),(dim-index)]) in
 	
 	let mkpo =  mul mat (sub mk (scal_mul identity mk_coef)) in
 
 	XQ_poly.add new_monom (trace_mk (index + 1) mkpo)
-      else (XQ_poly.monomial (f_to_q F.one) [Poly.X,dim])
+      else (XQ_poly.monomial (f_to_q F.one) [(),dim])
 	
     in
     let res = trace_mk 1 mat 
@@ -471,8 +489,8 @@ struct
 
 (** Rational eigenvalues of a matrix. Computation of the 
     rational roots of the characteristic polynomial.
-    ^
-    /|\
+      ^
+     /|\
     /_o_\ 
     
     If the characteristic polynomial is to big, will only test
@@ -486,13 +504,13 @@ struct
     let integrate_poly p = (* returns the main coefficient of the polynomial after multiplying it
 			      by a scalar such that the polynomial have only integer coefficients.*)
       let rec integ xn p = 
-	if XQ_poly.deg_of_var xn Poly.X = deg_poly
+	if XQ_poly.deg_of_var xn () = deg_poly
 	then Z.one (* by construction, its xn's coef is an integer *)
 	else 
 	  let den_of_coef = 
 	    Q.den (XQ_poly.coef p xn)
 	  in
-	  let xnpo = (XQ_poly.mono_mul xn (XQ_poly.mono_minimal [Poly.X,1]))
+	  let xnpo = (XQ_poly.mono_mul xn (XQ_poly.mono_minimal [(),1]))
 	  in 
 	  let k = 
 	    integ xnpo (XQ_poly.scal_mul (Q.(///) den_of_coef Z.one) p) in
@@ -517,8 +535,8 @@ struct
 	Mat_option.debug ~dkey:dkey_ev ~level:4
 	  "Coef for div_by_x : %a" Q.pp_print coef;
 	if Q.equal coef Q.zero
-	then __div_by_x (XQ_poly.mono_mul monomial (XQ_poly.mono_minimal [Poly.X,1]))
-	else (coef,(XQ_poly.deg_of_var monomial Poly.X))
+	then __div_by_x (XQ_poly.mono_mul monomial (XQ_poly.mono_minimal [(),1]))
+	else (coef,(XQ_poly.deg_of_var monomial ()))
       in
       __div_by_x XQ_poly.empty_monom
     in
@@ -599,7 +617,7 @@ struct
     in
     let res = Q_Set.filter 
       (fun elt -> 
-	let eval_poly = XQ_poly.eval poly Poly.X elt in
+	let eval_poly = XQ_poly.eval poly () elt in
 	Mat_option.debug ~dkey:dkey_ev ~level:4
 	  "Root candidate : %a. Returns %a" Q.pp_print elt XQ_poly.pp_print eval_poly;
 	Q.equal (XQ_poly.coef eval_poly XQ_poly.empty_monom) Q.zero

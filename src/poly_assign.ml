@@ -689,7 +689,7 @@ let vec_to_poly rev_base vec =
 		    poly_affect) 		
 	      ) in
  	    Mat_option.debug ~dkey:dkey_loop_mat ~level:4
- 	      "New matrices for %a = %a :"
+ 	      "New matrices for %a =\n %a :"
  	      P.Monom.pretty v
  	      P.pp_print poly_affect; 	      	      
 	    List.iter
