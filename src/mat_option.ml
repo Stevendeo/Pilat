@@ -107,6 +107,12 @@ module Linearized_file =
      end)
 
 
+module Gen_invar = 
+  False
+    (struct 
+      let option_name = "-pilat-gen"
+      let help = "(experimental) Generalized eigenvectors are used as invariants when possible"
+     end)
 
 module Optim_start = String
     (struct

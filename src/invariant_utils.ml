@@ -137,7 +137,7 @@ let invariant_computation is_deter mat : invar list =
 
 let generalized_invariant_computation is_deter mat order invar_list : invar list = 
   let test_ok = is_deter && order > 1 in 
-  if test_ok then
+  if not test_ok then [] else
     let accepted_ev = function 
       | One -> true
       | _ -> false in
@@ -171,8 +171,6 @@ let generalized_invariant_computation is_deter mat order invar_list : invar list
            in
            (lim,new_gen_vecs) :: acc           
     ) [] ev_base
-  else []
-
 
 let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) = 
    if b1 = [] || b2 = [] then [||]

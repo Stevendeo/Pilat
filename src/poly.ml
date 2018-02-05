@@ -493,7 +493,7 @@ F.print Format.std_formatter (F.add (F.monomial 2. []) j);;
 F.print Format.std_formatter (F.compo (F.add i j) "b" (F.add (F.const 2.) j));;
 *)
 
-module XMake (A:Ring) : (Polynomial with type c = A.t and type v = unit) 
+module XMake (A:Ring) 
  = 
   struct include Make 
     (A) 
@@ -522,10 +522,44 @@ module XMake (A:Ring) : (Polynomial with type c = A.t and type v = unit)
      end
     ) 
 
-    let rootsd0 p = 
-      is_const p && A.equal A.zero (coef (eval p () A.zero) empty_monom)
+
+    let eval p v = coef (eval p () v) empty_monom
+
+    let first_coef p = 
+      coef p (mono_minimal [(), deg p])
       
+    let div p1 p2 = 
+      let o_over_fp2 = A.div A.one (first_coef p2)
+      and dp2 = deg p2 in
+
+      let rec __div q r = 
+        let new_monom_deg = deg r - dp2 in 
+        if new_monom_deg < 0 then (q,r)
+        else 
+          let new_monom = mono_minimal [(),new_monom_deg] 
+          in let fr = first_coef r in
+          let new_coef = A.mul o_over_fp2 fr in 
+          let new_q = add q (mono_poly new_coef new_monom) in
+          let new_r = sub r (mul new_q p2) in
+          __div new_q new_r
+      in
       
+      div p1 p2
+
+
+    let root_multiplicity p v = 
+      let simple_poly = 
+        add 
+          (monomial A.one [(),1])
+          (const (A.sub A.zero v)) in
+      let rec __multip p res =
+        if A.equal (eval p v) A.zero
+        then __multip (div p simple_poly) (res + 1)
+        else res
+      in
+      __multip p 0
+
+
     let rootsd1 p = (*assert deg p = 1; p = ax + b *) 
       let a = coef p (mono_minimal [(),1])
       and b = coef p empty_monom

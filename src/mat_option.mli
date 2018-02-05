@@ -44,6 +44,8 @@ module Redundancy : Parameter_sig.Bool
 
 module Linearized_file : Parameter_sig.Bool
 
+module Gen_invar : Parameter_sig.Bool
+
 module Optim_start: Parameter_sig.String
 module Optim_iters: Parameter_sig.String
 module Optim_epsilon: Parameter_sig.String

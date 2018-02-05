@@ -31,6 +31,22 @@ module Make : functor (A : Ring) (V : Pilat_math.Variable) ->
 
 (** Polynomial with a unique variable, X. *)
 module XMake : functor (A : Ring) -> (
-    Polynomial with type c = A.t and type v = unit
+    sig 
+      include Polynomial with type c = A.t and type v = unit
+
+      (** Simple version of the polynomial euclidian division. div a b = (q,r) where a = qb + r *)
+      val div : t -> t -> (t*t) 
+
+      (** Simple version of the polynomial evaluation *)
+      val eval : t -> v -> v 
+
+      (** Returns the multiplicity of a given root. Returns 0 if it is not a root. *)
+      val root_multiplicity : t -> v -> int
+
+      (** Returns false if there exist roots strictly higher than one. 
+          For generalized eigenvectors, knowing if all roots of a polynomial 
+          are negative allows to give new invariants.  *)
+      val negative_roots : t -> bool
+    end 
   ) 
 			

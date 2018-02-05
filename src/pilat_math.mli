@@ -132,7 +132,7 @@ sig
     
   val deg_monom : Monom.t -> int
   val deg_of_var : Monom.t -> v -> int
-    
+
   val mono_mul : Monom.t -> Monom.t -> Monom.t
   val coef : t -> Monom.t -> c
     
