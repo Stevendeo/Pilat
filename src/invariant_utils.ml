@@ -135,43 +135,51 @@ let invariant_computation is_deter mat : invar list =
 	[] 
 	evs
 
-let generalized_invariant_computation is_deter mat order invar_list : invar list = 
-  let test_ok = is_deter && order > 1 in 
+let generalized_invariants is_deter ev mat : (int * A.M.vec) list = 
+  let test_ok = is_deter in 
   if not test_ok then [] else
-    let accepted_ev = function 
-      | One -> true
-      | _ -> false in
-    let ev_base = 
-      List.filter
-        (fun (lim,_) -> accepted_ev lim)
-        invar_list 
-    in
-    List.fold_left
-      (fun acc (lim,invar) -> 
-         if invar = [] || lim = Altern then acc
-         else
-           let ev = match lim with 
-               One -> A.R.one
-             | Zero -> A.R.zero
-             | Convergent e | Divergent e -> A.R.float_to_t e
-             | _ -> assert false
-           in 
-           let matt = (A.M.transpose mat) in
-           let mat_dim = A.M.get_dim_row mat in
-           let studied_mat = 
-             A.M.pow
-               (A.M.sub matt (A.M.scal_mul (A.M.identity mat_dim) ev))
-               order
-           in
-           let null_space = A.M.nullspace studied_mat in 
-           let new_gen_vecs = 
-             List.filter
-               (fun vec -> List.exists (A.M.collinear vec) invar)
-               null_space
-           in
-           (lim,new_gen_vecs) :: acc           
-    ) [] ev_base
+    let order = A.M.get_dim_col mat in
 
+    let matt = (A.M.transpose mat) in
+    let mat_dim = A.M.get_dim_row mat in
+    let studied_mat = 
+      A.M.pow
+        (A.M.sub matt (A.M.scal_mul (A.M.identity mat_dim) ev))
+        order
+    in
+    let unordered_invariants = 
+      A.M.nullspace studied_mat 
+    in
+    
+    let scal_mul_list coef = 
+      List.map (fun (i,vec) -> (i,A.M.scal_mul_vec vec coef)) 
+    in
+    
+    let rec order_invars (to_treat : A.M.vec list) treated branches = 
+      match to_treat with
+        [] -> branches
+      | hd :: tl -> 
+        if List.mem hd treated then order_invars tl treated branches
+        else let ahdmhd = A.M.sub_vec (A.M.mul_vec mat hd) hd in
+        if A.M.v_is_zero ahdmhd
+        then 
+          order_invars tl (hd :: treated) ([0,hd] :: branches) 
+        else 
+          List.fold_left
+            (fun acc (branch : (int * A.M.vec) list) -> 
+               let (idx,fst_vec) = List.hd branch in
+               if A.M.collinear fst_vec ahdmhd
+               then 
+                 let coef =  A.M.div_vec fst_vec ahdmhd in
+                 ((idx+1,fst_vec) :: (scal_mul_list coef branch))::acc  
+               else branch :: acc
+            )
+            []
+            branches
+    in      
+    (order_invars unordered_invariants [] []) |> List.flatten
+          
+      
 let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) = 
    if b1 = [] || b2 = [] then [||]
    else 

@@ -53,6 +53,9 @@ struct
       m = Array.make_matrix rows cols F.zero
     } 
 
+  let v_is_zero v = Array.for_all (fun c -> F.equal c F.zero) v
+  let is_zero m =  Array.for_all v_is_zero m.m
+
   let create_mat r c (f: int -> int -> elt) =  
     let m =     
       Array.init r
@@ -227,13 +230,13 @@ struct
       
     create_mat m1.rows m2.cols scal
 
-  let collinear v1 v2 = 
+  let div_vec v1 v2 = 
     let size = Array.length v1 in
     let rec __col (index,coef) = 
-      if index >= size then true
-      else if (F.equal) (F.mul coef v1.(index)) v2.(index)
+      if index >= size then coef
+      else if F.equal (F.mul coef v1.(index)) v2.(index)
       then __col ((index + 1),coef)
-      else false
+      else (failwith "Not divisible")
     in
     let rec good_coef_index idx =
       if idx >= size then (size,F.zero)
@@ -241,9 +244,10 @@ struct
       else (idx,(F.div v2.(idx) v1.(idx)))
     in
     __col (good_coef_index 0)
-    
+
+  let collinear v1 v2 = 
+    try ignore (div_vec v1 v2); true with _ -> false
         
-    
   let scal_prod v1 v2 =       
     if Array.length v1 <> Array.length v2
     then error_vec v1 v2 else

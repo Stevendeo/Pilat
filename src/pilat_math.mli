@@ -191,6 +191,9 @@ module type Matrix = sig
   (** Matrix creation *)
   (* All function asking for coordonates is always row first. Index start at 0. *)
   val zero : int -> int -> t
+  val is_zero : t -> bool
+  val v_is_zero : vec -> bool
+
   val create_mat : int -> int -> (int -> int -> elt) -> t
   val create_vec : int -> (int -> elt) -> vec 
   val copy_mat : t -> t
@@ -232,6 +235,8 @@ module type Matrix = sig
   val sub : t -> t -> t
   val sub_vec : vec -> vec -> vec
 
+  (** Given v1 v2, computes lambda such that v2 = lambda*v1. *)
+  val div_vec : vec -> vec -> elt
   val collinear : vec -> vec -> bool
 
   val transpose : t -> t

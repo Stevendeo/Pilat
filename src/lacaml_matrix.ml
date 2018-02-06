@@ -39,6 +39,8 @@ let error m1 m2 =
 	    Lacaml__D.Mat.dim2 m2))
 *)
 let zero = Lacaml__D.Mat.make0
+
+
 let create_mat d1 d2 f = Lacaml__D.Mat.init_rows d1 d2 (fun i j -> f (i-1) (j-1))
 let create_vec size f = 
   Lacaml__D.Vec.init
@@ -75,6 +77,9 @@ let get_dim_col = Lacaml__D.Mat.dim2
 let vec_to_array = Lacaml__D.Vec.to_array
 let vec_from_array = Lacaml__D.Vec.of_array
 
+let v_is_zero v = Array.for_all (fun c -> c = 0.) (vec_to_array v)
+let is_zero m =  Array.for_all v_is_zero (rows m)
+
 (*let to_array m = Lacaml__D.Mat.to_array m
 let from_array m =  Lacaml__D.Mat.of_col_vecs m
 *)
@@ -100,13 +105,13 @@ let sub m n =
 
 let sub_vec v w = Lacaml__D.Vec.sub v w 
 
-let collinear v1 v2 = 
+let div_vec (v1 : Lacaml__D.vec) (v2 : Lacaml__D.vec) = 
   let size = Lacaml__D.Vec.dim v1 in
   let rec __col (index,coef) = 
-    if index >= size then true
+    if index >= size then coef
     else if (coef *. v1.{index})= v2.{index}
     then __col ((index + 1),coef)
-    else false
+    else (failwith "Not_divisible")
   in
   let rec good_coef_index idx =
     if idx >= size then (size,0.)
@@ -114,6 +119,9 @@ let collinear v1 v2 =
     else (idx,(v2.{idx} /. v1.{idx}))
   in
   __col (good_coef_index 0)
+    
+let collinear v1 v2 = 
+  try ignore (div_vec v1 v2); true with _ -> false 
     
 
 let transpose m = Lacaml__D.Mat.transpose_copy m

@@ -523,12 +523,12 @@ module XMake (A:Ring)
     ) 
 
 
-    let eval p v = coef (eval p () v) empty_monom
+    let x_eval p v = coef (eval p () v) empty_monom
 
     let first_coef p = 
       coef p (mono_minimal [(), deg p])
       
-    let div p1 p2 = 
+    let eucli_div p1 p2 = 
       let o_over_fp2 = A.div A.one (first_coef p2)
       and dp2 = deg p2 in
 
@@ -544,7 +544,7 @@ module XMake (A:Ring)
           __div new_q new_r
       in
       
-      div p1 p2
+      __div p1 p2
 
 
     let root_multiplicity p v = 
@@ -553,7 +553,7 @@ module XMake (A:Ring)
           (monomial A.one [(),1])
           (const (A.sub A.zero v)) in
       let rec __multip p res =
-        if A.equal (eval p v) A.zero
+        if A.equal (x_eval p v) A.zero
         then __multip (div p simple_poly) (res + 1)
         else res
       in

@@ -21,11 +21,11 @@
 (**************************************************************************)
 
 type limit = 
-  Convergent of float
-| Divergent of float
-| Altern
-| One
-| Zero
+    Convergent of float
+  | Divergent of float
+  | Altern
+  | One
+  | Zero
 
 val pp_limit : Format.formatter -> limit -> unit
 
@@ -53,8 +53,10 @@ module Make : functor
   (** Returns the rational eigenspaces union of the floating matrix 
       as a list of bases. If assignments are non deterministic, the boolean 
       must be set to true *)
-	val invariant_computation : bool -> mat -> invar list
-	  
+        val invariant_computation : bool -> mat -> invar list  
+        
+        val generalized_invariants : bool -> A.M.elt -> mat -> (int * A.M.vec) list
+
   (** Intersects two union of vectorial spaces. *)
 	val intersection_invariants :  invar list -> invar list -> invar list
 	  

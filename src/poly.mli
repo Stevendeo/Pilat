@@ -35,13 +35,13 @@ module XMake : functor (A : Ring) -> (
       include Polynomial with type c = A.t and type v = unit
 
       (** Simple version of the polynomial euclidian division. div a b = (q,r) where a = qb + r *)
-      val div : t -> t -> (t*t) 
+      val eucli_div : t -> t -> (t*t) 
 
       (** Simple version of the polynomial evaluation *)
-      val eval : t -> v -> v 
+      val x_eval : t -> c -> c 
 
       (** Returns the multiplicity of a given root. Returns 0 if it is not a root. *)
-      val root_multiplicity : t -> v -> int
+      val root_multiplicity : t -> c -> int
 
       (** Returns false if there exist roots strictly higher than one. 
           For generalized eigenvectors, knowing if all roots of a polynomial 
