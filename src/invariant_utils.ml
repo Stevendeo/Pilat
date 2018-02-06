@@ -367,6 +367,16 @@ let integrate_invar  ((lim,inv):invar) =
   (List.map 
      (fun vec -> vec |> vec_zarith |> integrate_vec |> to_vec)) inv
   
+let is_one imap vec = 
+  A.Imap.for_all
+    (fun i monom -> 
+       let coef_vec = A.M.get_coef_vec i vec in 
+       not (A.P.Monom.equal monom A.P.empty_monom) || A.P.R.equal coef_vec A.P.R.one)
+    imap 
+
+let invar_init_sign imap vec = 
+  if is_one imap vec then Some true else None
+
 let vec_to_poly imap vec =
       A.Imap.fold
 	(fun i monom acc -> 
