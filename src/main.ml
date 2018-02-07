@@ -21,7 +21,8 @@
 (**************************************************************************)
 
 open Cil_types
-open Cil
+open Cil 
+open Invariant_utils
 
 (*open Logic_const
 *)
@@ -275,7 +276,10 @@ let loop_analyzer prj =
 
 	             Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
 	             List.iteri
-	               (fun i (limit,invars) -> 
+	               (fun i invar -> 
+                          match invar with 
+                            Generalized _ -> assert false | 
+                            Eigenvector (limit,invars) ->  
 	                  let () = 
 			    Mat_option.debug ~dkey:dkey_stmt
 		              "Invariant %s %i :" (Invariant_maker.lim_to_string limit)  (i + 1) in
@@ -295,9 +299,24 @@ let loop_analyzer prj =
                   matrices
               in
 
-              let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t_invar in
-              (** Redundancy analysis *)
+              
+              (** Generalized invariants *)
+              let gen_invar = 
+                if Mat_option.Gen_invar.get () || (List.length matrices = 1)
+                then 
+                  Invariant_maker.generalized_invariants 
+                    assign_is_deter 
+                    rev_base
+                    Assign_type.R.one 
+                    (List.hd matrices) 
+                else []
+              in
 
+              let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t_invar 
+              in
+
+              (** Redundancy analysis *)
+(*
               let t_redundancy = Sys.time ()
               in	
               let whole_loop_invar =
@@ -305,8 +324,8 @@ let loop_analyzer prj =
 		  List.map
 	            (fun (mat,invars) -> 
 	               mat,List.map
-	                 (fun (l,invar) ->
-			    l,List.filter
+	                 (fun invar ->
+			    List.filter
 		              (fun vec -> 
 		                 not (Invariant_maker.redundant_invariant rev_base vec invar)
 		              )
@@ -319,7 +338,7 @@ let loop_analyzer prj =
 		  whole_loop_invar
               in
               Mat_option.redun_timer := !Mat_option.redun_timer +. Sys.time () -. t_redundancy;
-              
+  *)            
               let new_loop,monomial_vars =   
                 if Mat_option.Linearized_file.get () 
                 then 
@@ -409,7 +428,7 @@ let loop_analyzer prj =
                       kf
                       n_loop
                       rev_base 
-                      inter_invar_list
+                      (gen_invar@inter_invar_list)
                       Cil_datatype.Varinfo.Map.empty
                       num_variables 
                   
@@ -530,16 +549,28 @@ let run_input_mat file =
   (** 4. Invariant as polynomials *)
 
   List.iter
-    (fun (limit,inv) -> 
-       Mat_option.feedback "%s :\n----\n" (I.lim_to_string limit);
-       List.iter
-         (fun vec -> 
-            let p = 
-              I.vec_to_poly 
-                var_map 
-                vec in 
-            Mat_option.feedback "\n%a\n--" A.P.pp_print p) inv;       
-       Mat_option.feedback "--"
+    (fun invar ->
+       
+       match invar with
+         Eigenvector (limit,inv) -> 
+         Mat_option.feedback "Eigenvector invariant. Type %s :\n----\n" (I.lim_to_string limit);
+         List.iter
+           (fun vec -> 
+              let p = 
+                I.vec_to_poly 
+                  var_map 
+                  vec in 
+              Mat_option.feedback "\n%a\n--" A.P.pp_print p) inv;       
+         Mat_option.feedback "--"
+       | Generalized (i,sgn,inv) -> 
+         Mat_option.feedback "Generalized invariant. Degree %i, sign %a.\n----\n"
+           i 
+           Invariant_utils.pp_sgn sgn;
+         let p = 
+           I.vec_to_poly 
+             var_map 
+             inv in 
+         Mat_option.feedback "\n%a\n--" A.P.pp_print p
     )
     invars
 

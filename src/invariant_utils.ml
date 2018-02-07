@@ -36,6 +36,11 @@ type limit =
 | One
 | Zero
 
+type sgn = 
+  | Positive
+  | Negative
+  | Unknown
+
 let pp_limit fmt = function
     Convergent f -> Format.fprintf fmt "Convergent : %f" f
   | Divergent f ->  Format.fprintf fmt "Divergent : %f" f
@@ -43,16 +48,27 @@ let pp_limit fmt = function
   | One ->  Format.fprintf fmt "One" 
   | Zero ->  Format.fprintf fmt "Zero"
 
-type 'v inv = limit * 'v list
+let pp_sgn fmt = function
+  Positive ->  Format.fprintf fmt "Positive"
+  | Negative ->  Format.fprintf fmt "Negative"
+  | Unknown ->  Format.fprintf fmt "Unknown"
 
-type q_invar = Pilat_matrix.QMat.vec inv
+type 'v simp_inv = limit * 'v list
+
+type 'v gen_inv = int * sgn * 'v
+
+type 'v invariant = 
+    Eigenvector of 'v simp_inv
+  | Generalized of 'v gen_inv
+
+type q_invar = Pilat_matrix.QMat.vec invariant
 
 module Make (A : Poly_assign.S) =  
 struct 
   module Ring = A.P.R
       
   type mat = A.mat
-  type invar = A.M.vec inv
+  type invar = A.M.vec invariant
 
 (** 0. Limit utility *)
 
@@ -107,9 +123,9 @@ let invariant_computation is_deter mat : invar list =
       let matt = (A.M.transpose mat) in
       
       List.fold_left
-	(fun acc ev -> 
+	(fun acc ev ->
 	  let eigen_mat = A.M.sub matt (A.M.scal_mul (A.M.identity mat_dim) ev) in 
-	  ((ev_limit ev),(A.M.nullspace eigen_mat)) :: acc
+	  Eigenvector ((ev_limit ev),(A.M.nullspace eigen_mat)) :: acc
 	)
 	[]
 	evs
@@ -130,12 +146,24 @@ let invariant_computation is_deter mat : invar list =
 	      undeterminize_vec
 	      eigen_space 
 	  in
-	  ((float_limit (ev|>Fd.P.R.t_to_float)),eigen_space) :: acc
+	  Eigenvector ((float_limit (ev|>Fd.P.R.t_to_float)),eigen_space) :: acc
 	)
 	[] 
 	evs
 
-let generalized_invariants is_deter ev mat : (int * A.M.vec) list = 
+
+let is_one imap vec = 
+  A.Imap.for_all
+    (fun i monom -> 
+       let coef_vec = A.M.get_coef_vec i vec in 
+       not (A.P.Monom.equal monom A.P.empty_monom) || A.P.R.equal coef_vec A.P.R.one)
+    imap 
+
+let invar_init_sign imap vec = 
+  if is_one imap vec then Positive else Unknown
+
+
+let generalized_invariants is_deter imap ev mat : invar list = 
   let test_ok = is_deter in 
   if not test_ok then [] else
     let order = A.M.get_dim_col mat in
@@ -152,7 +180,8 @@ let generalized_invariants is_deter ev mat : (int * A.M.vec) list =
     in
     
     let scal_mul_list coef = 
-      List.map (fun (i,vec) -> (i,A.M.scal_mul_vec vec coef)) 
+      List.map (fun (i,vec) -> 
+          ((i,A.M.scal_mul_vec vec coef))) 
     in
     
     let rec order_invars (to_treat : A.M.vec list) treated branches = 
@@ -163,11 +192,12 @@ let generalized_invariants is_deter ev mat : (int * A.M.vec) list =
         else let ahdmhd = A.M.sub_vec (A.M.mul_vec mat hd) hd in
         if A.M.v_is_zero ahdmhd
         then 
-          order_invars tl (hd :: treated) ([0,hd] :: branches) 
+          order_invars tl (hd :: treated) ([(0,hd)] :: branches) 
         else 
           List.fold_left
-            (fun acc (branch : (int * A.M.vec) list) -> 
-               let (idx,fst_vec) = List.hd branch in
+            (fun acc branch -> 
+               let (idx,fst_vec) = 
+                 List.hd branch in
                if A.M.collinear fst_vec ahdmhd
                then 
                  let coef =  A.M.div_vec fst_vec ahdmhd in
@@ -177,7 +207,21 @@ let generalized_invariants is_deter ev mat : (int * A.M.vec) list =
             []
             branches
     in      
-    (order_invars unordered_invariants [] []) |> List.flatten
+    let spec_filter l =
+      let rec __spec_fil res l = 
+        match l with 
+          [] | _ :: [] -> res
+        | (ihd,hd) :: (inx,nx) :: tl -> 
+          match invar_init_sign imap nx with
+            Unknown -> __spec_fil res ((inx,nx) :: tl)
+          | s -> __spec_fil (Generalized (ihd,s,hd) :: res) ((inx,nx) :: tl)
+      in __spec_fil [] l 
+
+    in 
+    List.fold_left
+      (fun acc l -> (spec_filter l) @ acc)
+      []
+      (order_invars unordered_invariants [] [])
           
       
 let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) = 
@@ -262,7 +306,7 @@ let intersection_bases (b1:A.M.vec list) (b2:A.M.vec list) =
   in
   A.M.cols mat_base
 
-let intersection_invariants ll1 ll2  =
+let intersection_invariants (ll1:invar list) (ll2:invar list) : invar list  =
   let print_vec_list v_list = 
     List.iter
 	(fun v -> 
@@ -272,34 +316,37 @@ let intersection_invariants ll1 ll2  =
       v_list in
  
   List.fold_left
-      (fun acc (lim1,l1) -> 
-	Mat_option.debug ~dkey:dkey_inter ~level:5
-	  "Intersection of";
-	
-	print_vec_list l1;
-	
-	
-	List.fold_left
-	  (fun acc2 (lim2,l2) -> 
-	    Mat_option.debug ~dkey:dkey_inter ~level:5
-	      "with";
-	    print_vec_list l2;
-	    let new_base = intersection_bases l1 l2 in
-	    if new_base = [||]
-	    then
-	      begin
-		Mat_option.debug ~dkey:dkey_inter ~level:5
-		  "Returns nothing !";
-	        acc2
-	      end
-	    else 
-	      let res = (Array.to_list new_base) in
-	      begin
-		Mat_option.debug ~dkey:dkey_inter ~level:5
-		  "Returns ";
-		print_vec_list res;
-		((join_limits lim1 lim2),res) :: acc2
-	      end
+      (fun acc i1 -> 
+        match i1 with 
+          Generalized _ -> []
+        | Eigenvector  (lim1,l1) -> 
+          Mat_option.debug ~dkey:dkey_inter ~level:5
+            "Intersection of";	
+          print_vec_list l1;
+          List.fold_left 
+            (fun acc2 i2 -> 
+               match i2 with 
+                 Generalized _ -> []
+               | Eigenvector  (lim2,l2) -> 
+	         Mat_option.debug ~dkey:dkey_inter ~level:5
+	           "with";
+	           print_vec_list l2;
+                   let new_base = intersection_bases l1 l2 in
+                   if new_base = [||]
+	           then
+	             begin
+	               Mat_option.debug ~dkey:dkey_inter ~level:5
+		         "Returns nothing !";
+	                 acc2
+	             end
+	           else 
+	             let res = (Array.to_list new_base) in
+	             let () = 
+                       Mat_option.debug ~dkey:dkey_inter ~level:5
+		         "Returns ";
+		       print_vec_list res in
+	               Eigenvector ((join_limits lim1 lim2),res) :: acc2
+	      
 	  )
 	  acc 
 	  ll2
@@ -333,12 +380,16 @@ let to_vec (vec:QMat.vec) : A.M.vec =
     arr)
   |> A.M.vec_from_array
 
-let zarith_invariant ((lim,inv):invar) = 
-  lim, (List.map vec_zarith inv)
+let invar_translate translater (i:'a) =
 
-let to_invar ((lim,inv):q_invar) = 
-  lim, (List.map to_vec inv)
+  match i with
+    Eigenvector (lim,inv) -> 
+    Eigenvector (lim, (List.map translater inv))
+  | Generalized (i,s,inv) -> Generalized (i,s,translater inv)
 
+let zarith_invariant = invar_translate vec_zarith
+
+let to_invar = invar_translate to_vec
 
 let integrate_vec (qvec : QMat.vec) : QMat.vec = 
   let () = 
@@ -362,21 +413,14 @@ let integrate_vec (qvec : QMat.vec) : QMat.vec =
          QMat.pp_vec res in res
 
 
-let integrate_invar  ((lim,inv):invar) = 
-  lim, 
-  (List.map 
-     (fun vec -> vec |> vec_zarith |> integrate_vec |> to_vec)) inv
+let integrate_invar (i:invar) = 
+  match i with
+    Eigenvector (lim,inv) -> 
+    Eigenvector (lim, 
+                 (List.map 
+                    (fun vec -> vec |> vec_zarith |> integrate_vec |> to_vec)) inv)
+  | Generalized (i,s,inv) -> Generalized (i,s,inv |> vec_zarith |> integrate_vec |> to_vec)
   
-let is_one imap vec = 
-  A.Imap.for_all
-    (fun i monom -> 
-       let coef_vec = A.M.get_coef_vec i vec in 
-       not (A.P.Monom.equal monom A.P.empty_monom) || A.P.R.equal coef_vec A.P.R.one)
-    imap 
-
-let invar_init_sign imap vec = 
-  if is_one imap vec then Some true else None
-
 let vec_to_poly imap vec =
       A.Imap.fold
 	(fun i monom acc -> 
@@ -390,7 +434,7 @@ let vec_to_poly imap vec =
     
 let redundant_invariant imap vec vec_list = 
   let vec_poly = vec_to_poly imap vec in
-  A.P.is_const vec_poly ||
+  A.P.is_const vec_poly || (is_one imap vec) ||
   List.exists
     (fun invar -> if invar = vec then false else 
       let vec_invar = vec_to_poly imap invar in
@@ -402,11 +446,11 @@ let redundant_invariant imap vec vec_list =
       try 
 	ignore (A.P.div vec_poly vec_invar); 
 	Mat_option.debug ~dkey:dkey_redun 
-	  "Yes" ;
+	  "Yes, redundant" ;
 	true
       with 
 	A.P.Not_divisible -> Mat_option.debug ~dkey:dkey_redun 
-	  "No" ; false
+	  "Not redundant" ; false
     )
     vec_list
 end 

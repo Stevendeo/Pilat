@@ -291,7 +291,7 @@ let add_k_stmt new_ghost_var sum_term stmt =
     if the limit is divergent, then each ei is a divergent invariant
     else, we use the general invariant *)
 
-let term_list_to_predicate 
+let eigen_term_list_to_predicate 
     (deter : bool) 
     ?(mat : A.M.t option)
     (term_list : (A.M.vec *  term) list)
@@ -437,7 +437,46 @@ let term_list_to_predicate
 	       term_gvar)
 	  in (Logic_const.unamed pred),(Some new_skind)
 	) term_list 
-     
+
+let gen_term_list_to_predicate
+  (term_list : (A.M.vec * term) list)
+  (sgn : Invariant_utils.sgn)
+  (integer : bool)
+  kf
+  stmt
+  = 
+  let fundec = match kf.fundec with
+      Definition(f,_) -> f
+    | Declaration _ -> assert false
+  in
+  let type_vars,logic_type_vars = 
+    if integer then TInt (IInt,[]),Linteger else TFloat (FFloat,[]),Lreal in
+  let rel = 
+    match sgn with
+      Positive -> Rge
+    | Negative -> Rle
+    | Unknown -> assert false
+  in
+  List.map
+    (fun (_,term) -> 
+       let new_ghost_var = Cil.makeLocalVar fundec (new_name ()) type_vars
+       in
+       let () = 
+         new_ghost_var.vghost <- true;
+         variables_to_add := new_ghost_var :: !variables_to_add in
+       let lvar = Cil.cvar_to_lvar new_ghost_var in
+       let term_gvar = 
+	 Logic_const.term (TLval ((TVar lvar),TNoOffset)) logic_type_vars
+       in
+       let new_skind = add_k_stmt new_ghost_var term stmt
+       in
+       
+       let pred = 
+	 Prel (rel, term, term_gvar)
+       in (Logic_const.unamed pred),(Some new_skind)
+    ) term_list 
+    
+
 let vec_space_to_predicate_zarith
     (deter : bool) 
     (mat : A.M.t option) 
@@ -449,33 +488,45 @@ let vec_space_to_predicate_zarith
     (num_vars : int)
     : (predicate * stmtkind option) list =
 
-  let limit,vec_list = invar in
+  let vec_list = match invar with 
+      Eigenvector (_,v) -> v
+    | Generalized (_,_,v) -> [v]
+  in
   
   let term_list = 
     List.fold_left
       (fun acc vec -> try (vec,vec_to_term_zarith rev_base vec nd_vars) :: acc with Bad_invariant -> acc) 
       [] 
       vec_list in
-  if deter 
-  then 
-      term_list_to_predicate 
+  match invar with 
+    Eigenvector (limit,_) -> 
+    if deter 
+    then 
+      eigen_term_list_to_predicate 
 	true
 	term_list 
-	limit 
+	limit
 	rev_base
 	kf
 	stmt
 	num_vars
   else 
-      term_list_to_predicate 
+      eigen_term_list_to_predicate 
         false
         ~mat:(Extlib.the mat)
 	term_list 
-	limit 
+	limit
 	rev_base
 	kf 
 	stmt
 	num_vars
+  | Generalized (_,sgn,_) -> 
+    gen_term_list_to_predicate 
+      term_list 
+      sgn 
+      true (* TODO : change *) 
+      kf
+      stmt 
 
 let loop_annots_vars_init  
     (deter : bool) 

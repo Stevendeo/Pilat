@@ -27,11 +27,24 @@ type limit =
   | One
   | Zero
 
+type sgn = 
+  | Positive
+  | Negative
+  | Unknown
+
 val pp_limit : Format.formatter -> limit -> unit
 
-type 'v inv = limit * 'v list
+val pp_sgn : Format.formatter -> sgn -> unit 
 
-type q_invar = Pilat_matrix.QMat.vec inv
+type 'v simp_inv = limit * 'v list
+
+type 'v gen_inv = int * sgn * 'v
+
+type 'v invariant = 
+    Eigenvector of 'v simp_inv
+  | Generalized of 'v gen_inv
+
+type q_invar = Pilat_matrix.QMat.vec invariant
 
 module Make : functor 
     (A : Poly_assign.S) -> 
@@ -46,18 +59,19 @@ module Make : functor
             (<e,X> > k => <e,MX> > k).
         *)
         type mat = A.mat
-        type invar = A.M.vec inv
+        type invar = A.M.vec invariant
             
         val lim_to_string : limit -> string
  
-        (** Returns the rational eigenspaces union of the floating matrix 
+        (** Returns the simple eigenspaces union of the floating matrix 
             as a list of bases. If assignments are non deterministic, the boolean 
             must be set to true *)
         val invariant_computation : bool -> mat -> invar list  
             
-        val generalized_invariants : bool -> A.M.elt -> mat -> (int * A.M.vec) list
+        val generalized_invariants : 
+          bool -> A.P.Monom.t A.Imap.t -> A.M.elt -> mat -> invar list
             
-        (** Intersects two union of vectorial spaces. *)
+        (** Intersects two union of vectorial spaces. Must be "Eigenvectors". *)
 	val intersection_invariants :  invar list -> invar list -> invar list
 	  
 	val zarith_invariant : invar -> q_invar
@@ -74,7 +88,7 @@ module Make : functor
             
             For now, it only tests if the invariant is "1 = 1".
         *)
-        val invar_init_sign : A.P.Monom.t A.Imap.t -> A.M.vec -> bool option
+        val invar_init_sign : A.P.Monom.t A.Imap.t -> A.M.vec -> sgn
 
 	(** Returns the polynomial associated to a vector with respect to the base in argument. *)
 	val vec_to_poly : A.P.Monom.t A.Imap.t -> A.M.vec -> A.P.t

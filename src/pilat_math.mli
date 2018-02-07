@@ -144,7 +144,6 @@ sig
     
   val equal : t -> t -> bool
 
-
   val eval : t -> v -> c -> t
   val to_str : t -> string
   val pp_print : Format.formatter -> t -> unit

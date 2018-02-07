@@ -36,9 +36,10 @@ sig
     Cil_types.kernel_function ->
     Cil_types.stmt ->
     A.P.Monom.t A.Imap.t -> 
-    A.M.vec Invariant_utils.inv list -> 
+    A.M.vec Invariant_utils.invariant list -> 
     'a Varinfo.Map.t -> 
     int -> 
     Cil_types.code_annotation list * Varinfo.t list * Cil_types.stmtkind list
+  
      
 end
