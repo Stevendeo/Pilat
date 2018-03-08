@@ -9,7 +9,7 @@ int petter(int N){
   
   while(y < N)
     {
-      x += y;
+      x += y*y*y;
       y++;
     }
 

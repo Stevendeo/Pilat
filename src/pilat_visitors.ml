@@ -163,6 +163,7 @@ let make_assign_block skinds next_stmt =
          bscoping = false;
          battrs = [];
          blocals = [];
+         bstatics = [];
          bstmts =  s_list
        }
     )
