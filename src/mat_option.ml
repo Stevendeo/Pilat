@@ -211,3 +211,7 @@ let proof_timer = ref 0.
 let optimizer_timer = ref 0.
 
 let redun_timer = ref 0.
+
+(** Something useful *)
+
+let pp_sep = fun fmt _ -> Format.fprintf fmt "\n"

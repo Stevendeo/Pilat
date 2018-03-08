@@ -28,6 +28,7 @@ open Pilat_math
 
 module Vmod_id = State_builder.SharedCounter(struct let name = "pilat_vid_counter" end)
 module Xmod_id = State_builder.SharedCounter(struct let name = "pilat_xmod_counter" end)
+module String_var_mod_id = State_builder.SharedCounter(struct let name = "pilat_strmod_counter" end)
 module Tab_index = State_builder.SharedCounter(struct let name = "pilat_to_str_counter" end)
 let next_index () = Tab_index.next () - 1
 
@@ -77,9 +78,26 @@ struct
 	| _ -> 
 	  Format.fprintf fmt "%a%i" V.pretty var pow)
       m
+
+
   end
-    
-      
+  let monom_string_cvc (m:Monom.t) = 
+    let rec var_to_pow v pow = 
+      match pow with
+        0 -> ""
+      | 1 -> (V.varname v)
+      | _ -> "(" ^ (var_to_pow v (pow - 1))^ " * " ^ V.varname v ^")"
+    in
+    V.Map.fold
+      (fun var pow acc_str ->
+         let acc_str = 
+           if pow = 0 then acc_str  else
+             "(" ^ acc_str ^" *  "^  var_to_pow var pow^ ")"
+         in
+         acc_str 
+      )
+      m 
+      "1"
   type m = (int V.Map.t) (* x2*y -> map from x to 2 and y to 1 *)
    
   (* for simplicity *)
@@ -207,6 +225,20 @@ struct
 	      Format.fprintf fmt " + %a%a" A.pp_print coef Monom.pretty monom;
 	  )
           p
+
+    let string_cvc (p:t) : string =
+      if is_zero p then "0" else
+        P.fold
+          (fun monom coef acc_str ->
+             if A.equal coef A.zero then acc_str 
+             else
+               let str =  monom_string_cvc monom in 
+               if  A.equal coef A.one then "(" ^ acc_str ^ " + " ^ str ^")"
+               else 
+               let str =  monom_string_cvc monom in
+               "(" ^ acc_str ^ " + " ^ str  ^ ")")
+          p
+          ""
 
     let deg_monom (m:Monom.t) : int = 
        V.Map.fold
@@ -432,8 +464,6 @@ struct
 	p1
 	zero
 
-
-   
     let get_monomials (p:t) : Monom.Set.t = 
       P.fold
 	(fun m _ acc -> Monom.Set.add m acc) 
@@ -492,6 +522,33 @@ let j = F.monomial 1. [("a",1);("b",2);("c",3)];;
 F.print Format.std_formatter (F.add (F.monomial 2. []) j);;
 F.print Format.std_formatter (F.compo (F.add i j) "b" (F.add (F.const 2.) j));;
 *)
+
+module String_variable = 
+  struct
+    include 
+      Datatype.Make_with_collections 
+       (struct  
+	 type t = string
+	 let compare _ _ = 0
+	 let copy x = x
+	 let name = "variable_string_type"  ^ (string_of_int (Xmod_id.next ()))
+	 let hash = Hashtbl.hash
+	 let rehash s = s
+	 let structural_descr = Structural_descr.t_abstract
+	 let reprs = ["x"]
+	 let equal = String.equal
+	 let internal_pretty_code = Datatype.undefined
+	 let pretty fmt = Format.fprintf fmt "%s"
+	 let varname x = x
+	 let mem_project = Datatype.never_any_project
+	end
+       )
+    let max _ = assert false
+    let min _ = assert false
+    let to_nvars _ = assert false 
+    let new_var () = "x"^string_of_int (String_var_mod_id.next ())
+  end 
+
 
 module XMake (A:Ring) 
  = 

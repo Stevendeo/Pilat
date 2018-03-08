@@ -92,3 +92,7 @@ val proof_timer : float ref
 val optimizer_timer : float ref
 
 val redun_timer : float ref
+
+(** Prints '\n' *)
+
+val pp_sep : Format.formatter -> unit -> unit

@@ -31,6 +31,7 @@ let dkey_vars = Mat_option.register_category "main:vars"
 let dkey_time = Mat_option.register_category "main:timer"
 let dkey_base = Mat_option.register_category "main:base"
 let dkey_annot = Mat_option.register_category "main:annot"
+let dkey_gen = Mat_option.register_category "main:gen_invar"
 
 let output_fun chan = Printf.fprintf chan "%s\n" 
 
@@ -302,19 +303,35 @@ let loop_analyzer prj =
               
               (** Generalized invariants *)
               let gen_invar = 
-                if Mat_option.Gen_invar.get () || (List.length matrices = 1)
+                if assign_is_deter && Mat_option.Gen_invar.get () && (List.length matrices >= 1)
                 then 
-                  Invariant_maker.generalized_invariants 
-                    assign_is_deter 
-                    rev_base
-                    Assign_type.R.one 
-                    (List.hd matrices) 
-                else []
+                  let () = Mat_option.feedback "Generalized invariant generation" in
+                    Invariant_maker.generalized_invariants 
+                       (List.hd matrices)
+                       Assign_type.R.one
+                       5
+                else let () = Mat_option.feedback "%b %b %b"assign_is_deter ( Mat_option.Gen_invar.get ()) (List.length matrices = 1) in []
+              in 
+              let () = 
+                Mat_option.debug ~dkey:dkey_gen ~level:3 "Generalized invariants";
+                List.iter
+                  (fun gen_invar -> 
+                     match gen_invar with 
+                       Eigenvector _ -> assert false
+                     | Generalized (inv,v) -> 
+                       Mat_option.debug ~dkey:dkey_gen ~level:3
+                         "Generalized eigenvector computed : \n\
+                          %a\
+                          Next:%a\n\
+                          Sgn: %a\n"
+                         Assign_type.M.pp_vec inv
+                         Assign_type.M.pp_vec v
+                         Invariant_utils.pp_sgn (Invariant_maker.invar_init_sign rev_base v)
+                  )
+                  gen_invar;
+                Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t_invar 
               in
-
-              let () = Mat_option.invar_timer := !Mat_option.invar_timer +. Sys.time () -. t_invar 
-              in
-
+              
               (** Redundancy analysis *)
 (*
               let t_redundancy = Sys.time ()
@@ -562,10 +579,8 @@ let run_input_mat file =
                   vec in 
               Mat_option.feedback "\n%a\n--" A.P.pp_print p) inv;       
          Mat_option.feedback "--"
-       | Generalized (i,sgn,inv) -> 
-         Mat_option.feedback "Generalized invariant. Degree %i, sign %a.\n----\n"
-           i 
-           Invariant_utils.pp_sgn sgn;
+       | Generalized (inv,_) -> 
+         Mat_option.feedback "Generalized invariant. \n----\n";
          let p = 
            I.vec_to_poly 
              var_map 

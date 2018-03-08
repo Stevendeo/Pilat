@@ -38,7 +38,7 @@ val pp_sgn : Format.formatter -> sgn -> unit
 
 type 'v simp_inv = limit * 'v list
 
-type 'v gen_inv = int * sgn * 'v
+type 'v gen_inv = 'v * 'v
 
 type 'v invariant = 
     Eigenvector of 'v simp_inv
@@ -69,7 +69,7 @@ module Make : functor
         val invariant_computation : bool -> mat -> invar list  
             
         val generalized_invariants : 
-          bool -> A.P.Monom.t A.Imap.t -> A.M.elt -> mat -> invar list
+         mat -> A.R.t -> int -> invar list
             
         (** Intersects two union of vectorial spaces. Must be "Eigenvectors". *)
 	val intersection_invariants :  invar list -> invar list -> invar list

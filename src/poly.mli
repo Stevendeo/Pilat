@@ -29,6 +29,12 @@ module Make : functor (A : Ring) (V : Pilat_math.Variable) ->
 	      and type v = V.t 
 	      and type Var.Set.t = V.Set.t) 
 
+module String_variable : 
+  sig 
+    include Pilat_math.Variable
+    val new_var : unit -> t
+  end 
+
 (** Polynomial with a unique variable, X. *)
 module XMake : functor (A : Ring) -> (
     sig 

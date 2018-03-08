@@ -490,7 +490,7 @@ let vec_space_to_predicate_zarith
 
   let vec_list = match invar with 
       Eigenvector (_,v) -> v
-    | Generalized (_,_,v) -> [v]
+    | Generalized (v,_) -> [v]
   in
   
   let term_list = 
@@ -520,10 +520,10 @@ let vec_space_to_predicate_zarith
 	kf 
 	stmt
 	num_vars
-  | Generalized (_,sgn,_) -> 
+  | Generalized (_,vec) -> 
     gen_term_list_to_predicate 
       term_list 
-      sgn 
+      (Invar_utils.invar_init_sign rev_base vec) 
       true (* TODO : change *) 
       kf
       stmt 

@@ -103,16 +103,12 @@ struct
   (* 2. Getters and setters *)
 
   let get_row mat i = 
-    { rows = 1; cols = mat.cols; 
-      m = [|mat.m.(i)|]
-    }
+   mat.m.(i)
       
   let get_col mat i = 
-    { rows = mat.rows; cols = 1;
-      m = 
-	Array.init mat.rows 
-	  (fun row -> [|mat.m.(row).(i)|])
-    }
+    Array.init mat.rows 
+	  (fun row -> mat.m.(row).(i))
+    
   let get_col_in_line mat i = 
     Array.init mat.rows
       (fun row -> mat.m.(row).(i))

@@ -56,12 +56,10 @@ let of_row_vecs vl = vl |> of_col_vecs |> transpose
 let cols m = Lacaml__D.Mat.to_col_vecs m
 let rows m = m |> transpose |> Lacaml__D.Mat.to_col_vecs
 
-let get_row m i = 
-  Lacaml__D.Mat.from_row_vec 
+let get_row m i =  
     (Lacaml__D.Vec.of_array (m |> Lacaml__D.Mat.to_array).(i))  
 
-let get_col m i = 
-  Lacaml__D.Mat.from_col_vec 
+let get_col m i =  
     (Lacaml__D.Vec.init i
        (fun j -> m.{j+1,i+1})
     )

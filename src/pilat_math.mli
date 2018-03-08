@@ -145,8 +145,11 @@ sig
   val equal : t -> t -> bool
 
   val eval : t -> v -> c -> t
+
+
   val to_str : t -> string
   val pp_print : Format.formatter -> t -> unit
+  val string_cvc : t -> string 
 
   (** Composition of two polynoms *)
   val compo : t -> v -> t -> t
@@ -203,8 +206,8 @@ module type Matrix = sig
 
   (** Getters and setters *)
 
-  val get_row : t -> int -> t
-  val get_col : t -> int -> t
+  val get_row : t -> int -> vec
+  val get_col : t -> int -> vec
   val get_col_in_line : t -> int -> vec
   val get_dim_col : t -> int
   val get_dim_row : t -> int
@@ -262,5 +265,7 @@ module type Matrix = sig
 
   (** Of string *)
   val of_str : string -> t
+
+  
 
 end  
