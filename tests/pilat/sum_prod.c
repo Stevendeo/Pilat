@@ -5,11 +5,11 @@
 #include "__fc_builtin.h"
 
 int petter(int N){
-  int x = 0, y = 0;
+  int x = Frama_C_interval(-5,5), y = Frama_C_interval(-5,5);
   
-  while(y < N)
+  while(x < N)
     {
-      x += y*y*y;
+      x += y*y;
       y++;
     }
 
