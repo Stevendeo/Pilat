@@ -1,6 +1,12 @@
-FRAMAC_SHARE 	:= $(shell frama-c-config -print-share-path)
+ifndef FRAMAC_SHARE
+  FRAMAC_SHARE 	:= $(shell frama-c-config -print-share-path)
+endif
 
-PLUGIN_DIR 	:= src/
+ifeq ("$(PLUGIN_DIR)","")
+PLUGIN_DIR 	:= ./src/
+else
+PLUGIN_DIR      := $(PLUGIN_DIR)/src
+endif
 
 PLUGIN_NAME	:= Pilat
 
