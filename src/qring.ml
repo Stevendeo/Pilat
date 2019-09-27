@@ -19,14 +19,16 @@
 (*  for more details (enclosed in the file LICENCE).                      *)
 (*                                                                        *)
 (**************************************************************************)
-include Q
-let float_to_t = of_float 
+
+include (Q: Pilat_math.Ring_base with type t = Q.t)
+
+let float_to_t = Q.of_float 
 let approx _ = assert false
-let den f = f |> den |> of_bigint
-let t_to_int = to_int
-let int_to_t = of_int
+let den f = f |> Q.den |> Q.of_bigint
+let t_to_int = Q.to_int
+let int_to_t = Q.of_int
 let t_to_float q = 
-  ((q |> num |> Z.to_float)
+  ((q |> Q.num |> Z.to_float)
   /.
     (q |> Q.den |> Z.to_float))
 
@@ -42,6 +44,6 @@ let deter = t_to_float
 let max = t_to_float
 let min = t_to_float
 
-let to_str = to_string
+let to_str = Q.to_string
 let of_str f = float_to_t (float_of_string f)
 let to_nvars _ = []
