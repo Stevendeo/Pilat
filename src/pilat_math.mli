@@ -37,7 +37,7 @@ type n_var =
 
 (** 1. The ring structure *)
 
-module type Ring = sig
+module type Ring_base = sig
   type t
 (* type of elements of the ring *)
 
@@ -54,6 +54,10 @@ module type Ring = sig
   val gt : t -> t -> bool
   val compare : t -> t -> int
   val pp_print : Format.formatter -> t -> unit
+end
+
+module type Ring = sig
+  include Ring_base
   val to_str : t -> string
   val of_str : string -> t
   (** 2. Ast translators : only required for Pilat *)
