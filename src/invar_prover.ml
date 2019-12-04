@@ -114,7 +114,7 @@ module Make (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
 	let () = Mat_option.feedback "%a : lambda abstractions not supported" 
 	  Printer.pp_term t 
 	in raise Bad_invariant
-      | TCoerce (t,_) | TLogic_coerce (_,t) -> poly_of_term t
+      | TLogic_coerce (_,t) -> poly_of_term t
       | _ -> 
 	let () = Mat_option.feedback "%a term not supported" 
 	  Printer.pp_term t 
