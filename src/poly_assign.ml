@@ -297,31 +297,30 @@ let all_possible_monomials e_deg_hashtbl =
     then None
     else Some (P.mono_mul monom (P.mono_minimal [v,1]))
   in
-  
-  let rec compute_all computed_possible_monomials = 
+
+  let rec compute_all computed_possible_monomials =
     Mat_option.debug ~dkey:dkey_all_monom ~level:6 "New iter";
     M_set.iter
       (fun m -> Mat_option.debug ~dkey:dkey_all_monom ~level:6 "M: %a" P.Monom.pretty m)
       computed_possible_monomials
     ;
     M_set.fold
-      (fun monom acc_monoms -> 
+      (fun monom acc_monoms ->
 	if M_set.mem monom acc_monoms then acc_monoms
-	else 
-	  let new_monoms = 
+	else
+	  let new_monoms =
 	    P.Var.Hashtbl.fold
-	      (fun v _ acc -> 
+	      (fun v _ acc ->
 		match elevate_monom_if_possible monom v with
 		  None -> acc
 		| Some m -> M_set.add m acc )
-	      
 	      e_deg_hashtbl
 	      M_set.empty
 	  in
-	  if M_set.is_empty new_monoms 
-	  then 
-	    acc_monoms 
- 	  else 
+	  if M_set.is_empty new_monoms
+	  then
+	    acc_monoms
+ 	  else
 	    M_set.union (M_set.union acc_monoms new_monoms) (compute_all new_monoms)
       )
       computed_possible_monomials

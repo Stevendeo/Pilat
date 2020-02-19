@@ -123,7 +123,7 @@ module Make (P_assign : Poly_assign.S) =
 	  let () = ignore (Sys.command (res ^ " > " ^ Mat_option.k_file)) in
 	  let in_channel = open_in "k.k" in
 	  
-	  let k = ref "" in 
+	  let k = ref "?" in 
 	  let () = 
 	    try 
 	      while true do 
