@@ -156,10 +156,14 @@ let loop_analyzer prj =
                    match s.skind with
                      Block b ->
                      Mat_option.debug ~dkey:dkey_stmt "A sub block %a" Printer.pp_stmt s;
-                     Cil_datatype.Stmt.Set.union acc (block_stmts b)
+                     Cil_datatype.Stmt.Set.union
+                       (Cil_datatype.Stmt.Set.add s acc)
+                       (block_stmts b)
                    | UnspecifiedSequence b ->
                      Mat_option.debug ~dkey:dkey_stmt "An unspecified seq %a"Printer.pp_stmt s;
-                     Cil_datatype.Stmt.Set.union acc (block_stmts (Cil.block_from_unspecified_sequence b))
+                     Cil_datatype.Stmt.Set.union
+                       (Cil_datatype.Stmt.Set.add s acc)
+                       (block_stmts (Cil.block_from_unspecified_sequence b))
                    | _ ->
                      Mat_option.debug ~dkey:dkey_stmt "A sub statement %a"Printer.pp_stmt s;
                      Cil_datatype.Stmt.Set.add (Cil.get_stmt self#behavior s) acc
