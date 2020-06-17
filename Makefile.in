@@ -30,12 +30,6 @@ PLUGIN_CMO 	:= mat_option\
 		main
 
 PLUGIN_REQUIRES         := zarith lacaml
-PLUGIN_OFLAGS 		:= -I $(dir @LACAML@) 
-
-PLUGIN_BFLAGS 		:= -I $(dir @LACAML@)
-PLUGIN_EXTRA_OPT 	:= @LACAML@
-
-PLUGIN_EXTRA_BYTE 	:= $(PLUGIN_EXTRA_OPT:.cmxa=.cma)
 
 PLUGIN_TESTS_DIRS 	:= ../../tests/pilat
 PLUGIN_DISTRIBUTED	:=yes
