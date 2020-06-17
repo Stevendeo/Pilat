@@ -60,7 +60,8 @@ let loop_analyzer prj =
           Printer.pp_varinfo v
           Printer.pp_varinfo kf.svar in
 
-      let fundec = Cil.get_fundec self#behavior kf in fundec.slocals <- v :: fundec.slocals
+      let fundec = Visitor_behavior.Get.fundec self#behavior kf in
+      fundec.slocals <- v :: fundec.slocals
 
     method private add_var kf v =
       Queue.push (fun _ -> self#__add_var kf v)
@@ -139,7 +140,7 @@ let loop_analyzer prj =
           let prj_var_pvar_map =
             Cil_parser.prj_var_to_pvar
               varinfos_used
-              (Cil.get_varinfo self#behavior)
+              (Visitor_behavior.Get.varinfo self#behavior)
           in
           let new_var_set =
             Assign_type.P.Var.Map.fold
@@ -166,7 +167,8 @@ let loop_analyzer prj =
                        (block_stmts (Cil.block_from_unspecified_sequence b))
                    | _ ->
                      Mat_option.debug ~dkey:dkey_stmt "A sub statement %a"Printer.pp_stmt s;
-                     Cil_datatype.Stmt.Set.add (Cil.get_stmt self#behavior s) acc
+                     Cil_datatype.Stmt.Set.add
+                       (Visitor_behavior.Get.stmt self#behavior s) acc
                 )
                 (Cil_parser.stmt_set b.bstmts)
                 Cil_datatype.Stmt.Set.empty
@@ -187,7 +189,7 @@ let loop_analyzer prj =
                    stmt
                    b_stmts
                    [stmt]
-                   (Cil.get_stmt self#behavior)
+                   (Visitor_behavior.Get.stmt self#behavior)
                 )
 	    with Poly_assign.Not_solvable -> None
 	  in
