@@ -359,7 +359,6 @@ let add_monomial_modifications
     (var_used : P.Var.Set.t) (p_list:body) : lin_body * P.Monom.Set.t = 
   
   let module M_set = P.Monom.Set in
-  let module M_map = P.Monom.Map in
   let l_size = List.length p_list in
   let var_monom_tbl = Var.Hashtbl.create l_size
   in
