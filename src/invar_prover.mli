@@ -22,19 +22,19 @@
 
 module Make : functor (A : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
 					 and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
-) -> 
+) ->
   sig
-    
-    val prove_invariant : 
-      A.mat -> 
-      int A.P.Monom.Map.t -> 
-      Cil_types.predicate -> 
+
+    val prove_invariant :
+      A.mat ->
+      int A.P.Monom.Map.t ->
+      Cil_types.predicate ->
       Property_status.emitted_status
-	
-    val prove_annot : 
-      A.mat -> 
-      int A.P.Monom.Map.t -> 
-      Cil_types.code_annotation -> 
+
+    val prove_annot :
+      A.mat ->
+      int A.P.Monom.Map.t ->
+      Cil_types.code_annotation ->
       Property_status.emitted_status
 
   end

@@ -21,18 +21,18 @@
 (**************************************************************************)
 
 include Plugin.Register
-  (struct 
+  (struct
     let name = "Pilat"
     let shortname = "pilat"
     let help = "Frama-C Polynomial invariant generator"
    end)
 (*
 module Enabled = False
-  (struct 
+  (struct
     let option_name = "-pilat"
-    let help = "when on, generates polynomial invariants for each solvable loop of the program" 
+    let help = "when on, generates polynomial invariants for each solvable loop of the program"
    end)
-  *)    
+  *)
 module Degree = Int
   (struct 2
     let option_name = "-pilat-degree"
@@ -51,57 +51,57 @@ module Output_C_File =
      end)
 
 module NameConst = String
-  (struct 
+  (struct
     let option_name = "-pilat-const-name"
     let arg_name = "str"
     let default = "__PILAT__"
     let help = "sets the name of the constants used in invariants (default " ^ default ^ ")"
    end)
 
-module Use_zarith = 
+module Use_zarith =
   True
     (struct
       let option_name = "-pilat-z"
-      let help = "when on, uses zarith library. Recommended if searching for integer relations but depreciated when searching for floating point relations." 
+      let help = "when on, uses zarith library. Recommended if searching for integer relations but depreciated when searching for floating point relations."
    end)
 
-module Ev_leq = 
+module Ev_leq =
   Int
     (struct
-        let option_name = "-pilat-ev"  
+        let option_name = "-pilat-ev"
 	let help = "sets the maximal eigenvalue searched for when using zarith"
 	let arg_name = "n"
 	let default = 10
      end)
 
-module Var_focus = 
+module Var_focus =
   Empty_string
     (struct
       let option_name = "-pilat-vars"
       let arg_name = "x:y:..."
       let help = "specifies which variables will be analyzed. If the input is\
                   matricial, uses those names as variables."
-     
+
      end)
 
-module Prove = 
+module Prove =
   False
-    (struct 
+    (struct
       let option_name = "-pilat-prove"
       let help = "when on, tries to prove already existing loop invariants"
      end)
 
-module Redundancy = 
+module Redundancy =
   False
-    (struct 
+    (struct
       let option_name = "-pilat-redun"
       let help = "undocumented"
      end)
 
 
-module Linearized_file = 
+module Linearized_file =
   False
-    (struct 
+    (struct
       let option_name = "-pilat-lin"
       let help = "Outputs the loop-linearized program."
      end)
@@ -110,7 +110,7 @@ module Linearized_file =
 
 module Optim_start = String
     (struct
-        let option_name = "-pilat-optim-start"  
+        let option_name = "-pilat-optim-start"
 	let default = "50"
 	let help = "sets the initial value of k during the optimisation (default "^ default ^")"
 	let arg_name = "n"
@@ -118,22 +118,22 @@ module Optim_start = String
 
 module Optim_iters = String
     (struct
-        let option_name = "-pilat-optim-iters" 
+        let option_name = "-pilat-optim-iters"
 	let default = "10"
 	let help = "sets the maximal number of iterations performed during the optimisation (default "^ default ^ ")"
 	let arg_name = "n"
      end)
 
-module Optim_epsilon = String 
-  (struct 
+module Optim_epsilon = String
+  (struct
     let option_name = "-pilat-optim-epsilon"
     let arg_name = "str"
     let default = "0.05"
     let help = "Tolerance of error during optimization (default " ^ default ^ ")"
    end)
 
-module Mat_input = String  
-    (struct 
+module Mat_input = String
+    (struct
       let option_name = "-pilat-input"
       let arg_name = "file"
       let default = ""
@@ -144,7 +144,7 @@ module Mat_input = String
 
 (** Tools for ACSL generation *)
 
-let emitter = Emitter.create 
+let emitter = Emitter.create
   "Pilat_emitter"
   [Emitter.Code_annot;Emitter.Global_annot]
   ~correctness:
@@ -155,25 +155,25 @@ let emitter = Emitter.create
 
 let non_det_name = "Frama_C_float_interval"
 
-let var_list () = 
+let var_list () =
   let str = Var_focus.get () in
   let list = Str.split (Str.regexp ":") str
   in
   List.fold_left
     (fun acc str_v ->
-      try 
+      try
 	Cil_datatype.Varinfo.Set.add (Globals.Vars.find_from_astinfo str_v Cil_types.VGlobal) acc
       with
 	Not_found ->
 	  try
-	    Cil_datatype.Varinfo.Set.add 
-	      (Globals.Vars.find_from_astinfo 
+	    Cil_datatype.Varinfo.Set.add
+	      (Globals.Vars.find_from_astinfo
 		 str_v
 		 (Cil_types.VLocal (Globals.Functions.find_by_name "main")))
 		acc
-	      
+
 	  with
-	    Not_found -> 
+	    Not_found ->
 	      (feedback "Variable %s not found") str_v; acc)
     Cil_datatype.Varinfo.Set.empty
     list
@@ -198,7 +198,7 @@ let ltoq_timer = ref 0.
 
 let ev_timer = ref 0.
 
-let char_poly_timer = ref 0.  
+let char_poly_timer = ref 0.
 
 let proof_timer = ref 0.
 

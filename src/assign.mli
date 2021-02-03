@@ -26,14 +26,14 @@ module Float_deterministic : Poly_assign.S with type P.v = Cil_datatype.Varinfo.
 module Q_deterministic : Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
 			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
 
-module Float_non_deterministic : Poly_assign.S with type P.c = Poly_utils.N_poly.t 
+module Float_non_deterministic : Poly_assign.S with type P.c = Poly_utils.N_poly.t
 					       and type P.v = Cil_datatype.Varinfo.t
 			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
 
 module Q_non_deterministic : Poly_assign.S  with type P.v = Cil_datatype.Varinfo.t
 			  and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t
 
-module Determinizer : functor (ND_assign :Poly_assign.S) -> 
+module Determinizer : functor (ND_assign :Poly_assign.S) ->
   sig
     val nd_mat_to_d_mat : ND_assign.M.t -> Float_deterministic.M.t
-  end 
+  end

@@ -22,11 +22,9 @@
 
 (** Lacaml matrices module *)
 
-include Pilat_math.Matrix 
+include Pilat_math.Matrix
  with type elt = float
  and type vec = Lacaml__D.vec
  and type t = Lacaml__D.mat
 
 type mat = t
-
-

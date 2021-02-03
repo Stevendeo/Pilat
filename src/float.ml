@@ -28,15 +28,15 @@ let add = (+.)
 let mul = ( *. )
 let sub = (-.)
 let div = (/.)
-let equal f1 f2 = abs_float (f1 -. f2) < 1e-5 
+let equal f1 f2 = abs_float (f1 -. f2) < 1e-5
 let leq = (<=)
 let geq = (>=)
 let lt = (<)
 let gt = (>)
 let compare = Pervasives.compare
-let pp_print fmt i = 
-  Format.fprintf fmt "%.3f" i 
-let to_str f = 
+let pp_print fmt i =
+  Format.fprintf fmt "%.3f" i
+let to_str f =
 
   let sign = if f > 0. then "+" else "" in
 
@@ -46,17 +46,17 @@ let of_str = float_of_string
 
 let t_to_float f = f
 let float_to_t f = f
-let approx coef = 
+let approx coef =
   if coef < 0. then ceil coef
-  else floor coef 
+  else floor coef
 
 let int_to_t = float_of_int
-let t_to_int = int_of_float 
+let t_to_int = int_of_float
 
-let non_det_repr f1 f2 = 
+let non_det_repr f1 f2 =
   if f1 = f2 then f1
-  else 
-      Mat_option.abort 
+  else
+      Mat_option.abort
 	"Deterministic float library used for non deterministic assignments"
 
 let deter f = f

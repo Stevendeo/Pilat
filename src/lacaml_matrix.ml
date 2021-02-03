@@ -31,16 +31,16 @@ type mat = t
 
 exception Dimension_error of int*int*int*int
     (*
-let error m1 m2 = 
-  raise (Dimension_error 
-	   (Lacaml__D.Mat.dim1 m1, 
-	    Lacaml__D.Mat.dim2 m1, 
-	    Lacaml__D.Mat.dim1 m2, 
+let error m1 m2 =
+  raise (Dimension_error
+	   (Lacaml__D.Mat.dim1 m1,
+	    Lacaml__D.Mat.dim2 m1,
+	    Lacaml__D.Mat.dim1 m2,
 	    Lacaml__D.Mat.dim2 m2))
 *)
 let zero = Lacaml__D.Mat.make0
 let create_mat d1 d2 f = Lacaml__D.Mat.init_rows d1 d2 (fun i j -> f (i-1) (j-1))
-let create_vec size f = 
+let create_vec size f =
   Lacaml__D.Vec.init
     size
     (fun i -> f (i-1))
@@ -54,17 +54,17 @@ let of_row_vecs vl = vl |> of_col_vecs |> transpose
 let cols m = Lacaml__D.Mat.to_col_vecs m
 let rows m = m |> transpose |> Lacaml__D.Mat.to_col_vecs
 
-let get_row m i = 
-  Lacaml__D.Mat.from_row_vec 
-    (Lacaml__D.Vec.of_array (m |> Lacaml__D.Mat.to_array).(i))  
+let get_row m i =
+  Lacaml__D.Mat.from_row_vec
+    (Lacaml__D.Vec.of_array (m |> Lacaml__D.Mat.to_array).(i))
 
-let get_col m i = 
-  Lacaml__D.Mat.from_col_vec 
+let get_col m i =
+  Lacaml__D.Mat.from_col_vec
     (Lacaml__D.Vec.init i
        (fun j -> m.{j+1,i+1})
     )
-    
-let get_col_in_line m i = 
+
+let get_col_in_line m i =
     (Lacaml__D.Vec.init i
        (fun j -> m.{j+1,i+1})
     )
@@ -84,28 +84,28 @@ let get_coef i j m = m.{i+1,j+1}
 let set_coef_vec i v elt = v.{i+1}<- elt
 let get_coef_vec i v = v.{i+1}
 
-let fold_vec f acc v = 
+let fold_vec f acc v =
   Lacaml__D.Vec.fold f acc v
 
 let map f m = Lacaml__D.Mat.map f m
 let mapi _ = assert false
 
-let add m n = 
+let add m n =
   let res = copy_mat n in Lacaml__D.Mat.axpy m res ~alpha:1.; res
 
 let add_vec v w = Lacaml__D.Vec.add v w
 
-let sub m n = 
+let sub m n =
   let res = copy_mat n in Lacaml__D.Mat.axpy m res ~alpha:(-1.); res
 
-let sub_vec v w = Lacaml__D.Vec.sub v w 
+let sub_vec v w = Lacaml__D.Vec.sub v w
 
 let transpose m = Lacaml__D.Mat.transpose_copy m
 
 let scal_mul m a = map (fun elt -> a *. elt) m
 let scal_mul_vec v a = Lacaml__D.Vec.map (fun elt -> a *. elt) v
 
-let mul m n = Lacaml__D.gemm m n 
+let mul m n = Lacaml__D.gemm m n
 let scal_prod v w = Lacaml__D.Vec.sum (Lacaml__D.Vec.mul v w)
 
 let pow _ _ = assert false
@@ -115,31 +115,31 @@ let mul_vec m v = Lacaml__D.gemv m v
 (** 2. Eigenvalues of a lacaml matrix *)
 (** Computes the eigenvalues of a lacaml matrix.
     This function has several problems, as the lacaml library is
-    not precise enough for big matrices. Therefore : 
-    
+    not precise enough for big matrices. Therefore :
+
     - Eigenvalues are not guaranteed to be correct for big matrices
-    - Complex eigenvalue are ignored 
+    - Complex eigenvalue are ignored
 *)
-let eigenvalues matrix = 
+let eigenvalues matrix =
   let t = Sys.time () in
   let dimx,dimy = (Lacaml__D.Mat.dim1 matrix),(Lacaml__D.Mat.dim2 matrix)
   in
-  
+
   let vr = (Lacaml__D.Mat.create dimx dimy)
- 
+
   in
-  
-  let _,a,b,_ = 
+
+  let _,a,b,_ =
     Lacaml__D.geev
       ~vr:(Some vr)
       (copy_mat matrix)
-  in 
+  in
   let res = ref [] in
 
   Lacaml__D.Vec.iteri
-    (fun i b -> 
+    (fun i b ->
       if (b = 0.)
-      then 
+      then
 	let () = Mat_option.feedback ~dkey:dkey_ev "Eigenvalue : %f" a.{i} in
 	if not (List.mem a.{i} !res) then res :=  a.{i} :: !res
 	else Mat_option.feedback ~dkey:dkey_ev "Eigenvalue %f + i.%f is complex." a.{i} b
@@ -147,33 +147,33 @@ let eigenvalues matrix =
     b;
 
   Mat_option.ev_timer := !Mat_option.ev_timer +. Sys.time () -. t;
-  
+
   !res
 
 (** 3. Nullspace computation for a zarith matrix *)
 
-let approx_float f = 
+let approx_float f =
   (*if abs_float f < 1E-10
   then 0.
   else f *)
-  
-  let c = ceil f in 
+
+  let c = ceil f in
   if c -. f < 1E-10
   then c
-  else let fl = floor f in 
+  else let fl = floor f in
        if f -. fl <1E-10
        then fl
        else f
-    
 
-let revert_rows mat a b = 
+
+let revert_rows mat a b =
   (*assert dim1 mat = dim2 mat *)
   Mat_option.debug ~dkey:dkey_null ~level:5
     "Switching line %i and %i in %a"
    a b Lacaml__D.pp_mat mat
   ;
-  for i=1 to Lacaml__D.Mat.dim2 mat do 
-    let tmp = mat.{a,i} in 
+  for i=1 to Lacaml__D.Mat.dim2 mat do
+    let tmp = mat.{a,i} in
     mat.{a,i}<-mat.{b,i};
     mat.{b,i}<- tmp
   done
@@ -185,68 +185,68 @@ let mult_row_plus_row mat a b k = (* sets the row a to a + k*b *)
     "Replacing line %i by line %i + %f * line %i of %a"
     a a k b Lacaml__D.pp_mat mat;
 
-  for i=1 to Lacaml__D.Mat.dim2 mat do 
-       
-    mat.{a,i}<- approx_float (mat.{a,i} +. (k *. mat.{b,i})); 
+  for i=1 to Lacaml__D.Mat.dim2 mat do
+
+    mat.{a,i}<- approx_float (mat.{a,i} +. (k *. mat.{b,i}));
   done
 
-let div_row mat a k = (* sets the row a to 1/k*a *)  
+let div_row mat a k = (* sets the row a to 1/k*a *)
   Mat_option.debug ~dkey:dkey_null ~level:5
     "Replacing line %i by 1/%f * line %i in %a"
     a k a Lacaml__D.pp_mat mat;
 
-  for i=1 to Lacaml__D.Mat.dim2 mat do 
-    mat.{a,i}<- approx_float (mat.{a,i} /. k); 
+  for i=1 to Lacaml__D.Mat.dim2 mat do
+    mat.{a,i}<- approx_float (mat.{a,i} /. k);
   done
 
-let norm_col_down mat col piv = 
+let norm_col_down mat col piv =
   assert (abs_float (mat.{piv,col}) > 1E-10);
   div_row mat piv ( mat.{piv, col});
-  
-  for i=(piv+1) to Lacaml__D.Mat.dim1 mat do 
+
+  for i=(piv+1) to Lacaml__D.Mat.dim1 mat do
     if mat.{i, col} != 0. then
     mult_row_plus_row mat i piv (-1. *. mat.{i, col})
   done
-   
-let norm_col_up mat col piv = 
-  for i=1 to piv - 1 do 
+
+let norm_col_up mat col piv =
+  for i=1 to piv - 1 do
     if mat.{i, col} != 0. then
     mult_row_plus_row mat i piv (-1. *. mat.{i, col})
-  done 
+  done
 exception Done;;
 
 let rref mat = (* Returns the list of the position of the columns that are not pivots *)
-  let normalize_mat col piv = 
+  let normalize_mat col piv =
     for i = piv to Lacaml__D.Mat.dim1 mat do
       if abs_float mat.{i, col} > 1E-10
-      then 
-	begin 
+      then
+	begin
 	  revert_rows mat piv i;
 	  norm_col_down mat col piv;
 	  norm_col_up mat col piv;
 	  raise Done
 	end
-      
+
     done
   in
   let piv = ref 1 in
   let no_piv_list = ref [] in
   for col = 1 to Lacaml__D.Mat.dim2 mat do
-    try normalize_mat col !piv; 
+    try normalize_mat col !piv;
 	no_piv_list := col :: !no_piv_list ;
-    with Done -> 
+    with Done ->
 	piv := !piv + 1;
   done
   ;
   !no_piv_list
 
-let insert_val vec elt pos = 
-  let dim = Lacaml__D.Vec.dim vec 
+let insert_val vec elt pos =
+  let dim = Lacaml__D.Vec.dim vec
   in
   let rec insert vec elt pos =
   if pos > dim
-  then () 
-  else 
+  then ()
+  else
     begin
       let new_elt = vec.{pos} in
       vec.{pos} <- elt;
@@ -255,45 +255,45 @@ let insert_val vec elt pos =
   in
   insert vec elt pos
 
-let lacaml_nullspace_computation mat = 
-  
-  let no_pivs = List.rev (rref mat) in 
+let lacaml_nullspace_computation mat =
+
+  let no_pivs = List.rev (rref mat) in
 
   let dim2 = Lacaml__D.Mat.dim2 mat in
 
   let num_pivs = dim2 - List.length no_pivs in
   let vecs =
-    
+
     List.fold_right
-      (fun no_piv acc -> 
+      (fun no_piv acc ->
 	  if dim2 = Lacaml__D.Mat.dim1 mat
 	  then
 	    Lacaml__D.Vec.map (fun x -> -1. *. x)
 	      (Lacaml__D.Mat.col mat no_piv) :: acc
-	  else 
+	  else
 	    let new_vec = Lacaml__D.Vec.create dim2
 	    in
 	    Lacaml__D.Vec.iteri
-	    (fun i f -> 
+	    (fun i f ->
 	      if i <= num_pivs
 	      then new_vec.{i} <- -1. *. f
 	    )
 	      (Lacaml__D.Mat.col mat no_piv)
 	    ;
 	    new_vec :: acc
-	      
-	    
+
+
       )
       no_pivs
       []
-  
-  in 
+
+  in
   List.iter2
-    (fun vec not_piv ->       
+    (fun vec not_piv ->
       List.iter
-	(fun not_piv2 -> 
+	(fun not_piv2 ->
 	  if not_piv <> not_piv2
-	  then 
+	  then
 	    insert_val vec 0. not_piv2
 	  else ()
 	)
@@ -301,49 +301,49 @@ let lacaml_nullspace_computation mat =
       insert_val vec 1. not_piv;
 
     )
-    vecs 
+    vecs
     no_pivs;
   vecs
 
-let nullspace mat = 
+let nullspace mat =
     Mat_option.debug ~dkey:dkey_null
     "Nullspace computation";
   let t = Sys.time () in
-  let res = lacaml_nullspace_computation mat in 
+  let res = lacaml_nullspace_computation mat in
   let () = Mat_option.nullspace_timer := !Mat_option.nullspace_timer +. Sys.time() -. t in
   Mat_option.debug ~dkey:dkey_null
-    "Nullspace done"; 
+    "Nullspace done";
   List.iter
-    (fun v -> 
+    (fun v ->
       Mat_option.debug ~dkey:dkey_null ~level:3
 	"%a\n"
 	Lacaml__D.pp_vec v
-    ) res; 
+    ) res;
   res
 
 let pp_print = Lacaml__D.pp_mat
 let pp_vec = Lacaml__D.pp_vec
 
-let vec_of_str line = 
-    let (num_list : string list) = Str.split (Str.regexp " ") line in 
+let vec_of_str line =
+    let (num_list : string list) = Str.split (Str.regexp " ") line in
     let size = List.length num_list in
-    let vec = 
+    let vec =
       (Array.make size 0.) in
     List.iteri
       (fun i f -> vec.(i) <- float_of_string f) num_list ;
     vec_from_array vec
 
-let of_str (s:string) : t =   
+let of_str (s:string) : t =
   let line_separator = Str.regexp "\n" in
-  let line_list = 
+  let line_list =
       List.filter
         ((<>) "")
-        (Str.split line_separator s) 
+        (Str.split line_separator s)
   in
-  let (vec_list : vec list) = 
-    List.map 
+  let (vec_list : vec list) =
+    List.map
       vec_of_str
       line_list
   in
-  let arr = Array.of_list vec_list in 
+  let arr = Array.of_list vec_list in
   of_row_vecs arr

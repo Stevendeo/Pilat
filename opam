@@ -1,13 +1,14 @@
-opam-version: "1.2"
+opam-version: "2.0"
 name: "pilat"
-version: "1"
+version: "1.4"
 maintainer: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
 authors: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
-dev-repo: "https://github.com/Stevendeo/Pilat.git"
+dev-repo: "git://github.com/Stevendeo/Pilat.git"
 homepage: "https://github.com/Stevendeo/Pilat/"
+synopsis: "Polynomial invariant generator"
 license: "LGPLv2.1"
 build: ["sh" "make.sh"]
 install: ["sh" "install.sh"]
 remove: ["ocamlfind" "remove" "pilat"]
 depends: ["ocamlfind" "lacaml" "zarith" "frama-c"]
-available: [ocaml-version > "4.02.3"]
+available: ["ocaml-version" >= "4.10.0"]

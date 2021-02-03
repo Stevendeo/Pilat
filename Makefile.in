@@ -35,3 +35,8 @@ PLUGIN_TESTS_DIRS 	:= ../../tests/pilat
 PLUGIN_DISTRIBUTED	:=yes
 
 include $(FRAMAC_SHARE)/Makefile.dynamic
+
+init:
+	opam switch create . 4.10.0 --no-install
+	eval $(opam env)
+	opam install . --deps-only

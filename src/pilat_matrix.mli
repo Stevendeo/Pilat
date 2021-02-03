@@ -28,7 +28,7 @@ open Pilat_math
     Iterations are made line by line. *)
 module Make :
   functor (F : Ring) -> Matrix with type elt = F.t
-  
+
 
 (** 2. Rational matrix implementation *)
 
@@ -38,24 +38,24 @@ module QMat : Matrix with type elt = Q.t
 
 (** Matrix utilities *)
 
-(** Rational eigenvalues of a matrix. Computation of the 
+(** Rational eigenvalues of a matrix. Computation of the
     rational roots of the characteristic polynomial.
       ^
      /|\
-    /_o_\ 
-    
+    /_o_\
+
     If the characteristic polynomial is to big, will only test
     a subset of all possible eigenvalues.
 *)
 
 (** Float <-> Rational translaters *)
 val lvec_to_qvec : Lacaml__D.vec -> QMat.vec
-val qvec_to_lvec : QMat.vec -> Lacaml__D.vec 
+val qvec_to_lvec : QMat.vec -> Lacaml__D.vec
 
 val lacaml_to_qmat : Lacaml__D.Mat.t -> QMat.t
 val qmat_to_lacaml : QMat.t -> Lacaml__D.Mat.t
 
-(** 3. Polynomial matrices implementation. 
+(** 3. Polynomial matrices implementation.
     This is how we will deal with non deterministic loops *)
 
 module PMat : Matrix with type elt = Poly_utils.N_poly.t
@@ -63,4 +63,4 @@ module PMat : Matrix with type elt = Poly_utils.N_poly.t
 module PQMat :  Matrix with type elt = Poly_utils.NQ_poly.t
 
 val pmat_eval_to_zero : PMat.t -> Lacaml__D.Mat.t
-val fvec_to_pvec : Lacaml__D.Vec.t -> PMat.vec 
+val fvec_to_pvec : Lacaml__D.Vec.t -> PMat.vec

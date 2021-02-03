@@ -23,14 +23,14 @@
 open Cil_datatype
 open Cil_types
 
-let dkey_stmt = Mat_option.register_category "cil2assign:block_analyzer" 
-let dkey_linear = Mat_option.register_category "cil2assign:linearizer" 
+let dkey_stmt = Mat_option.register_category "cil2assign:block_analyzer"
+let dkey_linear = Mat_option.register_category "cil2assign:linearizer"
 
-module Make = functor 
+module Make = functor
   (Assign : Poly_assign.S with type P.v = Varinfo.t
-			   and type P.Var.Map.key = Varinfo.t 
-			   and type P.Var.Set.t = Varinfo.Set.t) -> 
-struct 
+			   and type P.Var.Map.key = Varinfo.t
+			   and type P.Var.Set.t = Varinfo.Set.t) ->
+struct
   exception Loop_break of stmt
 
   module P = Assign.P
@@ -41,10 +41,10 @@ struct
 
   let non_det_var_memoizer = Varinfo.Hashtbl.create 2
 
-  let rec stmt_set block = 
+  let rec stmt_set block =
     List.fold_left
-      (fun acc s -> 
-         match s.skind with 
+      (fun acc s ->
+         match s.skind with
            Block b ->  Stmt.Set.add s (Stmt.Set.union acc (stmt_set b.bstmts))
          | If (_,b1,b2,_) -> Stmt.Set.add s (
              Stmt.Set.union (Stmt.Set.union acc (stmt_set b1.bstmts)) (stmt_set b2.bstmts))
@@ -52,42 +52,42 @@ struct
       Stmt.Set.empty
       block
 
-  let prj_var_to_pvar : 
+  let prj_var_to_pvar :
     Assign.P.Var.Set.t -> (Assign.P.v -> Assign.P.v) -> Assign.P.v Assign.P.Var.Map.t
-    = fun set f -> 
+    = fun set f ->
       P.Var.Set.fold
         (fun v -> P.Var.Map.add v (f v))
-        set 
+        set
         P.Var.Map.empty
 
   let exp_to_poly ?(nd_var=Varinfo.Map.empty) var_map exp =
-    let float_of_const c = 
+    let float_of_const c =
       match c with
 	CInt64 (i,_,_) -> Integer.to_float i
       | CChr c -> Integer.to_float (Cil.charConstToInt c)
       | CReal (f,_,_) -> f
       | _ -> assert false
     in
-    let rec __e_to_p e = 
-      match e.enode with 
-	Const c -> 
+    let rec __e_to_p e =
+      match e.enode with
+	Const c ->
 	P.const (c |> float_of_const |> P.R.float_to_t)
       | Lval (Var v,_) ->
 	begin
-	  try 
+	  try
 	    P.const (Varinfo.Hashtbl.find non_det_var_memoizer v)
-	  with Not_found -> 
-	  try 
-	    let (low,up) = Varinfo.Map.find v nd_var 
+	  with Not_found ->
+	  try
+	    let (low,up) = Varinfo.Map.find v nd_var
 	    in
 
-	    let new_rep = (P.R.non_det_repr low up) in 
+	    let new_rep = (P.R.non_det_repr low up) in
 
 
-	    let () = 
+	    let () =
 	      Mat_option.debug ~dkey:dkey_stmt ~level:2
 		"Variable %a non deterministic, first use. Representant : %a"
-		Varinfo.pretty v 
+		Varinfo.pretty v
 		P.R.pp_print new_rep
 	    in
 
@@ -95,32 +95,32 @@ struct
 	    in
 	    P.const new_rep
 	  with
-	    Not_found (* Varinfo.Map.find *) -> 
+	    Not_found (* Varinfo.Map.find *) ->
 	    P.monomial P.R.one [(P.Var.Map.find v var_map),1]
 	end
-      | Lval _ -> assert false   
+      | Lval _ -> assert false
       | SizeOf _ | SizeOfE _ | SizeOfStr _ | AlignOf _ | AlignOfE _ -> assert false
-      | UnOp (Neg,e,_) -> 
+      | UnOp (Neg,e,_) ->
 	P.sub P.zero (__e_to_p e)
       | UnOp _ -> assert false
-      | BinOp (binop,e1,e2,_) -> 
+      | BinOp (binop,e1,e2,_) ->
 	begin
 	  match binop with
 	    PlusA | PlusPI | IndexPI -> P.add (__e_to_p e1) (__e_to_p e2)
 	  | MinusA | MinusPI | MinusPP -> P.sub (__e_to_p e1) (__e_to_p e2)
 	  | Mult -> P.mul (__e_to_p e1) (__e_to_p e2)
-	  | Div -> 
-	    begin 
+	  | Div ->
+	    begin
 	      match e2.enode with
-		Const c -> 
-		P.mul 
-		  (__e_to_p e1) 
+		Const c ->
+		P.mul
+		  (__e_to_p e1)
 		  (P.const (1. /.(c |> float_of_const) |> P.R.float_to_t))
 	      | _ ->
-		Mat_option.abort 
-		  "The expression %a is a forbidden division." 
+		Mat_option.abort
+		  "The expression %a is a forbidden division."
 		  Printer.pp_exp exp
-	    end	    
+	    end
 	  | _ -> assert false
 	end
       | CastE (_,e) -> __e_to_p e
@@ -128,57 +128,57 @@ struct
     in
     __e_to_p exp
 
-  let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> Assign.t option = 
+  let instr_to_poly_assign varinfo_used nd_var : Cil_types.instr -> Assign.t option =
     function
-    | Set ((Var v, _),e,_) -> 
+    | Set ((Var v, _),e,_) ->
       begin
-        try 
-          let v = P.Var.Map.find v varinfo_used in 
-          let assign = Assign.Assign (v,(exp_to_poly ~nd_var varinfo_used e)) in 
-          let () = 
-            Mat_option.debug ~dkey:dkey_stmt ~level:3 
-              "Assign generated : %a" 
-              Assign.pretty_assign assign in 
+        try
+          let v = P.Var.Map.find v varinfo_used in
+          let assign = Assign.Assign (v,(exp_to_poly ~nd_var varinfo_used e)) in
+          let () =
+            Mat_option.debug ~dkey:dkey_stmt ~level:3
+              "Assign generated : %a"
+              Assign.pretty_assign assign in
           Some assign
-	with Not_found -> None 
-      end 
-    | Call(_,{enode = Lval(Var v,NoOffset) },_,_) as i -> 
+	with Not_found -> None
+      end
+    | Call(_,{enode = Lval(Var v,NoOffset) },_,_) as i ->
       if (v.vorig_name = Mat_option.non_det_name) then None
-      else 
+      else
 	let () = Mat_option.feedback
 	    "Call %a not supported, assuming no effect"
 	    Printer.pp_instr i in
 	None
     | Skip _ -> None
-    | i -> 
+    | i ->
       Mat_option.abort
 	"Instruction %a not supported"
 	Printer.pp_instr i
 
-  let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl   
+  let register_poly = Cil_datatype.Stmt.Hashtbl.replace poly_hashtbl
 
-  let rec stmt_to_poly_assign varinfo_used nd_var break s get_stmt : Assign.t option = 
+  let rec stmt_to_poly_assign varinfo_used nd_var break s get_stmt : Assign.t option =
 
-    try 
-      Stmt.Hashtbl.find poly_hashtbl s 
-    with 
-      Not_found -> 
+    try
+      Stmt.Hashtbl.find poly_hashtbl s
+    with
+      Not_found ->
       match s.skind with
-	Instr i -> 	
+	Instr i ->
 	let () = Mat_option.debug ~dkey:dkey_stmt
 	    "Instruction" in
-	if break = None then None 
-	else 
+	if break = None then None
+	else
 	if Stmt.equal s (Extlib.the break)
 	then raise (Loop_break s)
-	else 
+	else
 	  let () = Mat_option.debug ~dkey:dkey_stmt
 	      "Instruction"
 	  in
 	  begin
-	    match instr_to_poly_assign varinfo_used nd_var i with 
-	      Some p -> 
-	      register_poly s (Some p); 
+	    match instr_to_poly_assign varinfo_used nd_var i with
+	      Some p ->
+	      register_poly s (Some p);
 	      Some p
 	    | None -> register_poly s None; None
           end
@@ -288,31 +288,31 @@ struct
                     | Skip _ ->  Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped skip"
                     | Code_annot _ ->  Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped code_annot"
                   end
-                | Return _ -> 
+                | Return _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped return"
-                | Goto _ -> 
+                | Goto _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped goto"
-                | Break _ -> 
+                | Break _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped break"
-                | Continue _ -> 
+                | Continue _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped continue"
-                | If _ -> 
+                | If _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped if"
-                | Switch _ -> 
+                | Switch _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped switch"
-                | Loop _ -> 
+                | Loop _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped loop"
-                | Block _ -> 
+                | Block _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped block"
-                | UnspecifiedSequence _ -> 
+                | UnspecifiedSequence _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped unspecified seq"
-                | Throw _ -> 
+                | Throw _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped throw"
-                | TryCatch _ -> 
+                | TryCatch _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped try catch"
-                | TryFinally _ -> 
+                | TryFinally _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped try finally"
-                | TryExcept _ -> 
+                | TryExcept _ ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3 "Skipped try except"
               in []
 	    end
@@ -360,36 +360,36 @@ struct
                         Some s -> Some s
                       | _ -> (* At least one of the blocks have a terminal statement *)
                         let possible_succs =
-                          List.filter 
+                          List.filter
                             (fun s -> not(List.mem s b1.bstmts) && not(List.mem s b2.bstmts))
                             stmt.succs
                         in
                         match possible_succs with
                           [] -> None
-                        | hd :: [] -> Some hd 
-                        | _ -> assert false 
+                        | hd :: [] -> Some hd
+                        | _ -> assert false
                     in
-                    let res_post_if = 
-                      match if_merge_stmt with 
+                    let res_post_if =
+                      match if_merge_stmt with
                         None -> Mat_option.debug ~dkey:dkey_stmt ~level:2 "If has no merge stmt";[]
-                      | Some s -> 
-                        Mat_option.debug ~dkey:dkey_stmt ~level:2 
+                      | Some s ->
+                        Mat_option.debug ~dkey:dkey_stmt ~level:2
                           "Continuing dfs from %a"
                           Printer.pp_stmt s;
                         dfs s_set s in
 
-                    let if_bdy b = 
-                      let last_stmts = 
-                        match if_merge_stmt with 
+                    let if_bdy b =
+                      let last_stmts =
+                        match if_merge_stmt with
                           None -> last_stmts
                         | Some s -> s :: last_stmts in
-                      match b.bstmts with 
+                      match b.bstmts with
                         [] -> []
-                      | hd :: tl -> 
-                        let bdy_less_first = 
+                      | hd :: tl ->
+                        let bdy_less_first =
                           block_to_body varinfo_used ~nd_var break hd (stmt_set tl) last_stmts get_stmt
                         in
-                        match stmt_to_poly_assign varinfo_used nd_var break hd get_stmt  with 
+                        match stmt_to_poly_assign varinfo_used nd_var break hd get_stmt  with
                           None -> bdy_less_first
                         | Some s -> s :: bdy_less_first
                     in
@@ -398,25 +398,25 @@ struct
 
                     Assign.Assert(e, bdy_b1, bdy_b2) :: res_post_if
                   | _ ->
-                    begin 
-                      if (List.length succs <> 1) then 
+                    begin
+                      if (List.length succs <> 1) then
                         Mat_option.fatal "Failure at statement %a" Printer.pp_stmt stmt
-                      else 
+                      else
 		        dfs s_set (List.hd succs)
-	            end 
+	            end
                 in
-                match poly_opt with 
+                match poly_opt with
                   None -> next_state
-                | Some (Assign.Assert _) -> assert false; 
+                | Some (Assign.Assert _) -> assert false;
                   (* Assert treated by block_to_body *)
 	        | Some (Assign.Assign (_,p) as aff) ->
-	          Mat_option.debug ~dkey:dkey_stmt 
+	          Mat_option.debug ~dkey:dkey_stmt
 		    "Polynom generated : %a"
 		    P.pp_print p;
 
-	          aff :: next_state 
+	          aff :: next_state
 	        | Some ((Assign.Loop _) as l) -> l :: next_state
-	        | Some ((Assign.Other_stmt s) as l) -> 
+	        | Some ((Assign.Other_stmt s) as l) ->
                   Mat_option.debug ~dkey:dkey_stmt ~level:3
                     "No polynom generated from stmt %a"
 	            Printer.pp_stmt s;
@@ -439,61 +439,61 @@ struct
 
   let monom_to_var_memoizer : Cil_types.varinfo P.Monom.Hashtbl.t = P.Monom.Hashtbl.create 5
 
-  let monom_to_var fundec typ (monom:P.Monom.t) : Cil_types.varinfo option = 
-    if P.Monom.Hashtbl.mem monom_to_var_memoizer monom 
+  let monom_to_var fundec typ (monom:P.Monom.t) : Cil_types.varinfo option =
+    if P.Monom.Hashtbl.mem monom_to_var_memoizer monom
     then Some (P.Monom.Hashtbl.find monom_to_var_memoizer monom)
-    else match P.deg_monom monom with 
+    else match P.deg_monom monom with
         0 -> None
       | 1 -> Some (List.hd (P.to_var monom))
-      | _ -> 
-        let () = Mat_option.debug ~dkey:dkey_linear ~level:2 
+      | _ ->
+        let () = Mat_option.debug ~dkey:dkey_linear ~level:2
             "Adding %s to the monom list"
             (P.Monom.varname monom) in
-        let  var = 
+        let  var =
           (Cil.makeLocalVar
-             fundec 
+             fundec
              (P.Monom.pretty Format.str_formatter monom |> Format.flush_str_formatter)
              typ)
         in
-        let () = P.Monom.Hashtbl.add monom_to_var_memoizer monom var 
-        in Some var 
+        let () = P.Monom.Hashtbl.add monom_to_var_memoizer monom var
+        in Some var
 
 
-  let poly_to_linexp fundec typ loc poly = 
-    let monoms = P.get_monomials poly in 
+  let poly_to_linexp fundec typ loc poly =
+    let monoms = P.get_monomials poly in
     let type_is_int = match typ with TInt _ -> true | TFloat _ -> false | _ -> assert false in
-    Extlib.the 
+    Extlib.the
       (P.Monom.Set.fold
-         (fun m (acc_rval) -> 
+         (fun m (acc_rval) ->
 
             let var = monom_to_var fundec typ m in
-            let poly_exp =                       
-              let const = 
-                try 
+            let poly_exp =
+              let const =
+                try
                   let coef = P.coef poly m |> P.R.t_to_float in
                   assert (not(type_is_int && floor coef <> coef));
-                  Cil.new_exp 
-                    ~loc 
-                    (Const 
-                       (if type_is_int 
+                  Cil.new_exp
+                    ~loc
+                    (Const
+                       (if type_is_int
                         then (CInt64 ((Integer.of_float coef),IInt,None))
                         else (CReal  (coef, FFloat, None))
-                       )) 
+                       ))
                 with
                   Failure s ->
                   assert (s = "Poly.t_to_float");
                   Mat_option.fatal "Non deterministic linearization not available yet."
               in
 
-              match var,acc_rval with 
+              match var,acc_rval with
                 None,None -> const
               | None, Some a -> Cil.mkBinOp ~loc PlusA const a
-              | Some var,_ ->  
-                let var_exp = Cil.new_exp ~loc (Lval (Cil.var var)) in 
+              | Some var,_ ->
+                let var_exp = Cil.new_exp ~loc (Lval (Cil.var var)) in
                 let poly_part = Cil.mkBinOp ~loc Mult const var_exp in
-                match acc_rval with 
-                  None -> poly_part 
-                | Some a -> Cil.mkBinOp ~loc PlusA poly_part a in 
+                match acc_rval with
+                  None -> poly_part
+                | Some a -> Cil.mkBinOp ~loc PlusA poly_part a in
             Some poly_exp
          )
          monoms
@@ -501,67 +501,67 @@ struct
 
 
   (** Returns the cil statement corresponding to the polynomial assignment input *)
-  let rec linassign_to_stmt blocks (kf:Kernel_function.t) typ loc assign = 
+  let rec linassign_to_stmt blocks (kf:Kernel_function.t) typ loc assign =
     let fundec = match kf.fundec with
-        Definition(fundec,_) -> fundec 
+        Definition(fundec,_) -> fundec
       | Declaration _ -> assert false in
     match assign with
       Assign.LinLoop _ -> assert false (* TODO *)
     | Assign.LinOther_stmt s -> s (* TODO *)
-    | Assign.LinAssert (e,b1,b2) -> 
+    | Assign.LinAssert (e,b1,b2) ->
       let f = block_linassign_to_block blocks kf typ loc in
       let skind = If(e, f b1, f b2, loc) in
       Cil.mkStmt ~ghost:false ~valid_sid:true skind
-    | Assign.LinAssign (monom,poly) -> 
+    | Assign.LinAssign (monom,poly) ->
       let lval = Extlib.the (monom_to_var fundec typ monom) (* Can't be None, you can't assign 1 *) in
-      let rval = poly_to_linexp fundec typ loc poly 
-      in 
+      let rval = poly_to_linexp fundec typ loc poly
+      in
       let stmt = Cil.mkStmt ~ghost:false ~valid_sid:true (Instr (Set (Cil.var lval, rval, loc)))
       in
       let () = Kernel_function.register_stmt kf stmt blocks
       in stmt
 
-  and block_linassign_to_block blocks (kf:Kernel_function.t) typ loc assigns = 
-    let s_list = 
+  and block_linassign_to_block blocks (kf:Kernel_function.t) typ loc assigns =
+    let s_list =
       List.fold_right
-        (fun a acc_stmt -> 
+        (fun a acc_stmt ->
            let stmt = linassign_to_stmt blocks kf typ loc a in
            stmt::acc_stmt
-        ) 
+        )
         assigns
         []
     in Cil.mkBlockNonScoping s_list
 
-  let exported_vars = ref None 
+  let exported_vars = ref None
 
-  let export_variables () = 
-    match !exported_vars with 
-      None -> 
-      let res = 
+  let export_variables () =
+    match !exported_vars with
+      None ->
+      let res =
         P.Monom.Hashtbl.fold
-          (fun m v acc -> P.Monom.Map.add m v acc) 
+          (fun m v acc -> P.Monom.Map.add m v acc)
           monom_to_var_memoizer
           P.Monom.Map.empty
       in
       exported_vars := Some res; res
     | Some r -> r
 
-  let initializers loc = 
+  let initializers loc =
     P.Monom.Hashtbl.fold
-      (fun m v acc -> 
-         let lval = Cil.var v in 
+      (fun m v acc ->
+         let lval = Cil.var v in
 
-         let vars = P.to_var m in 
-         let some_exp = 
+         let vars = P.to_var m in
+         let some_exp =
            List.fold_left
-             (fun acc v -> 
-                match acc with 
+             (fun acc v ->
+                match acc with
                   None -> Some(Cil.new_exp ~loc (Lval (Cil.var v)))
                 | Some exp -> Some (
                     (Cil.mkBinOp ~loc Mult exp (Cil.new_exp ~loc (Lval (Cil.var v))))
                   )
              )
-             None 
+             None
              vars
          in
          Instr(Set(lval,(Extlib.the some_exp),loc)) :: acc)
@@ -569,5 +569,4 @@ struct
       []
 
 
-end 
-
+end

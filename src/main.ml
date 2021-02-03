@@ -515,8 +515,8 @@ let run_input_mat file =
   let i = ref 0 in
   let var_map =
     List.fold_left
-      (fun acc v -> 
-         let new_acc = 
+      (fun acc v ->
+         let new_acc =
            A.Imap.add !i (A.P.var_to_monom v) acc
          in
          i := !i + 1; new_acc)

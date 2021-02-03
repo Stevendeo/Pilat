@@ -32,7 +32,7 @@ let float_of_const c =
   | CChr c -> Integer.to_float (Cil.charConstToInt c)
   | CReal (f,_,_) -> f
   | _ -> assert false
-   
+
 let rec arg_exp e =
   match e.enode with
     Const c -> float_of_const c
@@ -44,7 +44,7 @@ let rec arg_exp e =
 (** Returns the varinfos used in the block in argument *)
 let studied_variables block =
   let vinfos = ref Cil_datatype.Varinfo.Set.empty in
- 
+
   let focused_vinfo = Mat_option.var_list ()
   in
   let non_det_variables = ref Cil_datatype.Varinfo.Map.empty
@@ -54,7 +54,7 @@ let studied_variables block =
       inherit Visitor.frama_c_inplace
 
       method! vvrbl v =
-		
+
 	match self#current_stmt with
 	  None -> DoChildren (* This case might be useless *)
 	| Some {skind = If _ } -> DoChildren
@@ -65,7 +65,7 @@ let studied_variables block =
 	      let () = Mat_option.debug ~dkey:dkey_var
 		"Non deterministic call : %s"
 		v.vorig_name in
-	     
+
 	      let fst_arg = List.hd args and snd_arg = List.hd (List.tl args) in
 	      non_det_variables :=
 		Cil_datatype.Varinfo.Map.add
@@ -74,17 +74,17 @@ let studied_variables block =
 		!non_det_variables
 	    else
 	      if Cil_datatype.Varinfo.Set.mem v focused_vinfo then
-	 
+
 		Mat_option.abort "Function call %a in the loop modifying a studied variable : undefined behavior."
 		  Printer.pp_stmt s
 	  in
 	  DoChildren
 	| Some ({skind = Instr (Call (Some (Var v,_),_,_,_))}as s) ->
 	  if Cil_datatype.Varinfo.Set.mem v focused_vinfo then
-	 
+
 	  Mat_option.abort "Function call %a in the loop modifying a studied variable : undefined behavior."
 	    Printer.pp_stmt s
-	   
+
 	  else DoChildren
 
 	| Some {skind = Instr (Call _)} ->
@@ -99,7 +99,7 @@ let studied_variables block =
 	  in
 	  let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
 	  in
-	  SkipChildren     
+	  SkipChildren
 
     end
   in
@@ -171,7 +171,7 @@ let make_assign_block skinds next_stmt =
 class fundec_updater prj =
 object
   inherit (Visitor.frama_c_copy prj)
-   
+
   method! vstmt_aux s =
     try
       let succ = List.hd s.succs in
@@ -181,14 +181,14 @@ object
 	"Statement %a has statements to add."
 	Printer.pp_stmt s;
        Cil_datatype.Stmt.Hashtbl.remove stmt_init_table succ in
-     
-     
-     
+
+
+
       ChangeDoChildrenPost (s,make_assign_block new_stmtkinds)
- 
+
     with
       Not_found (* Stmt.Hashtbl.find stmt_init_table s *) -> DoChildren
     | Failure _ (*"hd"*) -> DoChildren
-    
+
 end
 *)

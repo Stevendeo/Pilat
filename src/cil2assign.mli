@@ -23,47 +23,47 @@
 open Cil_datatype
 
 
-module Make: functor 
-     (Assign : Poly_assign.S with type P.v = Varinfo.t 
+module Make: functor
+     (Assign : Poly_assign.S with type P.v = Varinfo.t
 			     and type P.Var.Map.key = Varinfo.t
 			     and type P.Var.Set.t = Varinfo.Set.t
-     )-> 
-sig 
+     )->
+sig
 
   val stmt_set : Stmt.t list -> Stmt.Set.t
-  
+
   (** 1. Cil2Pilat *)
-  
-  val prj_var_to_pvar : 
+
+  val prj_var_to_pvar :
     Assign.P.Var.Set.t -> (Assign.P.v -> Assign.P.v) -> Assign.P.v Assign.P.Var.Map.t
 
   (** Returns a polynomial representing the expression in argument *)
-  val exp_to_poly : 
-    ?nd_var:(float*float) Varinfo.Map.t  -> 
-    Assign.P.v Assign.P.Var.Map.t -> 
-    Cil_types.exp -> 
+  val exp_to_poly :
+    ?nd_var:(float*float) Varinfo.Map.t  ->
+    Assign.P.v Assign.P.Var.Map.t ->
+    Cil_types.exp ->
     Assign.P.t
-    
+
   (** Returns the loop body in the Pilat CFG. The first stmt is the loop entry, the list are the
       last statement studied, themselves excluded. *)
-  val block_to_body : 
-    Assign.P.v Assign.P.Var.Map.t -> 
-    ?nd_var:(float*float) Varinfo.Map.t -> 
-    Cil_types.stmt option -> 
-    Cil_types.stmt ->  
+  val block_to_body :
+    Assign.P.v Assign.P.Var.Map.t ->
+    ?nd_var:(float*float) Varinfo.Map.t ->
+    Cil_types.stmt option ->
+    Cil_types.stmt ->
     Stmt.Set.t ->
-    Cil_types.stmt list -> 
-    (Cil_types.stmt -> Cil_types.stmt) -> 
+    Cil_types.stmt list ->
+    (Cil_types.stmt -> Cil_types.stmt) ->
     Assign.body
 
 
   (**2.  Pilat2Cil *)
-                                                      
-  val block_linassign_to_block : 
-    Cil_types.block list -> 
-    Kernel_function.t -> 
-    Cil_types.typ -> 
-    Cil_types.location -> 
+
+  val block_linassign_to_block :
+    Cil_types.block list ->
+    Kernel_function.t ->
+    Cil_types.typ ->
+    Cil_types.location ->
     Assign.monom_assign list -> Cil_types.block
 
   (** Returns all the varinfo created by this module. *)

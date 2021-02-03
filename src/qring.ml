@@ -22,21 +22,21 @@
 
 include (Q: Pilat_math.Ring_base with type t = Q.t)
 
-let float_to_t = Q.of_float 
+let float_to_t = Q.of_float
 let approx _ = assert false
 let den f = f |> Q.den |> Q.of_bigint
 let t_to_int = Q.to_int
 let int_to_t = Q.of_int
-let t_to_float q = 
+let t_to_float q =
   ((q |> Q.num |> Z.to_float)
   /.
     (q |> Q.den |> Z.to_float))
 
 
-let non_det_repr f1 f2 = 
+let non_det_repr f1 f2 =
   if f1 = f2 then float_to_t f1
-  else 
-      Mat_option.abort 
+  else
+      Mat_option.abort
 	"Deterministic rational library used for non deterministic assignments."
 
 let deter = t_to_float
