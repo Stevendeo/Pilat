@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "pilat"
-version: "1.4"
+version: "1.5"
 maintainer: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
 authors: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
 dev-repo: "git://github.com/Stevendeo/Pilat.git"
@@ -12,3 +12,4 @@ install: ["sh" "install.sh"]
 remove: ["ocamlfind" "remove" "pilat"]
 depends: ["ocamlfind" "lacaml" "zarith" "frama-c"]
 available: ["ocaml-version" >= "4.10.0"]
+bug-reports:"https://github.com/Stevendeo/Pilat/issues"
