@@ -67,10 +67,10 @@ module type S = sig
 
   type monom_assign =
 
-    LinAssign of monomial * p
-  | LinAssert of Cil_types.exp * lin_body * lin_body (* Todo : do not depend on Frama-C *)
-  | LinLoop of lin_body
-  | LinOther_stmt of Cil_types.stmt (* Todo : do not depend on Frama-C *)
+      LinAssign of monomial * p
+    | LinAssert of Cil_types.exp * lin_body * lin_body (* Todo : do not depend on Frama-C *)
+    | LinLoop of lin_body
+    | LinOther_stmt of Cil_types.stmt (* Todo : do not depend on Frama-C *)
 
   and lin_body = monom_assign list
 
@@ -109,5 +109,5 @@ module Make:
   functor
     (M : Matrix)
     (Poly : Polynomial with type c = M.elt) -> S with type P.c = M.elt
-						  and type P.v = Poly.v
-						  and type P.Var.Set.t = Poly.Var.Set.t
+                                                  and type P.v = Poly.v
+                                                  and type P.Var.Set.t = Poly.Var.Set.t

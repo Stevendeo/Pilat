@@ -24,10 +24,10 @@ open Cil_datatype
 
 
 module Make: functor
-     (Assign : Poly_assign.S with type P.v = Varinfo.t
-			     and type P.Var.Map.key = Varinfo.t
-			     and type P.Var.Set.t = Varinfo.Set.t
-     )->
+  (Assign : Poly_assign.S with type P.v = Varinfo.t
+                           and type P.Var.Map.key = Varinfo.t
+                           and type P.Var.Set.t = Varinfo.Set.t
+  )->
 sig
 
   val stmt_set : Stmt.t list -> Stmt.Set.t

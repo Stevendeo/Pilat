@@ -37,7 +37,7 @@ let non_det_repr f1 f2 =
   if f1 = f2 then float_to_t f1
   else
       Mat_option.abort
-	"Deterministic rational library used for non deterministic assignments."
+        "Deterministic rational library used for non deterministic assignments."
 
 let deter = t_to_float
 

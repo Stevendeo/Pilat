@@ -39,7 +39,7 @@ let rec arg_exp e =
   | CastE (_,e) | Info (e,_) -> arg_exp e
   | UnOp (Neg,e,_) -> -1.*.  (arg_exp e)
   | _ -> Mat_option.abort "Bad argument for non det function : %a."
-    Printer.pp_exp e
+           Printer.pp_exp e
 
 (** Returns the varinfos used in the block in argument *)
 let studied_variables block =
@@ -55,51 +55,51 @@ let studied_variables block =
 
       method! vvrbl v =
 
-	match self#current_stmt with
-	  None -> DoChildren (* This case might be useless *)
-	| Some {skind = If _ } -> DoChildren
-	| Some ({skind = Instr (Call(Some(Var nd,_),{ enode = Lval(Var v,NoOffset) },args,_))} as s)->
-	  let () =
-	    if v.vorig_name = Mat_option.non_det_name && (List.length args) = 2
-	    then
-	      let () = Mat_option.debug ~dkey:dkey_var
-		"Non deterministic call : %s"
-		v.vorig_name in
+        match self#current_stmt with
+          None -> DoChildren (* This case might be useless *)
+        | Some {skind = If _ } -> DoChildren
+        | Some ({skind = Instr (Call(Some(Var nd,_),{ enode = Lval(Var v,NoOffset) },args,_))} as s)->
+          let () =
+            if v.vorig_name = Mat_option.non_det_name && (List.length args) = 2
+            then
+              let () = Mat_option.debug ~dkey:dkey_var
+                  "Non deterministic call : %s"
+                  v.vorig_name in
 
-	      let fst_arg = List.hd args and snd_arg = List.hd (List.tl args) in
-	      non_det_variables :=
-		Cil_datatype.Varinfo.Map.add
-		nd
-		((arg_exp fst_arg),arg_exp snd_arg)
-		!non_det_variables
-	    else
-	      if Cil_datatype.Varinfo.Set.mem v focused_vinfo then
+              let fst_arg = List.hd args and snd_arg = List.hd (List.tl args) in
+              non_det_variables :=
+                Cil_datatype.Varinfo.Map.add
+                  nd
+                  ((arg_exp fst_arg),arg_exp snd_arg)
+                  !non_det_variables
+            else
+            if Cil_datatype.Varinfo.Set.mem v focused_vinfo then
 
-		Mat_option.abort "Function call %a in the loop modifying a studied variable : undefined behavior."
-		  Printer.pp_stmt s
-	  in
-	  DoChildren
-	| Some ({skind = Instr (Call (Some (Var v,_),_,_,_))}as s) ->
-	  if Cil_datatype.Varinfo.Set.mem v focused_vinfo then
+              Mat_option.abort "Function call %a in the loop modifying a studied variable : undefined behavior."
+                Printer.pp_stmt s
+          in
+          DoChildren
+        | Some ({skind = Instr (Call (Some (Var v,_),_,_,_))}as s) ->
+          if Cil_datatype.Varinfo.Set.mem v focused_vinfo then
 
-	  Mat_option.abort "Function call %a in the loop modifying a studied variable : undefined behavior."
-	    Printer.pp_stmt s
+            Mat_option.abort "Function call %a in the loop modifying a studied variable : undefined behavior."
+              Printer.pp_stmt s
 
-	  else DoChildren
+          else DoChildren
 
-	| Some {skind = Instr (Call _)} ->
-	  Mat_option.feedback
-             "Function call in the loop without assignment : assert it does nothing.";
+        | Some {skind = Instr (Call _)} ->
+          Mat_option.feedback
+            "Function call in the loop without assignment : assert it does nothing.";
           DoChildren;
-	| s ->
-	  let () = Mat_option.debug ~dkey:dkey_var
-	    "Variable %s added by statement %a"
-	    v.vorig_name
-	    Printer.pp_stmt (Extlib.the s)
-	  in
-	  let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
-	  in
-	  SkipChildren
+        | s ->
+          let () = Mat_option.debug ~dkey:dkey_var
+              "Variable %s added by statement %a"
+              v.vorig_name
+              Printer.pp_stmt (Extlib.the s)
+          in
+          let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
+          in
+          SkipChildren
 
     end
   in
@@ -140,17 +140,17 @@ let make_ghost_assign skind =
 
 let make_assign_block skinds next_stmt =
   let s_list,_ =
-	List.fold_left
-	  (fun (acc_stmts, next_stmt) new_stmtkind ->
-                 let stmt = make_ghost_assign new_stmtkind in
-                 let () = Mat_option.debug ~dkey:dkey_stmt
-	             "Adding stmt %a of id %i to the cfg before %a"
-	             Printer.pp_stmt stmt stmt.sid Printer.pp_stmt next_stmt in
-	         next_stmt.preds <- [stmt];
-                 stmt.succs <- [next_stmt];
-	         (stmt::acc_stmts,stmt))
-	  ([],next_stmt)
-	  skinds
+    List.fold_left
+      (fun (acc_stmts, next_stmt) new_stmtkind ->
+         let stmt = make_ghost_assign new_stmtkind in
+         let () = Mat_option.debug ~dkey:dkey_stmt
+             "Adding stmt %a of id %i to the cfg before %a"
+             Printer.pp_stmt stmt stmt.sid Printer.pp_stmt next_stmt in
+         next_stmt.preds <- [stmt];
+         stmt.succs <- [next_stmt];
+         (stmt::acc_stmts,stmt))
+      ([],next_stmt)
+      skinds
   in
   let s_list = List.rev(next_stmt::s_list) in
   let () =
@@ -178,8 +178,8 @@ object
       let new_stmtkinds = Cil_datatype.Stmt.Hashtbl.find stmt_init_table succ
       in
       let () = Mat_option.debug ~dkey:dkey_stmt ~level:2
-	"Statement %a has statements to add."
-	Printer.pp_stmt s;
+ "Statement %a has statements to add."
+ Printer.pp_stmt s;
        Cil_datatype.Stmt.Hashtbl.remove stmt_init_table succ in
 
 

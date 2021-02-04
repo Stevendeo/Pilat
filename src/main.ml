@@ -89,25 +89,25 @@ let loop_analyzer prj =
 
 
         begin (* Loop treatment *)
-	  let () =
+          let () =
             Mat_option.debug ~dkey:dkey_stmt "Loop %a studied"
               Cil_datatype.Stmt.pretty stmt;
             List.iter
               (fun s ->
                  Mat_option.debug ~dkey:dkey_stmt ~level:5 "Stmt in loop = %a"
-		   Cil_datatype.Stmt.pretty s;)
+                   Cil_datatype.Stmt.pretty s;)
               b.bstmts
-	  in
+          in
 
-	  let (varinfos_used,nd_var) = Pilat_visitors.studied_variables b in
+          let (varinfos_used,nd_var) = Pilat_visitors.studied_variables b in
 
-	  let num_variables =
+          let num_variables =
             Cil_datatype.Varinfo.Set.cardinal varinfos_used
-	  in
+          in
 
-	  let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
+          let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
 
-	    Cil_datatype.Varinfo.Set.iter
+            Cil_datatype.Varinfo.Set.iter
               (fun v ->
                  Mat_option.debug
                    ~dkey:dkey_stmt
@@ -115,14 +115,14 @@ let loop_analyzer prj =
                    "Var %a"
                    Printer.pp_varinfo v) varinfos_used in
 
-	  let assign_is_deter = Cil_datatype.Varinfo.Map.is_empty nd_var in
+          let assign_is_deter = Cil_datatype.Varinfo.Map.is_empty nd_var in
           let () =
             if assign_is_deter
             then Mat_option.debug ~level:2 "Loop is deterministic"
             else Mat_option.debug ~level:2 "Loop is non deterministic : %i noises"(Cil_datatype.Varinfo.Map.cardinal nd_var)  in
-	  let (module Assign_type :
+          let (module Assign_type :
                 Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
-		               and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t) =
+                               and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t) =
 
 
             match (Mat_option.Use_zarith.get ()), assign_is_deter with
@@ -134,9 +134,9 @@ let loop_analyzer prj =
             (*(module Assign.Q_non_deterministic) *)
             | false, true  -> (module Assign.Float_deterministic)
             | false, false -> (module Assign.Float_non_deterministic)
-	  in
-	  (** 1st step : Computation of the block as a list of list of polynomials assignments. *)
-	  let module Cil_parser = Cil2assign.Make(Assign_type) in
+          in
+          (** 1st step : Computation of the block as a list of list of polynomials assignments. *)
+          let module Cil_parser = Cil2assign.Make(Assign_type) in
           let prj_var_pvar_map =
             Cil_parser.prj_var_to_pvar
               varinfos_used
@@ -148,7 +148,7 @@ let loop_analyzer prj =
               prj_var_pvar_map
               Assign_type.P.Var.Set.empty in
           let polys_opt =
-	    let out_of_loop_stmt =
+            let out_of_loop_stmt =
               (Extlib.the breaks)
             in assert (match out_of_loop_stmt.skind with Cil_types.Break _ -> false | _ -> true);
             let rec block_stmts b =
@@ -191,31 +191,31 @@ let loop_analyzer prj =
                    [stmt]
                    (Visitor_behavior.Get.stmt self#behavior)
                 )
-	    with Poly_assign.Not_solvable -> None
-	  in
-	  match polys_opt with
+            with Poly_assign.Not_solvable -> None
+          in
+          match polys_opt with
             None ->
             Mat_option.debug ~dkey:dkey_stmt "The loop is not solvable"; DoChildren
 
-	  | Some body ->
+          | Some body ->
             Mat_option.debug ~dkey:dkey_stmt "The loop is solvable";
 
 
             Cil_datatype.Varinfo.Set.iter
               (fun v ->
                  Mat_option.debug
-		   ~dkey:dkey_stmt
-		   ~level:3
-		   "Var: %a"
-		   Printer.pp_varinfo v) varinfos_used ;
+                   ~dkey:dkey_stmt
+                   ~level:3
+                   "Var: %a"
+                   Printer.pp_varinfo v) varinfos_used ;
 
             Cil_datatype.Varinfo.Map.iter
               (fun v (f1,f2) ->
                  Mat_option.debug
-		   ~dkey:dkey_stmt
-		   ~level:3
-		   "%a between %f and %f"
-		   Printer.pp_varinfo v f1 f2) nd_var ;
+                   ~dkey:dkey_stmt
+                   ~level:3
+                   "%a between %f and %f"
+                   Printer.pp_varinfo v f1 f2) nd_var ;
 
             Mat_option.debug ~dkey:dkey_stmt ~level:5
               "Assign: %a"
@@ -229,7 +229,7 @@ let loop_analyzer prj =
             in
             let rev_base = Assign_type.reverse_base base in
             let matrices =
- 	      Assign_type.loop_matrix base assigns in
+              Assign_type.loop_matrix base assigns in
 
             let () =
               Mat_option.debug ~dkey:dkey_stmt ~level:2
@@ -238,8 +238,8 @@ let loop_analyzer prj =
               List.iter
                 (fun mat ->
                    Mat_option.debug ~dkey:dkey_stmt ~level:3
-		     "Matrix generated : \n%a"
-		     Assign_type.M.pp_print mat
+                     "Matrix generated : \n%a"
+                     Assign_type.M.pp_print mat
                 )
                 matrices
             in
@@ -253,38 +253,38 @@ let loop_analyzer prj =
               let module Prover = Invar_prover.Make(Assign_type) in
               List.iter
                 (fun annot ->
-		   let status =
-	             Mat_option.debug ~dkey:dkey_annot
-	               "Annotation : %a"
-	               Printer.pp_code_annotation annot;
-	             List.fold_left
-	               (fun acc mat ->
-	                  match acc with
-			    False_and_reachable | False_if_reachable -> acc
-	                  | Dont_know | True ->
-	                    begin
-			      match Prover.prove_annot mat base annot with
-		                True -> acc
-			      | res -> res
-	                    end
-	               )
-	               True
-	               matrices
-		   in
+                   let status =
+                     Mat_option.debug ~dkey:dkey_annot
+                       "Annotation : %a"
+                       Printer.pp_code_annotation annot;
+                     List.fold_left
+                       (fun acc mat ->
+                          match acc with
+                            False_and_reachable | False_if_reachable -> acc
+                          | Dont_know | True ->
+                            begin
+                              match Prover.prove_annot mat base annot with
+                                True -> acc
+                              | res -> res
+                            end
+                       )
+                       True
+                       matrices
+                   in
 
-		   let () =
-	             Mat_option.feedback
-	               "Invariant %a status : %s"
-	               Printer.pp_code_annotation annot
-	               (match status with
-	                  True -> "True"
-	                | Dont_know -> "?"
-	                | _ -> "False") in
+                   let () =
+                     Mat_option.feedback
+                       "Invariant %a status : %s"
+                       Printer.pp_code_annotation annot
+                       (match status with
+                          True -> "True"
+                        | Dont_know -> "?"
+                        | _ -> "False") in
 
-		   let emitter = Annotations.emitter_of_code_annot annot stmt
-		   and ip = Property.ip_of_code_annot_single kf stmt annot
-		   in
-		   Property_status.emit emitter ~hyps:[] ip status
+                   let emitter = Annotations.emitter_of_code_annot annot stmt
+                   and ip = Property.ip_of_code_annot_single kf stmt annot
+                   in
+                   Property_status.emit emitter ~hyps:[] ip status
                 )
                 (Annotations.code_annot stmt);
               Mat_option.proof_timer := !Mat_option.proof_timer +. Sys.time () -. t_prove;
@@ -296,29 +296,29 @@ let loop_analyzer prj =
               let whole_loop_invar =
                 List.fold_left
                   (fun acc (mat : Assign_type.mat) ->
-	             let () =
-	               Mat_option.debug ~dkey:dkey_stmt ~level:3
-	                 "New mat : %a" Assign_type.M.pp_print mat
-	             in
- 	             let invar = (Invariant_maker.invariant_computation assign_is_deter mat)
-	             in
+                     let () =
+                       Mat_option.debug ~dkey:dkey_stmt ~level:3
+                         "New mat : %a" Assign_type.M.pp_print mat
+                     in
+                     let invar = (Invariant_maker.invariant_computation assign_is_deter mat)
+                     in
 
-	             Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
-	             List.iteri
-	               (fun i (limit,invars) ->
-	                  let () =
-			    Mat_option.debug ~dkey:dkey_stmt
-		              "Invariant %s %i :" (Invariant_maker.lim_to_string limit)  (i + 1) in
-	                  List.iter
-			    (fun invar ->
-		               Mat_option.debug ~dkey:dkey_stmt
-		                 "%a\n__"
-		                 Assign_type.print_vec (rev_base,invar);
-			    )invars;
-	               ) invar;
+                     Mat_option.debug ~dkey:dkey_stmt ~level:2 "Invar : ";
+                     List.iteri
+                       (fun i (limit,invars) ->
+                          let () =
+                            Mat_option.debug ~dkey:dkey_stmt
+                              "Invariant %s %i :" (Invariant_maker.lim_to_string limit)  (i + 1) in
+                          List.iter
+                            (fun invar ->
+                               Mat_option.debug ~dkey:dkey_stmt
+                                 "%a\n__"
+                                 Assign_type.print_vec (rev_base,invar);
+                            )invars;
+                       ) invar;
 
 
-	             (mat,invar) :: acc
+                     (mat,invar) :: acc
 
                   )
                   []
@@ -332,21 +332,21 @@ let loop_analyzer prj =
               in
               let whole_loop_invar =
                 if Mat_option.Redundancy.get () then
-		  List.map
-	            (fun (mat,invars) ->
-	               mat,List.map
-	                 (fun (l,invar) ->
-			    l,List.filter
-		              (fun vec ->
-		                 not (Invariant_maker.redundant_invariant rev_base vec invar)
-		              )
-		              invar
-	                 )
-	                 invars
-	            )
-	            whole_loop_invar
+                  List.map
+                    (fun (mat,invars) ->
+                       mat,List.map
+                         (fun (l,invar) ->
+                            l,List.filter
+                              (fun vec ->
+                                 not (Invariant_maker.redundant_invariant rev_base vec invar)
+                              )
+                              invar
+                         )
+                         invars
+                    )
+                    whole_loop_invar
                 else
-		  whole_loop_invar
+                  whole_loop_invar
               in
               Mat_option.redun_timer := !Mat_option.redun_timer +. Sys.time () -. t_redundancy;
 
@@ -419,7 +419,7 @@ let loop_analyzer prj =
                                       (fun acc (_,invar) ->
                                          if acc = Some [] then Some [] else
                                            match acc with
-	                                     None -> Some invar
+                                             None -> Some invar
                                            | Some l ->
                                              Some (Invariant_maker.intersection_invariants invar l))
                                       None
@@ -596,50 +596,50 @@ let run () =
       Kernel_function.clear_sid_info (); (* Clears kernel_functions informations,
                                             will be recomputed automatically.
                                             Maybe to do after the next step *)
-      List.iter
-        (function
-          |GFun (f,_) ->
-            Cfg.clearCFGinfo f;  (*Prepares cfgFun *)
-            Cfg.prepareCFG f;  (* Registers break points of loops *)
-            Cfg.cfgFun f;(* Sets the correct break statements in loops *)
-          | _ -> ())
-        file.globals;
+    List.iter
+      (function
+        |GFun (f,_) ->
+          Cfg.clearCFGinfo f;  (*Prepares cfgFun *)
+          Cfg.prepareCFG f;  (* Registers break points of loops *)
+          Cfg.cfgFun f;(* Sets the correct break statements in loops *)
+        | _ -> ())
+      file.globals;
 
-      (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations,
-                                            will be recomputed automatically. *)
-      *)
-      let lin_prj =
+    (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations,
+                                          will be recomputed automatically. *)
+    *)
+    let lin_prj =
 
-        File.create_project_from_visitor "pilat_tmp_project" loop_analyzer
-      in
-      Mat_option.Degree.set (-1);
+      File.create_project_from_visitor "pilat_tmp_project" loop_analyzer
+    in
+    Mat_option.Degree.set (-1);
 
-      Mat_option.debug ~dkey:dkey_time
-        "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
+    Mat_option.debug ~dkey:dkey_time
+      "Time to compute the relations : %f" ! Mat_option.whole_rel_time ;
 
-      Mat_option.debug ~dkey:dkey_time ~level:2
-        "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly : %f\nRedundancy analysis : %f"
-        !Mat_option.invar_timer
-        !Mat_option.inter_timer
-        !Mat_option.nullspace_timer
-        !Mat_option.ev_timer
-        !Mat_option.char_poly_timer
-        !Mat_option.redun_timer
-      ;
+    Mat_option.debug ~dkey:dkey_time ~level:2
+      "Invariant generation time : %f\nIntersection time : %f\nNullspace time %f\nEigenvalues : %f\n Char. poly : %f\nRedundancy analysis : %f"
+      !Mat_option.invar_timer
+      !Mat_option.inter_timer
+      !Mat_option.nullspace_timer
+      !Mat_option.ev_timer
+      !Mat_option.char_poly_timer
+      !Mat_option.redun_timer
+    ;
 
-      let () = Mat_option.feedback "Printing in %s" filename
-      in
-      if not(Mat_option.Prove.get ()) then
-        let cout =
-          if filename = "stdout" then stdout else open_out filename in
-        let fmt = Format.formatter_of_out_channel cout in
-        Kernel.Unicode.without_unicode
-          (fun () ->
-             Mat_option.feedback "C file generation      : in progress...\n";
-             File.pretty_ast ~prj:lin_prj ~fmt ();
-             if filename <> "stdout" then close_out cout;
-             Mat_option.feedback "C file generation      : done\n";
-          ) ()
+    let () = Mat_option.feedback "Printing in %s" filename
+    in
+    if not(Mat_option.Prove.get ()) then
+      let cout =
+        if filename = "stdout" then stdout else open_out filename in
+      let fmt = Format.formatter_of_out_channel cout in
+      Kernel.Unicode.without_unicode
+        (fun () ->
+           Mat_option.feedback "C file generation      : in progress...\n";
+           File.pretty_ast ~prj:lin_prj ~fmt ();
+           if filename <> "stdout" then close_out cout;
+           Mat_option.feedback "C file generation      : done\n";
+        ) ()
 
 
 let () = Db.Main.extend run

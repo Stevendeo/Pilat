@@ -26,11 +26,11 @@ open Pilat_math
 
 module Make : functor (A : Ring) (V : Pilat_math.Variable) ->
   (Polynomial with type c = A.t
-	      and type v = V.t
-	      and type Var.Set.t = V.Set.t)
+               and type v = V.t
+               and type Var.Set.t = V.Set.t)
 
 type var = | X
 
 (** Polynomial with a unique variable, X. *)
 module XMake : functor (A : Ring) -> (Polynomial with type c = A.t
-						 and type v = var)
+                                                  and type v = var)
