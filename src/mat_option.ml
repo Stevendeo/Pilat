@@ -26,13 +26,13 @@ include Plugin.Register
       let shortname = "pilat"
       let help = "Frama-C Polynomial invariant generator"
     end)
-(*
+
 module Enabled = False
   (struct
     let option_name = "-pilat"
     let help = "when on, generates polynomial invariants for each solvable loop of the program"
    end)
-  *)
+
 module Degree = Int
     (struct 2
       let option_name = "-pilat-degree"

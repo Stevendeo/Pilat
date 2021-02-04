@@ -569,7 +569,7 @@ let run_input_mat file =
     invars
 
 let run () =
-  if (Mat_option.Degree.get () <> -1)
+  if (Mat_option.Enabled.get () && Mat_option.Degree.get () <> -1)
   then
     let () =
       (*Mat_option.Enabled.set false;

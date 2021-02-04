@@ -24,8 +24,8 @@ include Plugin.S
 
 (** 1. Parameters *)
 
-(*module Enabled: Parameter_sig.Bool
-*)
+module Enabled: Parameter_sig.Bool
+
 module Degree: Parameter_sig.Int
 
 module NameConst: Parameter_sig.String
