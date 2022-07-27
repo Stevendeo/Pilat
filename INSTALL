@@ -19,7 +19,7 @@ install OPAM.
 
    I strongly recommend you to retry installing opam. Otherwise
    
-   a) Get the latest version of Ocaml (or at least the 4.03). 
+   a) Get the latest version of Ocaml (at least the 4.08.1). 
       
    b) Download the Frama-C source on http://frama-c.com/ and unzip it.
       Then go to the main directory and run : 

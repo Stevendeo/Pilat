@@ -15,5 +15,5 @@ depends:
     "lacaml" {<= "11.0.8"}
     "zarith" {<= "1.12"}
     "frama-c" {>= "22.0" <= "25.0"}]
-available: ["ocaml-version" >= "4.08.0"]
+available: ["ocaml-version" >= "4.08.1"]
 bug-reports:"https://github.com/Stevendeo/Pilat/issues"
