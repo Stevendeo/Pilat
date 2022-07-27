@@ -399,7 +399,6 @@ struct
     | 0 -> one
     | 1 -> p
     | k ->
-
       if k mod 2 = 0
       then
         let p_pow_half = (pow p (k/2))

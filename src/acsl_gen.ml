@@ -471,7 +471,7 @@ struct
     else
       term_list_to_predicate
         false
-        ~mat:(Extlib.the mat)
+        ~mat:(Extlib.the ~exn:(Invalid_argument "vec_space_to_predicate_zarith") mat)
         term_list
         limit
         rev_base

@@ -106,7 +106,7 @@ struct
       | BinOp (binop,e1,e2,_) ->
         begin
           match binop with
-            PlusA | PlusPI | IndexPI -> P.add (__e_to_p e1) (__e_to_p e2)
+            PlusA | PlusPI (*| IndexPI *) -> P.add (__e_to_p e1) (__e_to_p e2)
           | MinusA | MinusPI | MinusPP -> P.sub (__e_to_p e1) (__e_to_p e2)
           | Mult -> P.mul (__e_to_p e1) (__e_to_p e2)
           | Div ->
@@ -169,7 +169,7 @@ struct
             "Instruction" in
         if break = None then None
         else
-        if Stmt.equal s (Extlib.the break)
+        if Stmt.equal s (Extlib.the ~exn:(Invalid_argument "stmt_to_poly_assign") break)
         then raise (Loop_break s)
         else
           let () = Mat_option.debug ~dkey:dkey_stmt
@@ -462,7 +462,7 @@ struct
   let poly_to_linexp fundec typ loc poly =
     let monoms = P.get_monomials poly in
     let type_is_int = match typ with TInt _ -> true | TFloat _ -> false | _ -> assert false in
-    Extlib.the
+    Extlib.the ~exn:(Invalid_argument "poly_to_linexp")
       (P.Monom.Set.fold
          (fun m (acc_rval) ->
 
@@ -513,7 +513,7 @@ struct
       let skind = If(e, f b1, f b2, loc) in
       Cil.mkStmt ~ghost:false ~valid_sid:true skind
     | Assign.LinAssign (monom,poly) ->
-      let lval = Extlib.the (monom_to_var fundec typ monom) (* Can't be None, you can't assign 1 *) in
+      let lval = Extlib.the ~exn:(Invalid_argument "linassign_to_smt:lval") (monom_to_var fundec typ monom) (* Can't be None, you can't assign 1 *) in
       let rval = poly_to_linexp fundec typ loc poly
       in
       let stmt = Cil.mkStmt ~ghost:false ~valid_sid:true (Instr (Set (Cil.var lval, rval, loc)))
@@ -564,7 +564,7 @@ struct
              None
              vars
          in
-         Instr(Set(lval,(Extlib.the some_exp),loc)) :: acc)
+         Instr(Set(lval,(Extlib.the ~exn:(Invalid_argument "initializers") some_exp),loc)) :: acc)
       monom_to_var_memoizer
       []
 

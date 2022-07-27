@@ -45,5 +45,7 @@ let max = t_to_float
 let min = t_to_float
 
 let to_str = Q.to_string
-let of_str f = float_to_t (float_of_string f)
+let of_str f =
+  try float_to_t (float_of_string f) with
+  | Failure _ -> failwith (f ^ "is not a valid Q.t value")
 let to_nvars _ = []

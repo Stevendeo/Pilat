@@ -68,8 +68,9 @@ let loop_analyzer prj =
         self#get_filling_actions
 
     method! vstmt_aux stmt =
-      let kf =
-        (Extlib.the self#current_kf) in (* self#plain_copy_visitor = visiteur juste copie *)
+      let kf = (Extlib.the ~exn:(Invalid_argument "loop_analyzer") self#current_kf) in
+      (* self#plain_copy_visitor = visiteur juste copie *)
+
       let fundec = match kf.fundec with
           Definition (f,_) -> f
         | Declaration _ -> assert false in
@@ -87,7 +88,6 @@ let loop_analyzer prj =
         let conts,breaks = (copy_opt conts),(copy_opt breaks) in
         let t_whole = Sys.time() in
 
-
         begin (* Loop treatment *)
           let () =
             Mat_option.debug ~dkey:dkey_stmt "Loop %a studied"
@@ -102,11 +102,10 @@ let loop_analyzer prj =
           let (varinfos_used,nd_var) = Pilat_visitors.studied_variables b in
 
           let num_variables =
-            Cil_datatype.Varinfo.Set.cardinal varinfos_used
-          in
+            Cil_datatype.Varinfo.Set.cardinal varinfos_used in
 
-          let () = Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
-
+          let () =
+            Mat_option.debug ~dkey:dkey_stmt ~level:2 "Used varinfos computed";
             Cil_datatype.Varinfo.Set.iter
               (fun v ->
                  Mat_option.debug
@@ -117,14 +116,17 @@ let loop_analyzer prj =
 
           let assign_is_deter = Cil_datatype.Varinfo.Map.is_empty nd_var in
           let () =
-            if assign_is_deter
-            then Mat_option.debug ~level:2 "Loop is deterministic"
-            else Mat_option.debug ~level:2 "Loop is non deterministic : %i noises"(Cil_datatype.Varinfo.Map.cardinal nd_var)  in
+            if assign_is_deter then
+              Mat_option.debug ~level:2 "Loop is deterministic"
+            else
+              Mat_option.debug
+                ~level:2
+                "Loop is non deterministic : %i noises"
+                (Cil_datatype.Varinfo.Map.cardinal nd_var) in
+
           let (module Assign_type :
                 Poly_assign.S with type P.v = Cil_datatype.Varinfo.t
                                and type P.Var.Set.t = Cil_datatype.Varinfo.Set.t) =
-
-
             match (Mat_option.Use_zarith.get ()), assign_is_deter with
               true,  true  -> (module Assign.Q_deterministic)
             | true,  false ->
@@ -140,8 +142,7 @@ let loop_analyzer prj =
           let prj_var_pvar_map =
             Cil_parser.prj_var_to_pvar
               varinfos_used
-              (Visitor_behavior.Get.varinfo self#behavior)
-          in
+              (Visitor_behavior.Get.varinfo self#behavior) in
           let new_var_set =
             Assign_type.P.Var.Map.fold
               (fun _ v acc -> Assign_type.P.Var.Set.add v acc)
@@ -149,8 +150,9 @@ let loop_analyzer prj =
               Assign_type.P.Var.Set.empty in
           let polys_opt =
             let out_of_loop_stmt =
-              (Extlib.the breaks)
-            in assert (match out_of_loop_stmt.skind with Cil_types.Break _ -> false | _ -> true);
+              Extlib.the ~exn:(Invalid_argument "loop_analyzer:out_of_loop_stmt") breaks
+            in
+            assert (match out_of_loop_stmt.skind with Cil_types.Break _ -> false | _ -> true);
             let rec block_stmts b =
               Cil_datatype.Stmt.Set.fold
                 (fun s acc ->
@@ -245,9 +247,9 @@ let loop_analyzer prj =
             in
             if Mat_option.Prove.get ()
             then
-              let () = Mat_option.feedback "Proving invariants : %i invariants to prove"
+              let () = Mat_option.feedback "Proving invariants : %i invariants to prove on loop %a"
                   (List.length (Annotations.code_annot stmt))
-              in
+                  Printer.pp_stmt stmt in
               let t_prove = Sys.time () in
               let open Property_status in
               let module Prover = Invar_prover.Make(Assign_type) in
@@ -415,15 +417,18 @@ let loop_analyzer prj =
                   [] -> None,[]
                 | (m,vect) :: [] -> ((Some m), vect)
                 | _ ->
-                  None, Extlib.the (List.fold_left
-                                      (fun acc (_,invar) ->
-                                         if acc = Some [] then Some [] else
-                                           match acc with
-                                             None -> Some invar
-                                           | Some l ->
-                                             Some (Invariant_maker.intersection_invariants invar l))
-                                      None
-                                      whole_loop_invar)
+                  None,
+                  Extlib.the
+                    ~exn:(Invalid_argument "loop_analyzer:inter_invar_list")
+                    (List.fold_left
+                       (fun acc (_,invar) ->
+                          if acc = Some [] then Some [] else
+                            match acc with
+                              None -> Some invar
+                            | Some l ->
+                              Some (Invariant_maker.intersection_invariants invar l))
+                       None
+                       whole_loop_invar)
               in
               let () =
                 Mat_option.inter_timer := !Mat_option.inter_timer +. Sys.time () -. t_inter;
@@ -463,8 +468,11 @@ let loop_analyzer prj =
                   | _ -> let () = assert false in ();
                 in block
               in
-              ChangeToPost
-                (new_loop, new_loop_and_initializers (Extlib.the self#current_kf))
+              ChangeToPost (
+                new_loop,
+                new_loop_and_initializers
+                  (Extlib.the ~exn:(Invalid_argument "loop_analyzer:behaviour") self#current_kf)
+              )
 
         end (* Loop *)
       | _ -> DoChildren
@@ -569,21 +577,16 @@ let run_input_mat file =
     invars
 
 let run () =
-  if (Mat_option.Enabled.get () && Mat_option.Degree.get () <> -1)
+  if Mat_option.Enabled.get ()
   then
     let () =
-      (*Mat_option.Enabled.set false;
-      *)Mat_option.feedback
-        "Welcome to Frama-C's Pilat invariant generator"
-    in
-    let file = Ast.get ()
-    in
+      Mat_option.feedback "Welcome to Frama-C's Pilat invariant generator" in
+    let file = Ast.get () in
     let filename =
       match Mat_option.Output_C_File.get () with
         "" -> (Filepath.Normalized.to_pretty_string file.fileName) ^ ".annot.c"
-      | s -> s
-    in
-    let mat_input =  Mat_option.Mat_input.get ()  in
+      | s -> s in
+    let mat_input =  Mat_option.Mat_input.get () in
     if mat_input <> "" then
       begin
         try
@@ -608,10 +611,14 @@ let run () =
     (*Kernel_function.clear_sid_info (); (* Clears kernel_functions informations,
                                           will be recomputed automatically. *)
     *)
-    let lin_prj =
 
-      File.create_project_from_visitor "pilat_tmp_project" loop_analyzer
-    in
+    (* Starting the analysis *)
+    let lin_prj =
+      File.create_project_from_visitor
+        "pilat_tmp_project"
+        loop_analyzer in
+
+    (* Ending *)
     Mat_option.Degree.set (-1);
 
     Mat_option.debug ~dkey:dkey_time
@@ -627,8 +634,7 @@ let run () =
       !Mat_option.redun_timer
     ;
 
-    let () = Mat_option.feedback "Printing in %s" filename
-    in
+    let () = Mat_option.feedback "Printing in %s" filename in
     if not(Mat_option.Prove.get ()) then
       let cout =
         if filename = "stdout" then stdout else open_out filename in

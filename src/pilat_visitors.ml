@@ -36,7 +36,7 @@ let float_of_const c =
 let rec arg_exp e =
   match e.enode with
     Const c -> float_of_const c
-  | CastE (_,e) | Info (e,_) -> arg_exp e
+  | CastE (_,e) (*| Info (e,_)*) -> arg_exp e
   | UnOp (Neg,e,_) -> -1.*.  (arg_exp e)
   | _ -> Mat_option.abort "Bad argument for non det function : %a."
            Printer.pp_exp e
@@ -95,7 +95,7 @@ let studied_variables block =
           let () = Mat_option.debug ~dkey:dkey_var
               "Variable %s added by statement %a"
               v.vorig_name
-              Printer.pp_stmt (Extlib.the s)
+              Printer.pp_stmt (Extlib.the ~exn:(Invalid_argument "studied_variables") s)
           in
           let () = vinfos := Cil_datatype.Varinfo.Set.add v !vinfos
           in

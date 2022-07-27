@@ -47,7 +47,7 @@ module Output_C_File =
       let option_name = "-pilat-output"
       let arg_name = "s"
       let help = "specifies generated file name for annotated C code"
-      let default = "whole_program_annot.c"
+      let default = ""
     end)
 
 module NameConst = String
