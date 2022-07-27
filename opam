@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "pilat"
-version: "1.5"
+version: "1.6"
 maintainer: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
 authors: "Steven De Oliveira <de.oliveira.steven@gmail.com>"
 dev-repo: "git://github.com/Stevendeo/Pilat.git"
